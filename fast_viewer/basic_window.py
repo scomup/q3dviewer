@@ -10,6 +10,7 @@ from PyQt5.QtGui import QKeyEvent, QVector3D
 from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
 import signal
+import sys
 
 
 class SettingWindow(QWidget):
@@ -47,7 +48,7 @@ class SettingWindow(QWidget):
         key = list(self.items.keys())
         try:
             item = self.items[key[index]]
-            item.addSetting(self)
+            item.addSetting(self.layout)
             self.layout.addItem(self.stretch)
         except AttributeError:
             print("%s: No setting." % (item.__class__.__name__))
@@ -141,11 +142,6 @@ class Viewer(QMainWindow):
         centerWidget.setLayout(layout)
         self.viewerWidget = ViewWidget()
         layout.addWidget(self.viewerWidget, 1)
-        timer = QtCore.QTimer(self)
-        timer.setInterval(20)  # period, in milliseconds
-        timer.timeout.connect(self.update)
-        self.viewerWidget.setCameraPosition(distance=40)
-        timer.start()
 
     def addItems(self, **kwds):
         for name, item in kwds.items():
@@ -157,5 +153,5 @@ class Viewer(QMainWindow):
         else:
           return None
 
-    def update(self):
-        self.viewerWidget.update()
+    def closeEvent(self, _):
+        sys.exit(0)
