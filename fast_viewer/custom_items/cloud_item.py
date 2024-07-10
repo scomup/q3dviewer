@@ -7,11 +7,8 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
 import threading
-from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QMessageBox
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
 import threading
-import os
-from pathlib import Path
-from pypcd4 import PointCloud, MetaData
 from PyQt5.QtGui import QValidator
 
 

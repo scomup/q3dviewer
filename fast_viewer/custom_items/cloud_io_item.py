@@ -4,7 +4,7 @@ from fast_viewer.custom_items.cloud_item import CloudItem
 from pypcd4 import PointCloud, MetaData
 from pathlib import Path
 import os
-from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QMessageBox
+from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
 import numpy as np
 
 """
