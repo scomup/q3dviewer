@@ -148,6 +148,7 @@ class Viewer(QMainWindow):
         self.viewerWidget.setCameraPosition(distance=40)
         timer.start()
 
+
     def addItems(self, **kwds):
         for name, item in kwds.items():
             self.viewerWidget.addItem(name, item)

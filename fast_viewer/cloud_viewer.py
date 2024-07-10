@@ -28,27 +28,12 @@ class CloudViewer(Viewer):
     def openCloudFile(self, file):
             cloud_item = self['cloud']
             if cloud_item is None:
-                print("Can't find clouditem")
+                print("Can't find clouditem.")
                 return
-
-            print("Try to load %s ..." % file)
-            pc = PointCloud.from_path(file).pc_data
-
-            try:
-                color = pc["rgb"].astype(np.uint32)
-                cloud_item.setColorMode(-2)
-            except ValueError:
-                try:
-                    color = pc["intensity"].astype(np.uint32)
-                    cloud_item.setColorMode(-1)
-                except ValueError:
-                    color = pc['z'].astype(np.uint32)
-                    cloud_item.setColorMode('#FFFFFF')
-
-            cloud = np.rec.fromarrays(
-                [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color], 
-                dtype=cloud_item.data_type)
-            cloud_item.setData(data=cloud)
+            if cloud_item.__class__.__name__ != 'CloudIOItem':
+                print("Is not a CloudIOItem.")
+                return
+            cloud_item.load(file)
 
 
 def main():
@@ -59,7 +44,7 @@ def main():
     app = QApplication([])
     viewer = CloudViewer()
 
-    cloudItem = CloudItem(size=1, alpha=0.1)
+    cloudItem = CloudIOItem(size=1, alpha=0.1)
     axisItem = GLAxisItem(size=0.5, width=5)
     gridItem = GridItem(size=1000, spacing=20)
 

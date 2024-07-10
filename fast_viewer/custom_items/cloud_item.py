@@ -122,9 +122,6 @@ def set_uniform_mat4(shader, content, name):
     )
 
 
-CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
-
-
 # draw points with color (x, y, z, color)
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def __init__(self, size, alpha, color_mode=-1):
@@ -139,7 +136,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.data = np.empty((0), self.data_type)
         self.update_buff_capacity = True
         self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
-        self.save_path = str(Path(os.getcwd(), "data.pcd"))
+        self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
 
     def addSetting(self, layout):
         label1 = QLabel("Set Size:")
@@ -169,46 +166,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box3.setText(str(self.color_mode))
         box3.textChanged.connect(self.setColorMode)
         layout.addWidget(box3)
-
-        label4 = QLabel("Save Path:")
-        layout.addWidget(label4)
-        box4 = QLineEdit()
-        box4.setText(self.save_path)
-        box4.textChanged.connect(self.setPath)
-        layout.addWidget(box4)
-        save_button = QPushButton("Save Cloud")
-        save_button.clicked.connect(self.saveFile)
-        layout.addWidget(save_button)
-
-    def saveFile(self):
-        cloud = self.data[:self.valid_buff_num]
-        if self.save_path.endswith(".pcd"):
-            fields = ("x", "y", "z", "rgb")
-            metadata = MetaData.model_validate(
-                {
-                    "fields": fields,
-                    "size": [4, 4, 4, 4],
-                    "type": ['F', 'F', 'F', 'U'],
-                    "count": [1, 1, 1, 1],
-                    "width": cloud.shape[0],
-                    "points": cloud.shape[0],
-                })
-            pc = PointCloud(metadata, cloud)
-            try:
-                pc.save(self.save_path)
-                save_msg = QMessageBox()
-                save_msg.setIcon(QMessageBox.Information)
-                save_msg.setWindowTitle("save")
-                save_msg.setStandardButtons(QMessageBox.Ok)
-                save_msg.setText("save OK!")
-            except:
-                save_msg.setText("Cannot save to %s" % self.save_path)
-            save_msg.exec()
-
-        elif self.save_path.endswith(".ply"):
-            print("Not implment yet!")
-        else:
-            print("Not supported cloud file type!")
 
     def setAlpha(self, alpha):
         self.alpha = alpha
@@ -240,16 +197,13 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def setSize(self, size):
         self.size = size
 
-    def setPath(self, path):
-        self.save_path = path
-
     def setData(self, data):
         self.mutex.acquire()
         new_point_num = data.shape[0]
 
         while (new_point_num > self.points_capacity):
             self.update_buff_capacity = True
-            self.points_capacity += CAPACITY
+            self.points_capacity += self.CAPACITY
 
         if (self.update_buff_capacity):
             self.data = np.empty((self.points_capacity), self.data_type)
@@ -266,7 +220,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         while (old_point_num + new_point_num > self.points_capacity):
             self.update_buff_capacity = True
-            self.points_capacity += CAPACITY
+            self.points_capacity += self.CAPACITY
             print("Update capacity to %d" % self.points_capacity)
 
         if (self.update_buff_capacity):
