@@ -23,38 +23,31 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.settings = []
         self.follow_flg = False
 
-    def addSetting(self, parent):
+    def addSetting(self, layout):
         label1 = QLabel("Set size:")
-        parent.layout.addWidget(label1)
+        layout.addWidget(label1)
         box1 = QDoubleSpinBox()
         box1.setSingleStep(0.1)
-        parent.layout.addWidget(box1)
+        layout.addWidget(box1)
         box1.setValue(self.size)
         box1.valueChanged.connect(self.setSize)
         box1.setRange(0.0, 100)
 
         label2 = QLabel("Set Width:")
-        parent.layout.addWidget(label2)
+        layout.addWidget(label2)
         box2 = QDoubleSpinBox()
-        parent.layout.addWidget(box2)
+        layout.addWidget(box2)
         box2.setSingleStep(0.1)
         box2.setValue(self.width)
         box2.valueChanged.connect(self.setWidth)
         box2.setRange(0, 1000)
 
         label3 = QLabel("Set Follow:")
-        parent.layout.addWidget(label3)
+        layout.addWidget(label3)
         checkbox = QCheckBox()
-        parent.layout.addWidget(checkbox)
+        layout.addWidget(checkbox)
         checkbox.setCheckState(self.follow_flg)
         checkbox.stateChanged.connect(self.setFollow)
-
-        parent.tmp_widgets.append(label1)
-        parent.tmp_widgets.append(box1)
-        parent.tmp_widgets.append(label2)
-        parent.tmp_widgets.append(box2)
-        parent.tmp_widgets.append(label3)
-        parent.tmp_widgets.append(checkbox)
 
     def setFollow(self, flg):
         self.follow_flg = flg

@@ -27,18 +27,23 @@ class SettingWindow(QWidget):
         self.setWindowTitle("Setting Window")
         self.setGeometry(200, 200, 300, 200)
         self.items = {}
-        self.tmp_widgets = []
 
     def addSetting(self, name, item):
         self.items.update({name: item})
         self.combo_items.addItem("%s(%s)" % (name, item.__class__.__name__))
 
+    def clearSetting(self):
+        while self.layout.count():
+            child = self.layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
     def onComboboxSelection(self, index):
         self.layout.removeItem(self.stretch)
-        for w in self.tmp_widgets:
-            self.layout.removeWidget(w)
-            w.deleteLater()
-        self.tmp_widgets = []
+
+        # remove all setting of previous widget
+        self.clearSetting()
+
         key = list(self.items.keys())
         try:
             item = self.items[key[index]]

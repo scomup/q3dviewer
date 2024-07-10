@@ -142,20 +142,20 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
 
-    def addSetting(self, parent):
+    def addSetting(self, layout):
         label1 = QLabel("Set Size:")
-        parent.layout.addWidget(label1)
+        layout.addWidget(label1)
         box1 = QSpinBox()
         box1.setSingleStep(1)
-        parent.layout.addWidget(box1)
+        layout.addWidget(box1)
         box1.setValue(self.size)
         box1.valueChanged.connect(self.setSize)
         box1.setRange(0, 100)
 
         label2 = QLabel("Set Alpha:")
-        parent.layout.addWidget(label2)
+        layout.addWidget(label2)
         box2 = QDoubleSpinBox()
-        parent.layout.addWidget(box2)
+        layout.addWidget(box2)
         box2.setSingleStep(0.01)
         box2.setValue(self.alpha)
         box2.valueChanged.connect(self.setAlpha)
@@ -163,34 +163,23 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         label3 = QLabel("Set ColorMode:")
         label3.setToolTip("intensity mode: -1; rgb mode: -2; matplotlib color: i.e. #FF4500")
-        parent.layout.addWidget(label3)
+        layout.addWidget(label3)
         box3 = CustomLineEdit()
         box3.setToolTip("intensity mode: -1; rgb mode: -2; matplotlib color: i.e. #FF4500")
 
         box3.setText(str(self.color_mode))
         box3.textChanged.connect(self.setColorMode)
-        parent.layout.addWidget(box3)
+        layout.addWidget(box3)
 
         label4 = QLabel("Save Path:")
-        parent.layout.addWidget(label4)
+        layout.addWidget(label4)
         box4 = QLineEdit()
         box4.setText(self.save_path)
         box4.textChanged.connect(self.setPath)
-        parent.layout.addWidget(box4)
+        layout.addWidget(box4)
         save_button = QPushButton("Save Cloud")
         save_button.clicked.connect(self.saveFile)
-        parent.layout.addWidget(save_button)
-        self.setting_win = parent
-
-        parent.tmp_widgets.append(label1)
-        parent.tmp_widgets.append(box1)
-        parent.tmp_widgets.append(label2)
-        parent.tmp_widgets.append(box2)
-        parent.tmp_widgets.append(label3)
-        parent.tmp_widgets.append(box3)
-        parent.tmp_widgets.append(label4)
-        parent.tmp_widgets.append(box4)
-        parent.tmp_widgets.append(save_button)
+        layout.addWidget(save_button)
 
     def saveFile(self):
         cloud = self.data[:self.valid_buff_num]

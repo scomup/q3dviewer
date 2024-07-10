@@ -63,17 +63,15 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         except ImportError:
                 self.sort = self.opengl_sort
 
-    def addSetting(self, parent):
+    def addSetting(self, layout):
         label1 = QLabel("set render mode:")
-        parent.layout.addWidget(label1)
+        layout.addWidget(label1)
         combo = QComboBox()
         combo.addItem("render normal guassian")
         combo.addItem("render ball")
         combo.addItem("render inverse guassian")
         combo.currentIndexChanged.connect(self.on_combobox_selection)
-        parent.layout.addWidget(combo)
-        parent.tmp_widgets.append(label1)
-        parent.tmp_widgets.append(combo)
+        layout.addWidget(combo)
 
     def on_combobox_selection(self, index):
         glUseProgram(self.program)
