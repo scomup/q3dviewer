@@ -1,0 +1,3 @@
+*.pyc
+data.pcd
+fast_viewer.egg-info/*
