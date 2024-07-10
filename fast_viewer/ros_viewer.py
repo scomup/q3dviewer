@@ -48,7 +48,7 @@ def scanCB(data):
 
 
 def main():
-    rospy.init_node('fast_viewer', anonymous=True)
+    rospy.init_node('ros_viewer', anonymous=True)
 
     global viewer
     global point_num_per_scan
@@ -60,7 +60,7 @@ def main():
     girdItem = GridItem(size=1000, spacing=20)
 
     app = QApplication([])
-    viewer = Viewer()
+    viewer = Viewer(name='ROS Viewer')
 
     viewer.addItems(map=mapItem, scan=scanItem, odom=odomItem, grid=girdItem)
 

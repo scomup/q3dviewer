@@ -98,9 +98,9 @@ class CustomValidator(QValidator):
         super().__init__(parent)
 
     def validate(self, input, pos):
-        if input == '' or input.startswith('#'):
+        if input.isdigit():
             return (QValidator.Acceptable, input, pos)
-        elif input.isdigit():
+        elif input == '' or input.startswith('#')  or input.startswith('-'):
             return (QValidator.Acceptable, input, pos)
         else:
             return (QValidator.Invalid, input, pos)
@@ -138,7 +138,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.wait_add_buff_num = 0
         self.data = np.empty((0), self.data_type)
         self.update_buff_capacity = True
-        self.valid_buff_num = 0
         self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
 

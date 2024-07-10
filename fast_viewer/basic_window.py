@@ -142,6 +142,11 @@ class Viewer(QMainWindow):
         centerWidget.setLayout(layout)
         self.viewerWidget = ViewWidget()
         layout.addWidget(self.viewerWidget, 1)
+        timer = QtCore.QTimer(self)
+        timer.setInterval(20)  # period, in milliseconds
+        timer.timeout.connect(self.update)
+        self.viewerWidget.setCameraPosition(distance=40)
+        timer.start()
 
     def addItems(self, **kwds):
         for name, item in kwds.items():
@@ -152,6 +157,10 @@ class Viewer(QMainWindow):
           return self.viewerWidget.named_items[name]
         else:
           return None
+
+    def update(self):
+        # force update by timer
+        self.viewerWidget.update()
 
     def closeEvent(self, _):
         sys.exit(0)
