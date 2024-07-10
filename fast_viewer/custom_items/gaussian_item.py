@@ -8,6 +8,8 @@ from OpenGL.GLUT import *
 import numpy as np
 import os
 from PyQt5.QtWidgets import QComboBox, QLabel
+from OpenGL.GL import shaders
+
 
 path = os.path.dirname(__file__)
 

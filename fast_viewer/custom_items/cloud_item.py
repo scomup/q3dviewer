@@ -10,6 +10,7 @@ import threading
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
 import threading
 from PyQt5.QtGui import QValidator
+from OpenGL.GL import shaders
 
 
 vertex_shader = """
