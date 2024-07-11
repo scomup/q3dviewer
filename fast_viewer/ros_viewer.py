@@ -16,6 +16,7 @@ from pypcd4 import PointCloud
 viewer = None
 point_num_per_scan = None
 
+
 def odomCB(data):
     global viewer
     pose = np.array(

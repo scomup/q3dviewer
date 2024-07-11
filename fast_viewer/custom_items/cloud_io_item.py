@@ -49,7 +49,7 @@ class CloudIOItem(CloudItem):
                 save_msg.setIcon(QMessageBox.Information)
                 save_msg.setWindowTitle("save")
                 save_msg.setStandardButtons(QMessageBox.Ok)
-                save_msg.setText("save OK!")
+                save_msg.setText("save cloud to  %s" % self.save_path)
             except:
                 save_msg.setText("Cannot save to %s" % self.save_path)
             save_msg.exec()
