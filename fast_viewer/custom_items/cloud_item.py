@@ -98,7 +98,7 @@ class CustomValidator(QValidator):
     def validate(self, input, pos):
         if input.isdigit():
             return (QValidator.Acceptable, input, pos)
-        elif input == '' or input.startswith('#')  or input.startswith('-'):
+        elif input == '' or input.startswith('#') or input.startswith('-'):
             return (QValidator.Acceptable, input, pos)
         else:
             return (QValidator.Invalid, input, pos)
@@ -262,7 +262,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.vbo = glGenBuffers(1)
 
     def paint(self):
-        self.view_matrix = np.array(self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
         self.setupGLState()
         if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
             return
@@ -277,9 +276,11 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        set_uniform_mat4(self.program, self.view_matrix, 'view_matrix')
+        view_matrix = np.array(self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
+        set_uniform_mat4(self.program, view_matrix, 'view_matrix')
         project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix().data(), np.float32).reshape([4, 4]).T
         set_uniform_mat4(self.program, project_matrix, 'projection_matrix')
+
         glPointSize(self.size)
         glDrawArrays(GL_POINTS, 0, self.valid_buff_num)
 

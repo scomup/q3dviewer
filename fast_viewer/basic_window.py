@@ -148,16 +148,15 @@ class Viewer(QMainWindow):
         self.viewerWidget.setCameraPosition(distance=40)
         timer.start()
 
-
-    def addItems(self, **kwds):
-        for name, item in kwds.items():
+    def addItems(self, named_items: dict):
+        for name, item in named_items.items():
             self.viewerWidget.addItem(name, item)
 
-    def __getitem__(self, name:str):
+    def __getitem__(self, name: str):
         if name in self.viewerWidget.named_items:
-          return self.viewerWidget.named_items[name]
+            return self.viewerWidget.named_items[name]
         else:
-          return None
+            return None
 
     def update(self):
         # force update by timer

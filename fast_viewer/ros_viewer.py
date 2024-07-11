@@ -62,7 +62,7 @@ def main():
     app = QApplication([])
     viewer = Viewer(name='ROS Viewer')
 
-    viewer.addItems(map=mapItem, scan=scanItem, odom=odomItem, grid=girdItem)
+    viewer.addItems({'map': mapItem, 'scan': scanItem, 'odom': odomItem, 'grid': girdItem})
 
     point_num_per_scan = rospy.get_param("fast_viewer/scan_num", 500)
     print("point_num_per_scan: %d" % point_num_per_scan)

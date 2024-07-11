@@ -48,7 +48,7 @@ def main():
     axisItem = GLAxisItem(size=0.5, width=5)
     gridItem = GridItem(size=1000, spacing=20)
 
-    viewer.addItems(grid=gridItem, axis=axisItem, cloud=cloudItem)
+    viewer.addItems({'grid': gridItem, 'axis': axisItem, 'cloud': cloudItem})
 
     if args.pcd:
         pcd_fn = args.pcd

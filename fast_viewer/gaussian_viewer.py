@@ -41,7 +41,7 @@ def main():
     gridItem = GridItem(size=1000, spacing=20)
     gauItem = GaussianItem()
 
-    viewer.addItems(grid=gridItem, gaussian=gauItem)
+    viewer.addItems({'grid': gridItem, 'gaussian': gauItem})
 
     viewer.show()
     app.exec_()

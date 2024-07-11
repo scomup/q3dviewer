@@ -42,11 +42,11 @@ def main():
     viewer = MeshViewer()
 
     gridItem = GridItem(size=1000, spacing=20)
-    #'glOptions', 'opaque', 'additive' 'translucent'
-    meshItem = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True, 
+    # 'glOptions', 'opaque', 'additive' 'translucent'
+    meshItem = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True,
                           color=(0, 1, 0, 0.2), edgeColor=(1, 1, 1, 1), glOptions='translucent')
 
-    viewer.addItems(grid=gridItem, mesh=meshItem)
+    viewer.addItems({'grid': gridItem, 'mesh': meshItem})
 
     viewer.show()
     app.exec_()

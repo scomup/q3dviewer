@@ -7,10 +7,11 @@ import os
 from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
 import numpy as np
 
-"""
-add save/load function to CloudItem
-"""
+
 class CloudIOItem(CloudItem):
+    """
+    add save/load function to CloudItem
+    """
     def __init__(self, size, alpha, color_mode=-1):
         super().__init__(size, alpha, color_mode)
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
@@ -58,7 +59,6 @@ class CloudIOItem(CloudItem):
         else:
             print("Not supported cloud file type!")
 
-
     def load(self, file):
             print("Try to load %s ..." % file)
             pc = PointCloud.from_path(file).pc_data
@@ -75,10 +75,9 @@ class CloudIOItem(CloudItem):
                     self.setColorMode('#FFFFFF')
 
             cloud = np.rec.fromarrays(
-                [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color], 
+                [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
                 dtype=self.data_type)
             self.setData(data=cloud)
-
 
     def setPath(self, path):
         self.save_path = path
