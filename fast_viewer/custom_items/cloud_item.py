@@ -203,6 +203,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setSize(self, size):
         self.size = size
+    
+    def clear(self):
+        data = np.empty((0), self.data_type)
+        self.setData(data)
 
     def setData(self, data):
         self.mutex.acquire()
