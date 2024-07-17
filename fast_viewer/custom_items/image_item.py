@@ -93,12 +93,12 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         # Vertex positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                              5 * self.vertices.itemsize, ctypes.c_void_p(0))
+                              20, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
         # Texture coordinates
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-                              5 * self.vertices.itemsize, ctypes.c_void_p(12))
+                              20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 
         # Compile shaders and create shader program
@@ -109,9 +109,10 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         self.texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.texture)
+        glBindVertexArray(0)
 
-    def setImage(self, image):
-        self.image = image
+    def setData(self, data):
+        self.image = data
 
     def paint(self):
         if self.image is not None:
@@ -123,7 +124,6 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
             glGenerateMipmap(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, 0)
             self.image = None
-
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

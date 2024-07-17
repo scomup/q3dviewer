@@ -93,14 +93,15 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
                      indices.nbytes, indices, GL_STATIC_DRAW)
 
         # Vertex positions
+        
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                              5 * self.vertices.itemsize, ctypes.c_void_p(0))
+                              20, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
-
         # Texture coordinates
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-                              5 * self.vertices.itemsize, ctypes.c_void_p(12))
+                              20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
+        
 
         project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T
@@ -124,6 +125,7 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
                      image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
         glGenerateMipmap(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, 0)
+        glBindVertexArray(0)
 
     def setTransform(self, T):
         self.T = T
