@@ -84,9 +84,10 @@ class ViewWidget(gl.GLViewWidget):
                 camera_mode = 'view'
             self.pan(diff.x(), diff.y(), 0, relative=camera_mode)
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, ev: QKeyEvent):
         step = 10
         zoom_delta = 20
+        speed = 2
         self.projectionMatrix().data()
 
         pitch_abs = np.abs(self.opts['elevation'])
@@ -94,30 +95,44 @@ class ViewWidget(gl.GLViewWidget):
         if(pitch_abs <= 45.0 or pitch_abs == 90):
             camera_mode = 'view'
 
-        if event.key() == QtCore.Qt.Key_M:  # setting meun
+        if ev.key() == QtCore.Qt.Key_M:  # setting meun
             print("Open setting windows")
             self.openSettingWindow()
-        elif event.key() == QtCore.Qt.Key_R:
+        elif ev.key() == QtCore.Qt.Key_R:
             print("Clear viewer")
             for item in self.named_items.values():
                 try:
                     item.clear()
                 except:
                     pass
-        elif event.key() == QtCore.Qt.Key_W:
-            self.pan(0, +step, 0, relative=camera_mode)
-        elif event.key() == QtCore.Qt.Key_S:
-            self.pan(0, -step, 0, relative=camera_mode)
-        elif event.key() == QtCore.Qt.Key_A:
-            self.pan(+step, 0, 0, relative=camera_mode)
-        elif event.key() == QtCore.Qt.Key_D:
-            self.pan(-step, 0, 0, relative=camera_mode)
-        elif event.key() == QtCore.Qt.Key_Z:
+        elif ev.key() == QtCore.Qt.Key_Up:
+            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                self.pan(0, +step, 0, relative=camera_mode)
+            else:
+                self.orbit(azim=0, elev=-speed)
+        elif ev.key() == QtCore.Qt.Key_Down:
+            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                self.pan(0, -step, 0, relative=camera_mode)
+            else:
+                self.orbit(azim=0, elev=speed)
+        elif ev.key() == QtCore.Qt.Key_Left:
+            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                self.pan(+step, 0, 0, relative=camera_mode)
+            else:
+                self.orbit(azim=speed, elev=0)
+
+        elif ev.key() == QtCore.Qt.Key_Right:
+            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                self.pan(-step, 0, 0, relative=camera_mode)
+            else:
+                self.orbit(azim=-speed, elev=0)
+
+        elif ev.key() == QtCore.Qt.Key_Z:
             self.opts['distance'] *= 0.999**(+zoom_delta)
-        elif event.key() == QtCore.Qt.Key_X:
+        elif ev.key() == QtCore.Qt.Key_X:
             self.opts['distance'] *= 0.999**(-zoom_delta)
         else:
-            super().keyPressEvent(event)
+            super().keyPressEvent(ev)
 
     def openSettingWindow(self):
         if self.setting_window.isVisible():
