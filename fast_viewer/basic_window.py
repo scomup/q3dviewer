@@ -128,9 +128,10 @@ class ViewWidget(gl.GLViewWidget):
 
 
 class Viewer(QMainWindow):
-    def __init__(self, name='Viewer', win_size=[1920, 1080]):
+    def __init__(self, name='Viewer', win_size=[1920, 1080], vw=ViewWidget):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         super(Viewer, self).__init__()
+        self.vw = vw
         self.setGeometry(0, 0, win_size[0], win_size[1])
         self.initUI()
         self.setWindowTitle(name)
@@ -140,7 +141,7 @@ class Viewer(QMainWindow):
         self.setCentralWidget(centerWidget)
         layout = QVBoxLayout()
         centerWidget.setLayout(layout)
-        self.viewerWidget = ViewWidget()
+        self.viewerWidget = self.vw()
         layout.addWidget(self.viewerWidget, 1)
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
