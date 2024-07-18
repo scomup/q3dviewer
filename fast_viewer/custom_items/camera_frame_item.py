@@ -93,7 +93,7 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
                      indices.nbytes, indices, GL_STATIC_DRAW)
 
         # Vertex positions
-        
+
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
@@ -101,10 +101,9 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-        
 
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
-        ).data(), np.float32).reshape([4, 4]).T
+        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix().data(),
+                                  np.float32).reshape([4, 4]).T
         # Compile shaders and create shader program
         self.program = shaders.compileProgram(
             shaders.compileShader(vertex_shader_source, GL_VERTEX_SHADER),

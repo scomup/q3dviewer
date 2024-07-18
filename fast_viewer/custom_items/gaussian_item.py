@@ -11,9 +11,6 @@ from PyQt5.QtWidgets import QComboBox, QLabel
 from OpenGL.GL import shaders
 
 
-path = os.path.dirname(__file__)
-
-
 def div_round_up(x, y):
     return int((x + y - 1) / y)
 
@@ -56,6 +53,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.sh_dim = 0
         self.gs_data = np.empty([0])
         self.prev_Rz = np.array([np.inf, np.inf, np.inf])
+        self.path = os.path.dirname(__file__)
         try:
             import torch
             if not torch.cuda.is_available():
@@ -81,10 +79,10 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glUseProgram(0)
 
     def initializeGL(self):
-        fragment_shader = open(path + '/../shaders/gau_frag.glsl', 'r').read()
-        vertex_shader = open(path + '/../shaders/gau_vert.glsl', 'r').read()
-        sort_shader = open(path + '/../shaders/sort_by_key.glsl', 'r').read()
-        prep_shader = open(path + '/../shaders/gau_prep.glsl', 'r').read()
+        fragment_shader = open(self.path + '/../shaders/gau_frag.glsl', 'r').read()
+        vertex_shader = open(self.path + '/../shaders/gau_vert.glsl', 'r').read()
+        sort_shader = open(self.path + '/../shaders/sort_by_key.glsl', 'r').read()
+        prep_shader = open(self.path + '/../shaders/gau_prep.glsl', 'r').read()
 
         self.sort_program = shaders.compileProgram(
             shaders.compileShader(sort_shader, GL_COMPUTE_SHADER))

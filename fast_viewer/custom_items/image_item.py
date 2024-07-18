@@ -112,7 +112,13 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindVertexArray(0)
 
     def setData(self, data):
-        self.image = data
+        if isinstance(data, np.ndarray):
+            self.image = Image.fromarray(data)
+        elif isinstance(data, Image.Image):
+            self.image = data
+        else:
+            raise NotImplementedError
+            print("not support image type")
 
     def paint(self):
         if self.image is not None:
@@ -120,7 +126,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
             img_data = self.image.convert("RGBA").tobytes()
             glBindTexture(GL_TEXTURE_2D, self.texture)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.image.width,
-                self.image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+                         self.image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
             glGenerateMipmap(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, 0)
             self.image = None
