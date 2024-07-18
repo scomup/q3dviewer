@@ -30,10 +30,27 @@ class CloudViewer(Viewer):
             if cloud_item is None:
                 print("Can't find clouditem.")
                 return
-            if cloud_item.__class__.__name__ != 'CloudIOItem':
-                print("Is not a CloudIOItem.")
-                return
-            cloud_item.load(file)
+            if file.endswith('.pcd'):
+                pc = PointCloud.from_path(file).pc_data
+                try:
+                    color = pc["rgb"].astype(np.uint32)
+                    cloud_item.setColorMode(-2)
+                except ValueError:
+                    try:
+                        color = pc["intensity"].astype(np.uint32)
+                        cloud_item.setColorMode(-1)
+                    except ValueError:
+                        color = pc['z'].astype(np.uint32)
+                        cloud_item.setColorMode('#FFFFFF')
+                cloud = np.rec.fromarrays(
+                    [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
+                    dtype=cloud_item.data_type)
+            elif file.endswith('.npy'):
+                pc = np.load(file)
+                cloud = np.rec.fromarrays(
+                    [np.stack([pc[:, 0], pc[:, 1], pc[:, 2]], axis=1), pc[:, 3].astype(np.uint32)],
+                    dtype=cloud_item.data_type)
+            cloud_item.setData(data=cloud)
 
 
 def main():

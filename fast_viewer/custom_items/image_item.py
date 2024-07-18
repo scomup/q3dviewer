@@ -19,7 +19,7 @@ uniform mat4 project_matrix;
 
 void main()
 {
-    gl_Position = project_matrix * view_matrix * vec4(position, 1.0);
+    gl_Position = vec4(position, 1.0);
     TexCoord = texCoord;
 }
 """
@@ -46,32 +46,31 @@ def set_uniform_mat4(shader, content, name):
     )
 
 
-class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
-    def __init__(self, T=np.eye(4), size=1, width=3, path=None):
+class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
+    def __init__(self, pos=np.array([10, 10]), size=np.array([1280/2, 720/2])):
         gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
+        self.pos = pos  # bottom-left
         self.size = size
-        self.width = width
-        self.T = T
-        self.path = path
+        self.image = None
 
     def initializeGL(self):
         # Rectangle vertices and texture coordinates
-        hsize = self.size / 2
+        width = self._GLGraphicsItem__view.deviceWidth()
+        height = self._GLGraphicsItem__view.deviceHeight()
+        x0, y0 = self.pos
+        x1, y1 = self.pos + self.size
+        x0 = x0 / width * 2 - 1
+        y0 = y0 / height * 2 - 1
+        x1 = x1 / width * 2 - 1
+        y1 = y1 / height * 2 - 1
+
         self.vertices = np.array([
             # positions          # texture coords
-            [-hsize, -hsize,  0.0,  0.0, 0.0],  # bottom-left
-            [hsize, -hsize,  0.0,  1.0, 0.0],  # bottom-right
-            [hsize,  hsize,  0.0,  1.0, 1.0],  # top-right
-            [-hsize,  hsize,  0.0,  0.0, 1.0],   # top-left
-            [0,  0, -hsize * 0.66, 0.0, 0.0],   # top-left
+            [x0, y0,  0.0,  0.0, 0.0],  # bottom-left
+            [x1, y0,  0.0,  1.0, 0.0],  # bottom-right
+            [x1,  y1,  0.0,  1.0, 1.0],  # top-right
+            [x0,  y1,  0.0,  0.0, 1.0],   # top-left
         ], dtype=np.float32)
-
-        R = self.T[:3, :3]
-        t = self.T[:3, 3]
-        self.vertices[:, :3] = (
-            R @ self.vertices[:, :3].T + t[:, np.newaxis]).T
-
-        self.focal_p = np.array([0, 0, hsize * 0.66])
 
         indices = np.array([
             0, 1, 2,  # first triangle
@@ -93,83 +92,50 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
                      indices.nbytes, indices, GL_STATIC_DRAW)
 
         # Vertex positions
-        
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
+
         # Texture coordinates
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-        
 
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
-        ).data(), np.float32).reshape([4, 4]).T
         # Compile shaders and create shader program
         self.program = shaders.compileProgram(
             shaders.compileShader(vertex_shader_source, GL_VERTEX_SHADER),
             shaders.compileShader(fragment_shader_source, GL_FRAGMENT_SHADER),
         )
-        glUseProgram(self.program)
-        set_uniform_mat4(self.program, project_matrix, 'project_matrix')
-        glUseProgram(0)
 
         self.texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.texture)
-
-        # Load image
-        image = Image.open(self.path)
-        # image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        img_data = image.convert("RGBA").tobytes()
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width,
-                     image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-        glGenerateMipmap(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, 0)
         glBindVertexArray(0)
 
-    def setTransform(self, T):
-        self.T = T
+    def setData(self, data):
+        self.image = data
 
     def paint(self):
-        self.view_matrix = np.array(
-            self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
-        ).data(), np.float32).reshape([4, 4]).T
+        if self.image is not None:
+            self.image = self.image.transpose(Image.FLIP_TOP_BOTTOM)
+            img_data = self.image.convert("RGBA").tobytes()
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.image.width,
+                self.image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+            glGenerateMipmap(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, 0)
+            self.image = None
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         glUseProgram(self.program)
-        set_uniform_mat4(self.program, self.view_matrix, 'view_matrix')
-        set_uniform_mat4(self.program, project_matrix, 'project_matrix')
         glBindVertexArray(self.vao)
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
         glBindTexture(GL_TEXTURE_2D, 0)
         glBindVertexArray(0)
         glUseProgram(0)
-
-        glLineWidth(self.width)
-        glBegin(GL_LINES)
-        glColor4f(1, 1, 1, 1)  # z is blue
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glEnd()
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)

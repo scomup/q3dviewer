@@ -23,15 +23,14 @@ uniform mat4 view_matrix;
 uniform mat4 projection_matrix;
 uniform float alpha;
 uniform int color_mode;
+uniform float vmin = 0;
+uniform float vmax = 255;
 out vec4 color;
-
-uniform float scalar_min = 0;
-uniform float scalar_max = 255;
 
 vec3 getRainbowColor(uint value_raw) {
     // Normalize value to [0, 1]
-    float range = scalar_max - scalar_min;
-    float value = 1.0 - (float(value_raw) - scalar_min) / range;
+    float range = vmax - vmin;
+    float value = 1.0 - (float(value_raw) - vmin) / range;
     value = clamp(value, 0.0, 1.0);
     // Convert value to hue in the range [0, 1]
     float hue = value * 5.0 + 1.0;
@@ -135,6 +134,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.update_buff_capacity = True
         self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
+        self.vmax = 255
 
     def addSetting(self, layout):
         label1 = QLabel("Set Size:")
@@ -167,9 +167,17 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setAlpha(self, alpha):
         self.alpha = alpha
-        glUseProgram(self.program)
-        glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
-        glUseProgram(0)
+        if hasattr(self, 'program'):
+            glUseProgram(self.program)
+            glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
+            glUseProgram(0)
+
+    def setVmax(self, vmax):
+        self.vmax = vmax
+        if hasattr(self, 'program'):
+            glUseProgram(self.program)
+            glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
+            glUseProgram(0)
 
     def setColorMode(self, mode):
         """
@@ -188,12 +196,17 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
                     mode = int(mode)
                 except ValueError:
                     return
-        glUseProgram(self.program)
-        glUniform1i(glGetUniformLocation(self.program, "color_mode"), mode)
-        glUseProgram(0)
+        if hasattr(self, 'program'):
+            glUseProgram(self.program)
+            glUniform1i(glGetUniformLocation(self.program, "color_mode"), mode)
+            glUseProgram(0)
 
     def setSize(self, size):
         self.size = size
+    
+    def clear(self):
+        data = np.empty((0), self.data_type)
+        self.setData(data)
 
     def setData(self, data):
         self.mutex.acquire()
@@ -259,6 +272,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         # set constant parameter for cloud shader
         self.setAlpha(self.alpha)
         self.setColorMode(self.color_mode)
+        self.setVmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
     def paint(self):
