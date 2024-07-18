@@ -203,25 +203,17 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setSize(self, size):
         self.size = size
-    
+
     def clear(self):
         data = np.empty((0), self.data_type)
         self.setData(data)
 
     def setData(self, data):
         self.mutex.acquire()
-        new_point_num = data.shape[0]
-
-        while (new_point_num > self.points_capacity):
-            self.update_buff_capacity = True
-            self.points_capacity += self.CAPACITY
-
-        if (self.update_buff_capacity):
-            self.data = np.empty((self.points_capacity), self.data_type)
-
+        self.data = data
+        self.wait_add_buff_num = data.shape[0]
         self.valid_buff_num = 0  # reset the buff to 0
-        self.data[:new_point_num] = data
-        self.wait_add_buff_num = new_point_num
+        self.update_buff_capacity = True
         self.mutex.release()
 
     def appendData(self, data):
@@ -251,7 +243,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.mutex.acquire()
         if self.update_buff_capacity:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferData(GL_ARRAY_BUFFER, self.data.nbytes, self.data, GL_STATIC_DRAW)
+            glBufferData(GL_ARRAY_BUFFER, self.data.nbytes, self.data, GL_DYNAMIC_DRAW)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self.update_buff_capacity = False
             self.valid_buff_num += self.wait_add_buff_num
@@ -277,8 +269,9 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def paint(self):
         self.setupGLState()
-        if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
-            return
+        # if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
+        #     print(self.valid_buff_num)
+        #     return
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
