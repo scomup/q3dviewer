@@ -269,9 +269,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def paint(self):
         self.setupGLState()
-        # if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
-        #     print(self.valid_buff_num)
-        #     return
+        if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
+            return
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
