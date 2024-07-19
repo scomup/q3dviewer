@@ -123,18 +123,17 @@ def set_uniform_mat4(shader, content, name):
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def __init__(self, size, alpha, color_mode=-1):
         super().__init__()
-        self.valid_buff_num = 0
+        self.valid_buff_top = 0
+        self.add_buff_loc = 0
         self.alpha = alpha
         self.size = size
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
-        self.points_capacity = 0
-        self.wait_add_buff_num = 0
-        self.data = np.empty((0), self.data_type)
-        self.update_buff_capacity = True
         self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
+        self.buff = np.empty((0), self.data_type)
+        self.wait_add_data = np.empty((0), self.data_type)
 
     def addSetting(self, layout):
         label1 = QLabel("Set Size:")
@@ -208,51 +207,41 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         data = np.empty((0), self.data_type)
         self.setData(data)
 
-    def setData(self, data):
+    def setData(self, data, append=False):
         self.mutex.acquire()
-        self.data = data
-        self.wait_add_buff_num = data.shape[0]
-        self.valid_buff_num = 0  # reset the buff to 0
-        self.update_buff_capacity = True
-        self.mutex.release()
-
-    def appendData(self, data):
-        self.mutex.acquire()
-        new_point_num = data.shape[0]
-        old_point_num = self.valid_buff_num + self.wait_add_buff_num
-
-        while (old_point_num + new_point_num > self.points_capacity):
-            self.update_buff_capacity = True
-            self.points_capacity += self.CAPACITY
-            print("Update capacity to %d" % self.points_capacity)
-
-        if (self.update_buff_capacity):
-            # copy old data
-            new_data = np.empty((self.points_capacity), self.data_type)
-            new_data[:old_point_num] = self.data[:old_point_num]
-            self.data = new_data
-
-        # copy new data
-        self.data[old_point_num:old_point_num + new_point_num] = data
-        self.wait_add_buff_num += new_point_num
+        if (append == False):
+            self.wait_add_data = data
+            self.add_buff_loc = 0
+        else:
+            self.wait_add_data = np.concatenate([self.wait_add_data, data])
+            self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
     def updateRenderBuffer(self):
-        if(self.wait_add_buff_num == 0):
+        # is not new data dont update buff
+        if(self.wait_add_data.shape[0] == 0):
             return
         self.mutex.acquire()
-        if self.update_buff_capacity:
+
+        new_buff_top = self.add_buff_loc + self.wait_add_data.shape[0]
+        if new_buff_top > self.buff.shape[0]:
+            # if need to update buff capacity, create new cpu buff and new vbo
+            buff_capacity = self.buff.shape[0]
+            while (new_buff_top > buff_capacity):
+                buff_capacity += self.CAPACITY
+                print("Update capacity to %d" % buff_capacity)
+            self.buff = np.empty((buff_capacity), self.data_type)
+            self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferData(GL_ARRAY_BUFFER, self.data.nbytes, self.data, GL_DYNAMIC_DRAW)
+            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes, self.buff, GL_DYNAMIC_DRAW)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            self.update_buff_capacity = False
-            self.valid_buff_num += self.wait_add_buff_num
         else:
+            self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferSubData(GL_ARRAY_BUFFER, self.valid_buff_num * 16,
-                            self.wait_add_buff_num * 16, self.data[self.valid_buff_num:])
-            self.valid_buff_num += self.wait_add_buff_num
-        self.wait_add_buff_num = 0
+            glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * 16,
+                            self.wait_add_data.shape[0] * 16, self.wait_add_data)
+        self.valid_buff_top = new_buff_top
+        self.wait_add_data = np.empty((0), self.data_type)
         self.mutex.release()
 
     def initializeGL(self):
@@ -269,12 +258,9 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def paint(self):
         self.setupGLState()
-        if self.valid_buff_num == 0 and self.wait_add_buff_num == 0:
-            return
-
+        self.updateRenderBuffer()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        self.updateRenderBuffer()
         glUseProgram(self.program)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(0))
@@ -288,7 +274,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         set_uniform_mat4(self.program, project_matrix, 'projection_matrix')
 
         glPointSize(self.size)
-        glDrawArrays(GL_POINTS, 0, self.valid_buff_num)
+        glDrawArrays(GL_POINTS, 0, self.valid_buff_top)
 
         # unbind VBO
         glDisableVertexAttribArray(0)

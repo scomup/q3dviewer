@@ -41,12 +41,12 @@ def main():
     app = QApplication([])
     viewer = MeshViewer()
 
-    gridItem = GridItem(size=1000, spacing=20)
+    gird_item = GridItem(size=1000, spacing=20)
     # 'glOptions', 'opaque', 'additive' 'translucent'
-    meshItem = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True,
-                          color=(0, 1, 0, 0.2), edgeColor=(1, 1, 1, 1), glOptions='translucent')
+    mesh_item = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True,
+                           color=(0, 1, 0, 0.2), edgeColor=(1, 1, 1, 1), glOptions='translucent')
 
-    viewer.addItems({'grid': gridItem, 'mesh': meshItem})
+    viewer.addItems({'grid': gird_item, 'mesh': mesh_item})
 
     viewer.show()
     app.exec_()

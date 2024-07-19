@@ -61,11 +61,11 @@ def main():
     app = QApplication([])
     viewer = CloudViewer()
 
-    cloudItem = CloudIOItem(size=1, alpha=0.1)
-    axisItem = GLAxisItem(size=0.5, width=5)
-    gridItem = GridItem(size=1000, spacing=20)
+    cloud_item = CloudIOItem(size=1, alpha=0.1)
+    axis_item = GLAxisItem(size=0.5, width=5)
+    gird_item = GridItem(size=1000, spacing=20)
 
-    viewer.addItems({'grid': gridItem, 'axis': axisItem, 'cloud': cloudItem})
+    viewer.addItems({'grid': gird_item, 'axis': axis_item, 'cloud': cloud_item})
 
     if args.pcd:
         pcd_fn = args.pcd

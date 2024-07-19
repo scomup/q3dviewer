@@ -2,9 +2,6 @@ import numpy as np
 import time
 
 
-_EPS = np.finfo(float).eps * 4.0
-
-
 def matrix_to_quaternion(matrix):
     trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2]
     if trace > 0:
@@ -36,6 +33,7 @@ def matrix_to_quaternion(matrix):
 
 
 def quaternion_to_matrix(quaternion):
+    _EPS = np.finfo(float).eps * 4.0
     q = np.array(quaternion[:4], dtype=np.float64, copy=True)
     nq = np.dot(q, q)
     if nq < _EPS:

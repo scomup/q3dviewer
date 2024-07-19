@@ -55,15 +55,15 @@ def main():
     global point_num_per_scan
 
     point_num_per_scan = 10000
-    mapItem = CloudItem(size=1, alpha=0.1, color_mode=-1)
-    scanItem = CloudItem(size=3, alpha=1, color_mode="#FFFFFF")
-    odomItem = GLAxisItem(size=0.5, width=5)
-    girdItem = GridItem(size=1000, spacing=20)
+    map_item = CloudItem(size=1, alpha=0.1, color_mode=-1)
+    scan_item = CloudItem(size=3, alpha=1, color_mode="#FFFFFF")
+    odom_item = GLAxisItem(size=0.5, width=5)
+    gird_item = GridItem(size=1000, spacing=20)
 
     app = QApplication([])
     viewer = Viewer(name='ROS Viewer')
 
-    viewer.addItems({'map': mapItem, 'scan': scanItem, 'odom': odomItem, 'grid': girdItem})
+    viewer.addItems({'map': map_item, 'scan': scan_item, 'odom': odom_item, 'grid': gird_item})
 
     point_num_per_scan = rospy.get_param("fast_viewer/scan_num", 500)
     print("point_num_per_scan: %d" % point_num_per_scan)

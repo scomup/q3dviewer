@@ -38,10 +38,10 @@ def main():
     app = QApplication([])
     viewer = GuassianViewer()
 
-    gridItem = GridItem(size=1000, spacing=20)
-    gauItem = GaussianItem()
+    gird_item = GridItem(size=1000, spacing=20)
+    gau_item = GaussianItem()
 
-    viewer.addItems({'grid': gridItem, 'gaussian': gauItem})
+    viewer.addItems({'grid': gird_item, 'gaussian': gau_item})
 
     viewer.show()
     app.exec_()
