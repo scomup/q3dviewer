@@ -133,7 +133,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
         self.buff = np.empty((0), self.data_type)
-        self.wait_add_data = np.empty((0), self.data_type)
+        self.wait_add_data = None
 
     def addSetting(self, layout):
         label1 = QLabel("Set Size:")
@@ -209,17 +209,20 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setData(self, data, append=False):
         self.mutex.acquire()
-        if (append == False):
+        if (append is False):
             self.wait_add_data = data
             self.add_buff_loc = 0
         else:
-            self.wait_add_data = np.concatenate([self.wait_add_data, data])
+            if (self.wait_add_data is None):
+                self.wait_add_data = data
+            else:
+                self.wait_add_data = np.concatenate([self.wait_add_data, data])
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
     def updateRenderBuffer(self):
         # is not new data dont update buff
-        if(self.wait_add_data.shape[0] == 0):
+        if(self.wait_add_data is None):
             return
         self.mutex.acquire()
 
@@ -241,7 +244,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * 16,
                             self.wait_add_data.shape[0] * 16, self.wait_add_data)
         self.valid_buff_top = new_buff_top
-        self.wait_add_data = np.empty((0), self.data_type)
+        self.wait_add_data = None
         self.mutex.release()
 
     def initializeGL(self):
