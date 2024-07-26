@@ -30,7 +30,7 @@ class CloudIOItem(CloudItem):
         layout.addWidget(save_button)
 
     def save(self):
-        cloud = self.data[:self.valid_buff_top]
+        cloud = self.buff[:self.valid_buff_top]
         if self.save_path.endswith(".pcd"):
             fields = ("x", "y", "z", "rgb")
             metadata = MetaData.model_validate(
