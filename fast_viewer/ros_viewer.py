@@ -44,7 +44,7 @@ def scanCB(data):
     if(cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    viewer["map"].appendData(data=cloud)
+    viewer["map"].setData(data=cloud, append=True)
     viewer["scan"].setData(data=cloud)
 
 
