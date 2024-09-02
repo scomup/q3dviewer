@@ -20,14 +20,14 @@ point_num_per_scan = None
 def odomCB(data):
     global viewer
     pose = np.array(
-            [data.pose.pose.position.x,
-             data.pose.pose.position.y,
-             data.pose.pose.position.z])
+        [data.pose.pose.position.x,
+         data.pose.pose.position.y,
+         data.pose.pose.position.z])
     rotation = np.array([
-            data.pose.pose.orientation.x,
-            data.pose.pose.orientation.y,
-            data.pose.pose.orientation.z,
-            data.pose.pose.orientation.w])
+        data.pose.pose.orientation.x,
+        data.pose.pose.orientation.y,
+        data.pose.pose.orientation.z,
+        data.pose.pose.orientation.w])
     transform = make_transform(pose, rotation)
     viewer["odom"].setTransform(transform)
 
@@ -39,9 +39,10 @@ def scanCB(data):
 
     data_type = viewer["scan"].data_type
     cloud = np.rec.fromarrays(
-            [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), pc["intensity"]], dtype=data_type)
+        [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), pc["intensity"]],
+        dtype=data_type)
 
-    if(cloud.shape[0] > point_num_per_scan):
+    if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
     viewer["map"].setData(data=cloud, append=True)
@@ -63,14 +64,18 @@ def main():
     app = QApplication([])
     viewer = Viewer(name='ROS Viewer')
 
-    viewer.addItems({'map': map_item, 'scan': scan_item, 'odom': odom_item, 'grid': gird_item})
+    viewer.addItems({'map': map_item, 'scan': scan_item,
+                    'odom': odom_item, 'grid': gird_item})
 
     point_num_per_scan = rospy.get_param("fast_viewer/scan_num", 500)
     print("point_num_per_scan: %d" % point_num_per_scan)
-    scan_sub = rospy.Subscriber("/cloud_registered", PointCloud2, scanCB, queue_size=1, buff_size=2**24)
-    odom_sub = rospy.Subscriber("/odometry", Odometry, odomCB, queue_size=1, buff_size=2**24)
+    scan_sub = rospy.Subscriber(
+        "/cloud_registered", PointCloud2, scanCB, queue_size=1, buff_size=2**24)
+    odom_sub = rospy.Subscriber(
+        "/odometry", Odometry, odomCB, queue_size=1, buff_size=2**24)
     viewer.show()
     app.exec_()
+
 
 if __name__ == "__main__":
     main()
