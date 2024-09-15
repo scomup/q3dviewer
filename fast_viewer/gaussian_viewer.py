@@ -23,15 +23,15 @@ class GuassianViewer(Viewer):
             self.openGuassianFile(file_path)
 
     def openGuassianFile(self, file):
-            gau_item = self['gaussian']
-            if gau_item is None:
-                print("Can't find gaussianitem")
-                return
+        gau_item = self['gaussian']
+        if gau_item is None:
+            print("Can't find gaussianitem")
+            return
 
-            print("Try to load %s ..." % file)
-            gs = load_gs(file)
-            gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
-            gau_item.setData(gs_data=gs_data)
+        print("Try to load %s ..." % file)
+        gs = load_gs(file)
+        gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
+        gau_item.setData(gs_data=gs_data)
 
 
 def main():

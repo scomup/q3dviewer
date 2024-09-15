@@ -47,7 +47,7 @@ def set_uniform_mat4(shader, content, name):
 
 
 class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
-    def __init__(self, pos=np.array([10, 10]), size=np.array([1280/2, 720/2])):
+    def __init__(self, pos=np.array([0, 0]), size=np.array([1280/2, 720/2])):
         gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
         self.pos = pos  # bottom-left
         self.size = size

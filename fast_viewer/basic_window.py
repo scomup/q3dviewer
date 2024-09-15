@@ -19,7 +19,8 @@ class SettingWindow(QWidget):
         self.combo_items = QComboBox()
         self.combo_items.currentIndexChanged.connect(self.onComboboxSelection)
         main_layout = QVBoxLayout()
-        self.stretch = QSpacerItem(10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.stretch = QSpacerItem(
+            10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
         main_layout.addWidget(self.combo_items)
         self.layout = QVBoxLayout()
         self.layout.addItem(self.stretch)
