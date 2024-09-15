@@ -65,6 +65,11 @@ void main()
         c.y = float((value & uint(0x0000FF00)) >> 8)/255.;
         c.x = float((value & uint(0x00FF0000)) >> 16)/255.;
     }
+    else if(color_mode == -3)
+    {
+        uint intensity = value >> 24;
+        c = getRainbowColor(intensity);
+    }
     else
     {
         c.z = float( uint(color_mode) & uint(0x000000FF))/255.;
@@ -89,24 +94,6 @@ void main()
 """
 
 
-class CustomValidator(QValidator):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def validate(self, input, pos):
-        if input.isdigit():
-            return (QValidator.Acceptable, input, pos)
-        elif input == '' or input.startswith('#') or input.startswith('-'):
-            return (QValidator.Acceptable, input, pos)
-        else:
-            return (QValidator.Invalid, input, pos)
-
-
-class CustomLineEdit(QLineEdit):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setValidator(CustomValidator(self))
-
 
 def set_uniform_mat4(shader, content, name):
     content = content.T
@@ -120,7 +107,7 @@ def set_uniform_mat4(shader, content, name):
 
 # draw points with color (x, y, z, color)
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
-    def __init__(self, size, alpha, color_mode=-1):
+    def __init__(self, size, alpha, color_mode='I'):
         super().__init__()
         self.valid_buff_top = 0
         self.add_buff_loc = 0
@@ -128,7 +115,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.size = size
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
-        self.color_mode = str(color_mode)  # -1: use rain color, -2: use rgb color:, positive
+        self.color_mode = color_mode  # I: use intensity color, RGB: use rgb color
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
         self.buff = np.empty((0), self.data_type)
@@ -154,10 +141,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box2.setRange(0, 1)
 
         label3 = QLabel("Set ColorMode:")
-        label3.setToolTip("intensity mode: -1; rgb mode: -2; matplotlib color: i.e. #FF4500")
+        label3.setToolTip("'I': intensity mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
         layout.addWidget(label3)
-        box3 = CustomLineEdit()
-        box3.setToolTip("intensity mode: -1; rgb mode: -2; matplotlib color: i.e. #FF4500")
+        box3 = QLineEdit()
+        box3.setToolTip("'I': intensity mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
 
         box3.setText(str(self.color_mode))
         box3.textChanged.connect(self.setColorMode)
@@ -177,27 +164,31 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
             glUseProgram(0)
 
-    def setColorMode(self, mode):
+    def setColorMode(self, color_mode):
         """
         intensity mode: -1;
         rgb mode: -2;
         matplotlib color: i.e. '#FF4500';
         """
-        if (type(mode) == str):
-            if mode.startswith("#"):
+        if (type(color_mode) == str):
+            if color_mode.startswith("#"):
                 try:
-                    mode = int(mode[1:], 16)
+                    mode = int(color_mode[1:], 16)
                 except ValueError:
                     return
-            else:
-                try:
-                    mode = int(mode)
-                except ValueError:
-                    return
+            elif color_mode == 'RGB':
+                mode = -2
+            elif color_mode == 'IRGB':
+                mode = -3
+            elif color_mode == 'I':
+                mode = -1
+        else:
+            return
         if hasattr(self, 'program'):
             glUseProgram(self.program)
             glUniform1i(glGetUniformLocation(self.program, "color_mode"), mode)
             glUseProgram(0)
+            self.color_mode = color_mode
 
     def setSize(self, size):
         self.size = size
@@ -207,6 +198,15 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.setData(data)
 
     def setData(self, data, append=False):
+        if data.dtype is np.dtype('float32') or data.dtype is np.dtype('float64'):
+            xyz = data[:, :3]
+            if (data.shape[1] == 4):
+                color = data[:, 3].view(np.uint32)
+            else:
+                color = np.zeros(data.shape[0], dtype=np.uint32)
+            data = np.rec.fromarrays(
+                [xyz, color],
+                dtype=self.data_type)
         self.mutex.acquire()
         if (append is False):
             self.wait_add_data = data

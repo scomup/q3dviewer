@@ -12,8 +12,8 @@ class CloudIOItem(CloudItem):
     """
     add save/load function to CloudItem
     """
-    def __init__(self, size, alpha, color_mode=-1):
-        super().__init__(size, alpha, color_mode)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
 
     def addSetting(self, layout):
@@ -65,11 +65,11 @@ class CloudIOItem(CloudItem):
 
             try:
                 color = pc["rgb"].astype(np.uint32)
-                self.setColorMode(-2)
+                self.setColorMode('RGB')
             except ValueError:
                 try:
                     color = pc["intensity"].astype(np.uint32)
-                    self.setColorMode(-1)
+                    self.setColorMode('I')
                 except ValueError:
                     color = pc['z'].astype(np.uint32)
                     self.setColorMode('#FFFFFF')

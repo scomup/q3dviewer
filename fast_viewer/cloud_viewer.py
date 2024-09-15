@@ -34,11 +34,11 @@ class CloudViewer(Viewer):
                 pc = PointCloud.from_path(file).pc_data
                 try:
                     color = pc["rgb"].astype(np.uint32)
-                    cloud_item.setColorMode(-2)
+                    cloud_item.setColorMode('RGB')
                 except ValueError:
                     try:
                         color = pc["intensity"].astype(np.uint32)
-                        cloud_item.setColorMode(-1)
+                        cloud_item.setColorMode('I')
                     except ValueError:
                         color = pc['z'].astype(np.uint32)
                         cloud_item.setColorMode('#FFFFFF')
@@ -65,7 +65,7 @@ def main():
     axis_item = GLAxisItem(size=0.5, width=5)
     gird_item = GridItem(size=1000, spacing=20)
 
-    viewer.addItems({'grid': gird_item, 'axis': axis_item, 'cloud': cloud_item})
+    viewer.addItems({'cloud': cloud_item, 'grid': gird_item, 'axis': axis_item})
 
     if args.pcd:
         pcd_fn = args.pcd
