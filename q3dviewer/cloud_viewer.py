@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from fast_viewer.custom_items import *
-from fast_viewer.basic_window import *
+from q3dviewer.custom_items import *
+from q3dviewer.basic_window import *
 from pypcd4 import PointCloud
 
 

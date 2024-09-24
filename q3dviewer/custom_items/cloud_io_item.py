@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from fast_viewer.custom_items.cloud_item import CloudItem
+from q3dviewer.custom_items.cloud_item import CloudItem
 from pypcd4 import PointCloud, MetaData
 from pathlib import Path
 import os

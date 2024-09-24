@@ -1,14 +1,12 @@
 
 ## q3dviewer
 
-q3dviewer is a Python library that allows user to quickly de
-
-A lightweight and super efficiency viewer.
+q3dviewer is a library used for quickly deploying a 3D viewer. It is based on pyqtgraph and provides more efficient widgets for displaying 3D objects (e.g., point clouds, cameras, 3D Gaussian). You can use it to visualize your 3D data or set up an efficient viewer application.
 
 ### Install
 
 ```console
-cd fast_viewer
+cd q3dviewer
 pip install -e .
 ```
 

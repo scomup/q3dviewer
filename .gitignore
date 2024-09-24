@@ -1,4 +1,4 @@
 *.pyc
 data.pcd
-fast_viewer.egg-info/*
+q3dviewer.egg-info/*
 build/*

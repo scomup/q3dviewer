@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='fast_viewer',
+    name='q3dviewer',
     version='1.0.0',
     packages=find_packages(),
     install_requires=[
@@ -14,10 +14,10 @@ setup(
         ],
     entry_points={
         'console_scripts': [
-            'cloud_viewer = fast_viewer.cloud_viewer:main',
-            'ros_viewer = fast_viewer.ros_viewer:main',
-            'mesh_viewer = fast_viewer.mesh_viewer:main',
-            'gaussian_viewer = fast_viewer.gaussian_viewer:main',
+            'cloud_viewer = q3dviewer.cloud_viewer:main',
+            'ros_viewer = q3dviewer.ros_viewer:main',
+            'mesh_viewer = q3dviewer.mesh_viewer:main',
+            'gaussian_viewer = q3dviewer.gaussian_viewer:main',
         ],
     },
 )

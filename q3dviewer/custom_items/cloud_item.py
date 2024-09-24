@@ -231,7 +231,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             buff_capacity = self.buff.shape[0]
             while (new_buff_top > buff_capacity):
                 buff_capacity += self.CAPACITY
-                print("Update capacity to %d" % buff_capacity)
+            print("Update capacity to %d" % buff_capacity)
             new_buff = np.empty((buff_capacity), self.data_type)
             new_buff[:self.add_buff_loc] = self.buff[:self.add_buff_loc]
             new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
