@@ -5,7 +5,6 @@ from q3dviewer.custom_items import *
 from q3dviewer.basic_window import *
 from pypcd4 import PointCloud
 
-
 class CloudViewer(Viewer):
     def __init__(self):
         super(CloudViewer, self).__init__(name="Cloud Viewer")
@@ -59,10 +58,10 @@ def main():
     args = parser.parse_args()
     app = QApplication([])
     viewer = CloudViewer()
-
     cloud_item = CloudIOItem(size=1, alpha=0.1)
     axis_item = GLAxisItem(size=0.5, width=5)
     gird_item = GridItem(size=1000, spacing=20)
+    # viewer.viewerWidget.setBackgroundColor(255, 255, 255, 255)
 
     viewer.addItems({'cloud': cloud_item, 'grid': gird_item, 'axis': axis_item})
 

@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
 import signal
 import sys
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
 
 
 class SettingWindow(QWidget):
@@ -58,8 +59,30 @@ class SettingWindow(QWidget):
 class ViewWidget(gl.GLViewWidget):
     def __init__(self):
         super(ViewWidget, self).__init__()
-        self.setting_window = SettingWindow()
         self.named_items = {}
+        self.color = '#000000'
+        self.setting_window = SettingWindow()
+        self.setting_window.addSetting("main win", self)
+
+    def addSetting(self, layout):
+        label1 = QLabel("Set background color:")
+        label1.setToolTip("using '#xxxxxx', i.e. #FF4500")
+        box1 = QLineEdit()
+        box1.setToolTip("'using '#xxxxxx', i.e. #FF4500")
+        box1.setText(str(self.color))
+        box1.textChanged.connect(self.setBKColor)
+        layout.addWidget(label1)
+        layout.addWidget(box1)
+
+    def setBKColor(self, color):
+        if (type(color) != str):
+            return
+        if color.startswith("#"):
+            try:
+                self.setBackgroundColor(color)
+                self.color = color
+            except ValueError:
+                return
 
     def addItem(self, name, item):
         self.named_items.update({name: item})
