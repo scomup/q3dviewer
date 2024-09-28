@@ -43,7 +43,6 @@ class SettingWindow(QWidget):
 
     def onComboboxSelection(self, index):
         self.layout.removeItem(self.stretch)
-
         # remove all setting of previous widget
         self.clearSetting()
 
@@ -58,11 +57,24 @@ class SettingWindow(QWidget):
 
 class ViewWidget(gl.GLViewWidget):
     def __init__(self):
-        super(ViewWidget, self).__init__()
+        self.followed_name = 'none'
         self.named_items = {}
         self.color = '#000000'
+        self.followable_combo = QComboBox()
+        self.followable_combo.addItem('none')
+        self.followable_combo.currentIndexChanged.connect(self.onFollowableSelection)
         self.setting_window = SettingWindow()
         self.setting_window.addSetting("main win", self)
+        super(ViewWidget, self).__init__()
+
+    def onFollowableSelection(self, index):
+        self.followed_name = str(self.followable_combo.currentText())
+
+    def update(self):
+        if self.followed_name != 'none':
+            pos = self.named_items[self.followed_name].T[:3, 3]
+            self.opts['center'] = QVector3D(pos[0], pos[1], pos[2])
+        super().update()
 
     def addSetting(self, layout):
         label1 = QLabel("Set background color:")
@@ -73,6 +85,9 @@ class ViewWidget(gl.GLViewWidget):
         box1.textChanged.connect(self.setBKColor)
         layout.addWidget(label1)
         layout.addWidget(box1)
+        label2 = QLabel("Set Follow:")
+        layout.addWidget(label2)
+        layout.addWidget(self.followable_combo)
 
     def setBKColor(self, color):
         if (type(color) != str):
@@ -86,6 +101,8 @@ class ViewWidget(gl.GLViewWidget):
 
     def addItem(self, name, item):
         self.named_items.update({name: item})
+        if (item.__class__.__name__ == 'GLAxisItem'):
+            self.followable_combo.addItem("%s" % name)
         self.setting_window.addSetting(name, item)
         super().addItem(item)
 

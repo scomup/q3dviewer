@@ -21,7 +21,6 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.setGLOptions(glOptions)
         self.T = np.eye(4)
         self.settings = []
-        self.follow_flg = False
 
     def addSetting(self, layout):
         label1 = QLabel("Set size:")
@@ -41,16 +40,6 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         box2.setValue(self.width)
         box2.valueChanged.connect(self.setWidth)
         box2.setRange(0, 1000)
-
-        label3 = QLabel("Set Follow:")
-        layout.addWidget(label3)
-        checkbox = QCheckBox()
-        layout.addWidget(checkbox)
-        checkbox.setCheckState(self.follow_flg)
-        checkbox.stateChanged.connect(self.setFollow)
-
-    def setFollow(self, flg):
-        self.follow_flg = flg
 
     def setSize(self, size):
         self.size = size

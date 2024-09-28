@@ -141,10 +141,12 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box2.setRange(0, 1)
 
         label3 = QLabel("Set ColorMode:")
-        label3.setToolTip("'I': intensity mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
+        label3.setToolTip(
+            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
         layout.addWidget(label3)
         box3 = QLineEdit()
-        box3.setToolTip("'I': intensity mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
+        box3.setToolTip(
+            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
 
         box3.setText(str(self.color_mode))
         box3.textChanged.connect(self.setColorMode)

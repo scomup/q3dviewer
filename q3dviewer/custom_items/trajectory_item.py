@@ -18,14 +18,6 @@ class TrajectoryItem(gl.GLGridItem):
 
     def addSetting(self, layout):
         pass
-        # label1 = QLabel("Set size:")
-        # layout.addWidget(label1)
-        # box1 = QDoubleSpinBox()
-        # box1.setSingleStep(1.0)
-        # layout.addWidget(box1)
-        # box1.setValue(self.size0)
-        # box1.valueChanged.connect(self.setSize0)
-        # box1.setRange(0, 100000)
 
     def setData(self, data, append=True):
         self.mutex.acquire()
