@@ -115,6 +115,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.size = size
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
+        self.color_mode = color_mode
         self.setColorMode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
@@ -170,17 +171,18 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         if (type(color_mode) == str):
             if color_mode.startswith("#"):
                 try:
-                    self.color_mode = int(color_mode[1:], 16)
+                    self.color_mode_int = int(color_mode[1:], 16)
                 except ValueError:
                     return
             elif color_mode == 'RGB':
-                self.color_mode = -2
+                self.color_mode_int = -2
             elif color_mode == 'IRGB':
-                self.color_mode = -3
+                self.color_mode_int = -3
             elif color_mode == 'I':
-                self.color_mode = -1
+                self.color_mode_int = -1
         else:
             return
+        self.color_mode = color_mode
         self.need_update_setting = True
 
     def setSize(self, size):
@@ -216,7 +218,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         if(self.need_update_setting == False):
             return
         glUseProgram(self.program)
-        glUniform1i(glGetUniformLocation(self.program, "color_mode"), self.color_mode)
+        glUniform1i(glGetUniformLocation(self.program, "color_mode"), self.color_mode_int)
         glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
         glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
         glUseProgram(0)
