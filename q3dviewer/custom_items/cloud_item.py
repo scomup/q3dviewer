@@ -115,11 +115,12 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.size = size
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
-        self.color_mode = color_mode  # I: use intensity color, RGB: use rgb color
+        self.setColorMode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
+        self.need_update_setting = True
 
     def addSetting(self, layout):
         label1 = QLabel("Set Size:")
@@ -154,17 +155,11 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setAlpha(self, alpha):
         self.alpha = alpha
-        if hasattr(self, 'program'):
-            glUseProgram(self.program)
-            glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
-            glUseProgram(0)
+        self.need_update_setting = True
 
     def setVmax(self, vmax):
         self.vmax = vmax
-        if hasattr(self, 'program'):
-            glUseProgram(self.program)
-            glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
-            glUseProgram(0)
+        self.need_update_setting = True
 
     def setColorMode(self, color_mode):
         """
@@ -175,22 +170,18 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         if (type(color_mode) == str):
             if color_mode.startswith("#"):
                 try:
-                    mode = int(color_mode[1:], 16)
+                    self.color_mode = int(color_mode[1:], 16)
                 except ValueError:
                     return
             elif color_mode == 'RGB':
-                mode = -2
+                self.color_mode = -2
             elif color_mode == 'IRGB':
-                mode = -3
+                self.color_mode = -3
             elif color_mode == 'I':
-                mode = -1
+                self.color_mode = -1
         else:
             return
-        if hasattr(self, 'program'):
-            glUseProgram(self.program)
-            glUniform1i(glGetUniformLocation(self.program, "color_mode"), mode)
-            glUseProgram(0)
-            self.color_mode = color_mode
+        self.need_update_setting = True
 
     def setSize(self, size):
         self.size = size
@@ -220,6 +211,17 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
                 self.wait_add_data = np.concatenate([self.wait_add_data, data])
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
+
+    def updateSetting(self):
+        if(self.need_update_setting == False):
+            return
+        glUseProgram(self.program)
+        glUniform1i(glGetUniformLocation(self.program, "color_mode"), self.color_mode)
+        glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
+        glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
+        glUseProgram(0)
+        self.need_update_setting = False
+
 
     def updateRenderBuffer(self):
         # is not new data dont update buff
@@ -265,6 +267,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def paint(self):
         self.setupGLState()
         self.updateRenderBuffer()
+        self.updateSetting()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)

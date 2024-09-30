@@ -51,7 +51,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
         self.pos = pos  # bottom-left
         self.size = size
-        self.image = None
+        self.image = np.zeros((self.size[0], self.size[1], 4), dtype=np.uint8)
         self.alpha = 255
 
     def initializeGL(self):
