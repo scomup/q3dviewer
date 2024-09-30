@@ -1,6 +1,5 @@
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
-# from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image

@@ -1,6 +1,5 @@
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
-import numpy as np
 from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
 
 

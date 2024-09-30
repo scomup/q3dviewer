@@ -6,7 +6,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
-from PyQt5.QtWidgets import QLabel, QDoubleSpinBox, QCheckBox
+from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
 
 
 class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
