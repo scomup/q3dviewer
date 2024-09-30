@@ -1,9 +1,9 @@
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
-# from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image
+from PyQt5.QtWidgets import QLabel, QSpinBox
 
 
 # Vertex and Fragment shader source code
@@ -52,6 +52,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.pos = pos  # bottom-left
         self.size = size
         self.image = None
+        self.alpha = 255
 
     def initializeGL(self):
         # Rectangle vertices and texture coordinates
@@ -113,20 +114,28 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def setData(self, data):
         if isinstance(data, np.ndarray):
-            self.image = Image.fromarray(data)
+            pass
         elif isinstance(data, Image.Image):
-            self.image = data
+            data = np.array(data)
         else:
-            raise NotImplementedError
             print("not support image type")
+            raise NotImplementedError
+        
+        if data.ndim == 2:  # Grayscale image
+            data = np.stack((data,) * 3 + (np.ones_like(data) * 255,), axis=-1)
+        elif data.shape[-1] == 3:  # RGB image
+            alpha_channel = np.ones((data.shape[0], data.shape[1], 1), dtype=data.dtype) * self.alpha
+            data = np.concatenate((data, alpha_channel), axis=-1)
+        self.image = data
 
     def paint(self):
         if self.image is not None:
-            self.image = self.image.transpose(Image.FLIP_TOP_BOTTOM)
-            img_data = self.image.convert("RGBA").tobytes()
+            img_data = self.image
+            img_data = np.flipud(img_data)  # Flip the image vertically
+            img_data = img_data.tobytes()
             glBindTexture(GL_TEXTURE_2D, self.texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.image.width,
-                         self.image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.image.shape[1],
+                         self.image.shape[0], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
             glGenerateMipmap(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, 0)
             self.image = None
@@ -145,3 +154,16 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
+
+    def addSetting(self, layout):
+        label1 = QLabel("Set Alpha:")
+        layout.addWidget(label1)
+        box1 = QSpinBox()
+        box1.setSingleStep(1)
+        box1.setRange(0, 255)
+        box1.setValue(self.alpha)
+        box1.valueChanged.connect(self.setAlpha)
+        layout.addWidget(box1)
+
+    def setAlpha(self, alpha):
+        self.alpha = alpha

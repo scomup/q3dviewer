@@ -60,15 +60,12 @@ class ViewWidget(gl.GLViewWidget):
         self.followed_name = 'none'
         self.named_items = {}
         self.color = '#000000'
-        self.followable_combo = QComboBox()
-        self.followable_combo.addItem('none')
-        self.followable_combo.currentIndexChanged.connect(self.onFollowableSelection)
+        self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
-        self.setting_window.addSetting("main win", self)
         super(ViewWidget, self).__init__()
 
     def onFollowableSelection(self, index):
-        self.followed_name = str(self.followable_combo.currentText())
+        self.followed_name = self.followable_item_name[index]
 
     def update(self):
         if self.followed_name != 'none':
@@ -85,9 +82,13 @@ class ViewWidget(gl.GLViewWidget):
         box1.textChanged.connect(self.setBKColor)
         layout.addWidget(label1)
         layout.addWidget(box1)
-        label2 = QLabel("Set Follow:")
+        label2 = QLabel("Set Focus:")
+        combo2 = QComboBox()
+        for name in self.followable_item_name:
+            combo2.addItem(name)
+        combo2.currentIndexChanged.connect(self.onFollowableSelection)
         layout.addWidget(label2)
-        layout.addWidget(self.followable_combo)
+        layout.addWidget(combo2)
 
     def setBKColor(self, color):
         if (type(color) != str):
@@ -102,7 +103,7 @@ class ViewWidget(gl.GLViewWidget):
     def addItem(self, name, item):
         self.named_items.update({name: item})
         if (item.__class__.__name__ == 'GLAxisItem'):
-            self.followable_combo.addItem("%s" % name)
+            self.followable_item_name.append(name)
         self.setting_window.addSetting(name, item)
         super().addItem(item)
 
@@ -221,3 +222,7 @@ class Viewer(QMainWindow):
 
     def closeEvent(self, _):
         sys.exit(0)
+
+    def show(self):
+        self.viewerWidget.setting_window.addSetting("main win", self.viewerWidget)
+        super().show()

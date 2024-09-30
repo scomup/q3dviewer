@@ -10,9 +10,6 @@ class CloudViewer(Viewer):
         super(CloudViewer, self).__init__(name="Cloud Viewer")
         self.setAcceptDrops(True)
 
-    def follow(self, p):
-        self.viewer.setCameraPosition(pos=QVector3D(p[0], p[1], p[2]))
-
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.accept()
