@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 
 
-from q3dviewer.basic_window import *
 from q3dviewer.utils import make_transform
+from q3dviewer.basic_window import *
 from q3dviewer.custom_items import *
 import rospy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 import numpy as np
-from PyQt5.QtWidgets import QApplication
 import random
 from pypcd4 import PointCloud
-
+from sensor_msgs.msg import Image
 
 viewer = None
 point_num_per_scan = None
-
+color_mode = None
 
 def odomCB(data):
     global viewer
@@ -29,24 +28,43 @@ def odomCB(data):
         data.pose.pose.orientation.z,
         data.pose.pose.orientation.w])
     transform = make_transform(pose, rotation)
-    viewer["odom"].setTransform(transform)
+    viewer['odom'].setTransform(transform)
 
 
 def scanCB(data):
     global viewer
     global point_num_per_scan
+    global color_mode
     pc = PointCloud.from_msg(data).pc_data
-
-    data_type = viewer["scan"].data_type
+    data_type = viewer['scan'].data_type
+    if 'rgb' in pc.dtype.names:
+        color = pc['rgb'].view(np.uint32)
+    else:
+        color = pc['intensity']
+    
+    if color_mode is None:
+        if 'rgb' in pc.dtype.names:
+            color_mode = 'RGB'
+        else:
+            color_mode = 'I'
+        viewer['map'].setColorMode(color_mode)
+    
     cloud = np.rec.fromarrays(
-        [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), pc["intensity"]],
+        [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
         dtype=data_type)
-
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    viewer["map"].setData(data=cloud, append=True)
-    viewer["scan"].setData(data=cloud)
+    viewer['map'].setData(data=cloud, append=True)
+    viewer['scan'].setData(data=cloud)
+
+
+def imageCB(data):
+    image = np.frombuffer(data.data, dtype=np.uint8).reshape(
+        data.height, data.width, -1)
+    if (data.encoding == 'bgr8'):
+        image = image[:, :, ::-1]  # convert bgr to rgb
+    viewer['img'].setData(data=image)
 
 
 def main():
@@ -54,25 +72,28 @@ def main():
 
     global viewer
     global point_num_per_scan
-
     point_num_per_scan = 10000
-    map_item = CloudItem(size=1, alpha=0.1, color_mode=-1)
-    scan_item = CloudItem(size=3, alpha=1, color_mode="#FFFFFF")
+    map_item = CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
+    scan_item = CloudItem(size=2, alpha=1, color_mode='#FFFFFF')
     odom_item = GLAxisItem(size=0.5, width=5)
     gird_item = GridItem(size=1000, spacing=20)
+    img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
 
     app = QApplication([])
     viewer = Viewer(name='ROS Viewer')
 
     viewer.addItems({'map': map_item, 'scan': scan_item,
-                    'odom': odom_item, 'grid': gird_item})
+                    'odom': odom_item, 'grid': gird_item, 'img': img_item})
 
-    point_num_per_scan = rospy.get_param("q3dviewer/scan_num", 500)
+    point_num_per_scan = rospy.get_param("scan_num", 100000)
     print("point_num_per_scan: %d" % point_num_per_scan)
-    scan_sub = rospy.Subscriber(
-        "/cloud_registered", PointCloud2, scanCB, queue_size=1, buff_size=2**24)
-    odom_sub = rospy.Subscriber(
+    rospy.Subscriber(
+        "/cloud_registered", PointCloud2, scanCB,
+        queue_size=1, buff_size=2**24)
+    rospy.Subscriber(
         "/odometry", Odometry, odomCB, queue_size=1, buff_size=2**24)
+    rospy.Subscriber('/image', Image, imageCB)
+
     viewer.show()
     app.exec_()
 
