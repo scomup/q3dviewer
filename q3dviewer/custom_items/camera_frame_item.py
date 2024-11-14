@@ -2,7 +2,7 @@ import pyqtgraph.opengl as gl
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
-from PIL import Image
+from PIL import Image as PIL_Image
 
 
 # Vertex and Fragment shader source code
@@ -116,7 +116,7 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindTexture(GL_TEXTURE_2D, self.texture)
 
         # Load image
-        image = Image.open(self.path)
+        image = PIL_Image.open(self.path)
         # image = image.transpose(Image.FLIP_TOP_BOTTOM)
         img_data = image.convert("RGBA").tobytes()
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width,

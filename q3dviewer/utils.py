@@ -2,6 +2,57 @@ import numpy as np
 import time
 
 
+def rainbow(scalars, scalar_min=0, scalar_max=255):
+    range = scalar_max - scalar_min
+    values = 1.0 - (scalars - scalar_min) / range
+    # values = (scalars - scalar_min) / range  # using inverted color
+    colors = np.zeros([scalars.shape[0], 3], dtype=np.float32)
+    values = np.clip(values, 0, 1)
+
+    h = values * 5.0 + 1.0
+    i = np.floor(h).astype(int)
+    f = h - i
+    f[np.logical_not(i % 2)] = 1 - f[np.logical_not(i % 2)]
+    n = 1 - f
+
+    # idx = i <= 1
+    colors[i <= 1, 0] = n[i <= 1] * 255
+    colors[i <= 1, 1] = 0
+    colors[i <= 1, 2] = 255
+
+    colors[i == 2, 0] = 0
+    colors[i == 2, 1] = n[i == 2] * 255
+    colors[i == 2, 2] = 255
+
+    colors[i == 3, 0] = 0
+    colors[i == 3, 1] = 255
+    colors[i == 3, 2] = n[i == 3] * 255
+
+    colors[i == 4, 0] = n[i == 4] * 255
+    colors[i == 4, 1] = 255
+    colors[i == 4, 2] = 0
+
+    colors[i >= 5, 0] = 255
+    colors[i >= 5, 1] = n[i >= 5] * 255
+    colors[i >= 5, 2] = 0
+    return colors
+
+
+def euler_to_matrix(rpy):
+    roll, pitch, yaw = rpy
+    Rx = np.array([[1, 0, 0],
+                   [0, np.cos(roll), -np.sin(roll)],
+                   [0, np.sin(roll), np.cos(roll)]])
+    Ry = np.array([[np.cos(pitch), 0, np.sin(pitch)],
+                   [0, 1, 0],
+                   [-np.sin(pitch), 0, np.cos(pitch)]])
+    Rz = np.array([[np.cos(yaw), -np.sin(yaw), 0],
+                   [np.sin(yaw), np.cos(yaw), 0],
+                   [0, 0, 1]])
+    # yaw pitch roll order
+    R = Rx @ Ry @ Rz
+    return R
+
 def matrix_to_quaternion(matrix):
     trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2]
     if trace > 0:

@@ -2,7 +2,7 @@ import pyqtgraph.opengl as gl
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
-from PIL import Image
+from PIL import Image as PIL_Image
 from PyQt5.QtWidgets import QLabel, QSpinBox
 
 
@@ -115,7 +115,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
     def setData(self, data):
         if isinstance(data, np.ndarray):
             pass
-        elif isinstance(data, Image.Image):
+        elif isinstance(data, PIL_Image.Image):
             data = np.array(data)
         else:
             print("not support image type")
