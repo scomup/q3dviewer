@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from q3dviewer.custom_items import *
-from q3dviewer.basic_window import *
+import q3dviewer as q3d
 from q3dviewer.gau_io import load_gs
 
 
-class GuassianViewer(Viewer):
+class GuassianViewer(q3d.Viewer):
     def __init__(self):
         super(GuassianViewer, self).__init__(name="Guassian Viewer")
         self.setAcceptDrops(True)
@@ -35,11 +34,11 @@ class GuassianViewer(Viewer):
 
 
 def main():
-    app = QApplication([])
+    app = q3d.QApplication([])
     viewer = GuassianViewer()
 
-    gird_item = GridItem(size=1000, spacing=20)
-    gau_item = GaussianItem()
+    gird_item = q3d.GridItem(size=1000, spacing=20)
+    gau_item = q3d.GaussianItem()
 
     viewer.addItems({'grid': gird_item, 'gaussian': gau_item})
 

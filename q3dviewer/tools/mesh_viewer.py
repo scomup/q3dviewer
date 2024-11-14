@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from q3dviewer.custom_items import *
-from q3dviewer.basic_window import *
+import q3dviewer as q3d
 from pyqtgraph.opengl import GLMeshItem
 from stl import mesh
 
 
-class MeshViewer(Viewer):
+class MeshViewer(q3d.Viewer):
     def __init__(self):
         super(MeshViewer, self).__init__(name="Mesh Viewer")
         self.setAcceptDrops(True)
@@ -38,10 +37,10 @@ class MeshViewer(Viewer):
 
 
 def main():
-    app = QApplication([])
+    app = q3d.QApplication([])
     viewer = MeshViewer()
 
-    gird_item = GridItem(size=1000, spacing=20)
+    gird_item = q3d.GridItem(size=1000, spacing=20)
     # 'glOptions', 'opaque', 'additive' 'translucent'
     mesh_item = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True,
                            color=(0, 1, 0, 0.2),

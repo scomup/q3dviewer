@@ -3,7 +3,7 @@
 import numpy as np
 import pyqtgraph.opengl as gl
 from pyqtgraph.Qt import QtCore
-from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy,\
+from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy,\
       QSpacerItem, QMainWindow
 from OpenGL.GL import *
 from PyQt5.QtGui import QKeyEvent, QVector3D

@@ -2,8 +2,7 @@
 
 
 from q3dviewer.utils import make_transform
-from q3dviewer.basic_window import *
-from q3dviewer.custom_items import *
+import q3dviewer as q3d
 import rospy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
@@ -73,14 +72,14 @@ def main():
     global viewer
     global point_num_per_scan
     point_num_per_scan = 10000
-    map_item = CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
-    scan_item = CloudItem(size=2, alpha=1, color_mode='#FFFFFF')
-    odom_item = GLAxisItem(size=0.5, width=5)
-    gird_item = GridItem(size=1000, spacing=20)
-    img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
+    map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
+    scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='#FFFFFF')
+    odom_item = q3d.GLAxisItem(size=0.5, width=5)
+    gird_item = q3d.GridItem(size=1000, spacing=20)
+    img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
 
-    app = QApplication([])
-    viewer = Viewer(name='ROS Viewer')
+    app = q3d.QApplication([])
+    viewer = q3d.Viewer(name='ROS Viewer')
 
     viewer.addItems({'map': map_item, 'scan': scan_item,
                     'odom': odom_item, 'grid': gird_item, 'img': img_item})

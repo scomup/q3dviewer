@@ -14,10 +14,10 @@ setup(
         ],
     entry_points={
         'console_scripts': [
-            'cloud_viewer = q3dviewer.cloud_viewer:main',
-            'ros_viewer = q3dviewer.ros_viewer:main',
-            'mesh_viewer = q3dviewer.mesh_viewer:main',
-            'gaussian_viewer = q3dviewer.gaussian_viewer:main',
+            'cloud_viewer = q3dviewer.tools.cloud_viewer:main',
+            'ros_viewer = q3dviewer.tools.ros_viewer:main',
+            'mesh_viewer = q3dviewer.tools.mesh_viewer:main',
+            'gaussian_viewer = q3dviewer.tools.gaussian_viewer:main',
         ],
     },
 )
