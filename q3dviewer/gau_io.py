@@ -10,7 +10,7 @@ def gsdata_type(sh_dim):
             ('sh', '<f4', (sh_dim))]
 
 
-def matrix_to_quaternion(matrices):
+def matrix_to_quaternion_wxyz(matrices):
     m00, m01, m02 = matrices[:, 0, 0], matrices[:, 0, 1], matrices[:, 0, 2]
     m10, m11, m12 = matrices[:, 1, 0], matrices[:, 1, 1], matrices[:, 1, 2]
     m20, m21, m22 = matrices[:, 2, 0], matrices[:, 2, 1], matrices[:, 2, 2]
@@ -116,7 +116,7 @@ def rotate_gaussian(T, gs):
         [2*(x*z - y*w), 2*(y*z + x*w), 1.0 - 2*(x**2 + y**2)]
     ]).transpose(2, 0, 1)
     R_new = T @ R
-    rots = matrix_to_quaternion(R_new)
+    rots = matrix_to_quaternion_wxyz(R_new)
     gs['pw'] = pws
     gs['rot'] = rots
     return gs

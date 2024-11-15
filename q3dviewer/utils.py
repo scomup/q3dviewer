@@ -80,29 +80,33 @@ def matrix_to_quaternion(matrix):
             x = (matrix[0, 2] + matrix[2, 0]) / s
             y = (matrix[1, 2] + matrix[2, 1]) / s
             z = 0.25 * s
-    return np.array([w, x, y, z])
+    return np.array([x, y, z, w])
 
 
 def quaternion_to_matrix(quaternion):
-    _EPS = np.finfo(float).eps * 4.0
+    x, y, z, w = quaternion
     q = np.array(quaternion[:4], dtype=np.float64, copy=True)
-    nq = np.dot(q, q)
-    if nq < _EPS:
-        return np.identity(4)
-    q *= np.sqrt(2.0 / nq)
-    q = np.outer(q, q)
-    return np.array((
-        (1.0-q[1, 1]-q[2, 2], q[0, 1]-q[2, 3], q[0, 2]+q[1, 3], 0.0),
-        (q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2], q[1, 2]-q[0, 3], 0.0),
-        (q[0, 2]-q[1, 3], q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1], 0.0),
-        (0.0, 0.0,  0.0, 1.0)
-        ), dtype=np.float64)
+    n = np.linalg.norm(q)
+    if np.any(n == 0.0):
+        raise ZeroDivisionError("bad quaternion input")
+    else:
+        m = np.empty((3, 3))
+        m[0, 0] = 1.0 - 2*(y**2 + z**2)/n
+        m[0, 1] = 2*(x*y - z*w)/n
+        m[0, 2] = 2*(x*z + y*w)/n
+        m[1, 0] = 2*(x*y + z*w)/n
+        m[1, 1] = 1.0 - 2*(x**2 + z**2)/n
+        m[1, 2] = 2*(y*z - x*w)/n
+        m[2, 0] = 2*(x*z - y*w)/n
+        m[2, 1] = 2*(y*z + x*w)/n
+        m[2, 2] = 1.0 - 2*(x**2 + y**2)/n
+        return m
 
 
 def make_transform(pose, rotation):
-    transform = np.matrix(np.identity(4, dtype=np.float64))
-    transform = quaternion_to_matrix(rotation)
-    transform[0:3, 3] = np.transpose(pose)
+    transform = np.eye(4)
+    transform[0:3, 0:3] = quaternion_to_matrix(rotation)
+    transform[0:3, 3] = pose
     return transform
 
 
