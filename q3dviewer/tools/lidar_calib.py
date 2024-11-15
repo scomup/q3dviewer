@@ -160,7 +160,7 @@ class ViewerWithPanel(Viewer):
             trans_init[:3, 3] = self.t01
             
             # Auto Scan Matching
-            threshold = 0.5
+            threshold = 0.2
             reg_p2p = o3d.pipelines.registration.registration_icp(
                 cloud1_o3d, cloud0_o3d, threshold, trans_init,
                 o3d.pipelines.registration.TransformationEstimationPointToPoint())
