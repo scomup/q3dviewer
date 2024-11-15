@@ -2,6 +2,7 @@ import numpy as np
 import time
 from scipy.spatial.transform import Rotation
 
+
 def rainbow(scalars, scalar_min=0, scalar_max=255):
     range = scalar_max - scalar_min
     values = 1.0 - (scalars - scalar_min) / range
@@ -49,13 +50,23 @@ def euler_to_matrix(rpy):
     Rz = np.array([[np.cos(yaw), -np.sin(yaw), 0],
                    [np.sin(yaw), np.cos(yaw), 0],
                    [0, 0, 1]])
-    # yaw pitch roll order
-    R = Rx @ Ry @ Rz
+    R = Rz @ Ry @ Rx
     return R
 
-def matrix_to_euler(matrix):
-    r = Rotation.from_matrix(matrix.copy())
-    yaw, pitch, roll = r.as_euler('zyx')
+
+def matrix_to_euler(R):
+    sy = np.sqrt(R[0, 0]**2 + R[1, 0]**2)
+    singular = sy < 1e-6  # Check for gimbal lock
+    if not singular:
+        roll = np.arctan2(R[2, 1], R[2, 2])   # X-axis rotation
+        pitch = np.arctan2(-R[2, 0], sy)      # Y-axis rotation
+        yaw = np.arctan2(R[1, 0], R[0, 0])    # Z-axis rotation
+    else:
+        # Gimbal lock case
+        roll = np.arctan2(-R[1, 2], R[1, 1])
+        pitch = np.arctan2(-R[2, 0], sy)
+        yaw = 0  # Arbitrarily set yaw to 0
+
     return np.array([roll, pitch, yaw])
 
 
@@ -129,3 +140,8 @@ class FPSMonitor():
             else:
                 break
         return len(self.stamp_record)
+
+
+# euler = np.array([1, 0.1, 0.1])
+# euler_angles = matrix_to_euler(euler_to_matrix(euler))
+# print("Euler Angles:", euler_angles)

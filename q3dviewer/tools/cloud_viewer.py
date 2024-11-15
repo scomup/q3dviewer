@@ -4,6 +4,7 @@ import numpy as np
 from pypcd4 import PointCloud
 import q3dviewer as q3d
 
+
 class CloudViewer(q3d.Viewer):
     def __init__(self):
         super(CloudViewer, self).__init__(name="Cloud Viewer")
@@ -42,7 +43,8 @@ class CloudViewer(q3d.Viewer):
         elif file.endswith('.npy'):
             pc = np.load(file)
             cloud = np.rec.fromarrays(
-                [np.stack([pc[:, 0], pc[:, 1], pc[:, 2]], axis=1), pc[:, 3].astype(np.uint32)],
+                [np.stack([pc[:, 0], pc[:, 1], pc[:, 2]], axis=1),
+                 pc[:, 3].astype(np.uint32)],
                 dtype=cloud_item.data_type)
         cloud_item.setData(data=cloud)
 
@@ -58,7 +60,8 @@ def main():
     axis_item = q3d.GLAxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
 
-    viewer.addItems({'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item})
+    viewer.addItems(
+        {'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item})
 
     if args.pcd:
         pcd_fn = args.pcd

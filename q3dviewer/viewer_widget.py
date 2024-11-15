@@ -3,15 +3,14 @@
 import numpy as np
 import pyqtgraph.opengl as gl
 from pyqtgraph.Qt import QtCore
-from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy,\
-      QSpacerItem, QMainWindow
+from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, \
+    QSizePolicy, QSpacerItem, QMainWindow
 from OpenGL.GL import *
 from PyQt5.QtGui import QKeyEvent, QVector3D
 from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
-import signal
-import sys
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QCheckBox
+from PyQt5.QtWidgets import QLabel, QLineEdit, \
+    QDoubleSpinBox, QSpinBox, QCheckBox
 
 
 class SettingWindow(QWidget):
@@ -122,7 +121,7 @@ class ViewWidget(gl.GLViewWidget):
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
             pitch_abs = np.abs(self.opts['elevation'])
             camera_mode = 'view-upright'
-            if(pitch_abs <= 45.0 or pitch_abs == 90):
+            if (pitch_abs <= 45.0 or pitch_abs == 90):
                 camera_mode = 'view'
             self.pan(diff.x(), diff.y(), 0, relative=camera_mode)
 
@@ -134,7 +133,7 @@ class ViewWidget(gl.GLViewWidget):
 
         pitch_abs = np.abs(self.opts['elevation'])
         camera_mode = 'view-upright'
-        if(pitch_abs <= 45.0 or pitch_abs == 90):
+        if (pitch_abs <= 45.0 or pitch_abs == 90):
             camera_mode = 'view'
 
         if ev.key() == QtCore.Qt.Key_M:  # setting meun
@@ -145,7 +144,7 @@ class ViewWidget(gl.GLViewWidget):
             for item in self.named_items.values():
                 try:
                     item.clear()
-                except:
+                except AttributeError:
                     pass
         elif ev.key() == QtCore.Qt.Key_Up:
             if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
@@ -182,47 +181,3 @@ class ViewWidget(gl.GLViewWidget):
 
         else:
             self.setting_window.show()
-
-
-class Viewer(QMainWindow):
-    def __init__(self, name='Viewer', win_size=[1920, 1080], vw=ViewWidget):
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-        super(Viewer, self).__init__()
-        self.vw = vw
-        self.setGeometry(0, 0, win_size[0], win_size[1])
-        self.initUI()
-        self.setWindowTitle(name)
-
-    def initUI(self):
-        centerWidget = QWidget()
-        self.setCentralWidget(centerWidget)
-        layout = QVBoxLayout()
-        centerWidget.setLayout(layout)
-        self.viewerWidget = self.vw()
-        layout.addWidget(self.viewerWidget, 1)
-        timer = QtCore.QTimer(self)
-        timer.setInterval(20)  # period, in milliseconds
-        timer.timeout.connect(self.update)
-        self.viewerWidget.setCameraPosition(distance=40)
-        timer.start()
-
-    def addItems(self, named_items: dict):
-        for name, item in named_items.items():
-            self.viewerWidget.addItem(name, item)
-
-    def __getitem__(self, name: str):
-        if name in self.viewerWidget.named_items:
-            return self.viewerWidget.named_items[name]
-        else:
-            return None
-
-    def update(self):
-        # force update by timer
-        self.viewerWidget.update()
-
-    def closeEvent(self, _):
-        sys.exit(0)
-
-    def show(self):
-        self.viewerWidget.setting_window.addSetting("main win", self.viewerWidget)
-        super().show()

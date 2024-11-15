@@ -14,8 +14,9 @@ clouds = []
 remap_info = None
 K = None
 
+
 class CustomDoubleSpinBox(QDoubleSpinBox):
-    def __init__(self, decimals=3, *args, **kwargs):
+    def __init__(self, decimals=4, *args, **kwargs):
         self.decimals = decimals
         super().__init__(*args, **kwargs)
         self.setDecimals(self.decimals)  # Set the number of decimal places
@@ -114,10 +115,10 @@ class ViewerWithPanel(Viewer):
         setting_layout.addWidget(self.line_trans)
 
         self.line_trans.setText(np.array2string(self.xyz, formatter={
-                                'float_kind': lambda x: "%.3f" % x}, separator=', '))
+                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
         quat = matrix_to_quaternion(self.Rol)
         self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
+            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -153,7 +154,7 @@ class ViewerWithPanel(Viewer):
         z = self.box_z.value()
         self.xyz = np.array([x, y, z])
         self.line_trans.setText(np.array2string(self.xyz, formatter={
-                                'float_kind': lambda x: "%.3f" % x}, separator=', '))
+                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
 
     def update_rpy(self):
         roll = self.box_roll.value()
@@ -163,7 +164,7 @@ class ViewerWithPanel(Viewer):
         self.Rol = self.Roc @ euler_to_matrix(self.rpy)
         quat = matrix_to_quaternion(self.Rol)
         self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
+            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
 
     def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
@@ -180,8 +181,10 @@ def cameraInfoCB(data):
         rospy.loginfo("Camera intrinsic parameters set")
         height = data.height
         width = data.width
-        mapx, mapy = cv2.initUndistortRectifyMap(K, D, None, K, (width, height), cv2.CV_32FC1)
+        mapx, mapy = cv2.initUndistortRectifyMap(
+            K, D, None, K, (width, height), cv2.CV_32FC1)
         remap_info = [mapx, mapy]
+
 
 def scanCB(data):
     global viewer, clouds, cloud_accum, cloud_accum_color
@@ -202,6 +205,7 @@ def scanCB(data):
     else:
         viewer['scan'].setData(data=cloud_accum)
         viewer['scan'].setColorMode('I')
+
 
 def draw_larger_points(image, points, colors, radius):
     for dx in range(-radius + 1, radius):
@@ -228,7 +232,6 @@ def imageCB(data):
     # Undistort the image
     image_un = cv2.remap(image, remap_info[0], remap_info[1], cv2.INTER_LINEAR)
 
-
     if cloud_accum is not None:
         cloud_local = cloud_accum.copy()
         tol = viewer.xyz
@@ -252,8 +255,10 @@ def imageCB(data):
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]
         xyz = cloud_local['xyz'][u_mask][valid_points]
-        color = (intensity.astype(np.uint32) << 24) | (rgb[:, 0].astype(np.uint32) << 16) | (
-            rgb[:, 1].astype(np.uint32) << 8) | (rgb[:, 2].astype(np.uint32) << 0)
+        color = (intensity.astype(np.uint32) << 24) | \
+                (rgb[:, 0].astype(np.uint32) << 16) | \
+                (rgb[:, 1].astype(np.uint32) << 8) | \
+                (rgb[:, 2].astype(np.uint32) << 0)
         cloud_accum_color = np.rec.fromarrays(
             [xyz, color],
             dtype=viewer['scan'].data_type)
@@ -262,12 +267,15 @@ def imageCB(data):
 
 def main():
     global viewer
-    
     # Set up argument parser
-    parser = argparse.ArgumentParser(description="Configure topic names for LiDAR, image, and camera info.")
-    parser.add_argument('--lidar', type=str, default='/livox/lidar', help="Topic name for LiDAR data")
-    parser.add_argument('--camera', type=str, default='/usb_cam/image_raw', help="Topic name for camera image data")
-    parser.add_argument('--camera_info', type=str, default='/usb_cam/camera_info', help="Topic name for camera info")
+    parser = argparse.ArgumentParser(
+        description="Configure topic names for LiDAR, image, and camera info.")
+    parser.add_argument(
+        '--lidar', type=str, default='lidar', help="Topic of LiDAR data")
+    parser.add_argument('--camera', type=str, default='image_raw',
+                        help="Topic of camera image data")
+    parser.add_argument('--camera_info', type=str,
+                        default='camera_info', help="Topic of camera info")
     args = parser.parse_args()
 
     app = QApplication([])
@@ -278,7 +286,7 @@ def main():
     viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_manual_calib', anonymous=True)
-    
+
     # Use topic names from arguments
     rospy.Subscriber(args.lidar, PointCloud2, scanCB, queue_size=1)
     rospy.Subscriber(args.camera, Image, imageCB, queue_size=1)

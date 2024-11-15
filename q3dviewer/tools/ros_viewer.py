@@ -15,6 +15,7 @@ viewer = None
 point_num_per_scan = None
 color_mode = None
 
+
 def odomCB(data):
     global viewer
     pose = np.array(

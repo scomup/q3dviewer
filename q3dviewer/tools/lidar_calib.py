@@ -13,8 +13,9 @@ clouds0 = []
 cloud1_accum = None
 clouds1 = []
 
+
 class CustomDoubleSpinBox(QDoubleSpinBox):
-    def __init__(self, decimals=3, *args, **kwargs):
+    def __init__(self, decimals=4, *args, **kwargs):
         self.decimals = decimals
         super().__init__(*args, **kwargs)
         self.setDecimals(self.decimals)  # Set the number of decimal places
@@ -97,10 +98,10 @@ class ViewerWithPanel(Viewer):
         setting_layout.addWidget(self.icp_button)
 
         self.line_trans.setText(np.array2string(self.t01, formatter={
-                                'float_kind': lambda x: "%.3f" % x}, separator=', '))
+                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
         quat = matrix_to_quaternion(self.R01)
         self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
+            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -157,30 +158,31 @@ class ViewerWithPanel(Viewer):
             # voxel_size = 0.2
             # cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
             # cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
-            cloud0_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+            cloud0_o3d.estimate_normals(
+                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
             trans_init = np.eye(4)
             trans_init[:3, :3] = self.R01
             trans_init[:3, 3] = self.t01
-            
+
             # Auto Scan Matching
             threshold = 0.5
             reg_p2p = o3d.pipelines.registration.registration_icp(
                 cloud1_o3d, cloud0_o3d, threshold, trans_init,
                 o3d.pipelines.registration.TransformationEstimationPointToPlane())
-            
+
             transformation_icp = reg_p2p.transformation
             # print("ICP Transformation:", transformation_icp)
-            
+
             # Update R01 and t01 with ICP result
             R01 = transformation_icp[:3, :3]
             t01 = transformation_icp[:3, 3]
-            
+
             # Update the UI with new values
             self.line_trans.setText(np.array2string(t01, formatter={
-                                    'float_kind': lambda x: "%.3f" % x}, separator=', '))
+                                    'float_kind': lambda x: "%.4f" % x}, separator=', '))
             quat = matrix_to_quaternion(R01)
             self.line_quat.setText(np.array2string(
-                quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
+                quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
             rpy = matrix_to_euler(R01)
             self.box_roll.setValue(rpy[0])
             self.box_pitch.setValue(rpy[1])
@@ -198,6 +200,7 @@ def msg2Cloud(data):
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
         dtype=data_type)
     return cloud
+
 
 def scan0CB(data):
     global viewer, clouds0, cloud0_accum
@@ -217,7 +220,8 @@ def scan1CB(data):
     clouds1.append(cloud)
     cloud1_accum = np.concatenate(clouds1)
     cloud0_accum_new = cloud1_accum.copy()
-    cloud0_accum_new['xyz'] = (viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
+    cloud0_accum_new['xyz'] = (
+        viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
 
     viewer['scan1'].setData(data=cloud0_accum_new)
 
@@ -225,20 +229,24 @@ def scan1CB(data):
 def main():
     global viewer
     # Set up argument parser
-    parser = argparse.ArgumentParser(description="Configure topic names for LiDAR, image, and camera info.")
-    parser.add_argument('--lidar0', type=str, default='/lidar0', help="Topic name for LiDAR data")
-    parser.add_argument('--lidar1', type=str, default='/lidar1', help="Topic name for camera image data")
+    parser = argparse.ArgumentParser(
+        description="Configure topic names for LiDAR, image, and camera info.")
+    parser.add_argument('--lidar0', type=str, default='/lidar0',
+                        help="Topic name for LiDAR data")
+    parser.add_argument('--lidar1', type=str, default='/lidar1',
+                        help="Topic name for camera image data")
     args = parser.parse_args()
 
-    app = QApplication([])
+    app = QApplication(["LiDAR Calib"])
     viewer = ViewerWithPanel(name='LiDAR Calib')
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan0_item = CloudItem(size=2, alpha=1, color_mode='#FF0000')
     scan1_item = CloudItem(size=2, alpha=1, color_mode='#00FF00')
-    viewer.addItems({'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
+    viewer.addItems(
+        {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 
     rospy.init_node('lidar_calib', anonymous=True)
-    
+
     # Use topic names from arguments
     rospy.Subscriber(args.lidar0, PointCloud2, scan0CB, queue_size=1)
     rospy.Subscriber(args.lidar1, PointCloud2, scan1CB, queue_size=1)

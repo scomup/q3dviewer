@@ -32,9 +32,8 @@ class TrajectoryItem(gl.GLGridItem):
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
-
     def updateRenderBuffer(self):
-        if(self.wait_add_data is None):
+        if (self.wait_add_data is None):
             return
         self.mutex.acquire()
 
@@ -46,7 +45,8 @@ class TrajectoryItem(gl.GLGridItem):
             self.buff = np.empty((buff_capacity, 3), np.float32)
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes, self.buff, GL_DYNAMIC_DRAW)
+            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes,
+                         self.buff, GL_DYNAMIC_DRAW)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
         else:
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
@@ -59,7 +59,6 @@ class TrajectoryItem(gl.GLGridItem):
 
     def initializeGL(self):
         self.vbo = glGenBuffers(1)
-
 
     def paint(self):
         self.setupGLState()

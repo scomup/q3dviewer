@@ -94,7 +94,6 @@ void main()
 """
 
 
-
 def set_uniform_mat4(shader, content, name):
     content = content.T
     glUniformMatrix4fv(
@@ -215,19 +214,19 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.mutex.release()
 
     def updateSetting(self):
-        if(self.need_update_setting == False):
+        if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
-        glUniform1i(glGetUniformLocation(self.program, "color_mode"), self.color_mode_int)
+        glUniform1i(glGetUniformLocation(
+            self.program, "color_mode"), self.color_mode_int)
         glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
         glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
         glUseProgram(0)
         self.need_update_setting = False
 
-
     def updateRenderBuffer(self):
         # is not new data dont update buff
-        if(self.wait_add_data is None):
+        if (self.wait_add_data is None):
             return
         self.mutex.acquire()
 
@@ -243,7 +242,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             self.buff = new_buff
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes, self.buff, GL_DYNAMIC_DRAW)
+            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes,
+                         self.buff, GL_DYNAMIC_DRAW)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
         else:
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
@@ -275,13 +275,16 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glUseProgram(self.program)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(0))
-        glVertexAttribPointer(1, 1, GL_FLOAT, GL_UNSIGNED_INT, 16, ctypes.c_void_p(12))
+        glVertexAttribPointer(
+            1, 1, GL_FLOAT, GL_UNSIGNED_INT, 16, ctypes.c_void_p(12))
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = np.array(self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
+        view_matrix = np.array(
+            self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
         set_uniform_mat4(self.program, view_matrix, 'view_matrix')
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix().data(), np.float32).reshape([4, 4]).T
+        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
+        ).data(), np.float32).reshape([4, 4]).T
         set_uniform_mat4(self.program, project_matrix, 'projection_matrix')
 
         glPointSize(self.size)
