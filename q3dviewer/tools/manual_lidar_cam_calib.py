@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
-from sensor_msgs.msg import PointCloud2
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 from q3dviewer import *
 import rospy
+import numpy as np
+import argparse
+import cv2
 
 viewer = None
 cloud_accum = None
 cloud_accum_color = None
 clouds = []
-
+remap_info = None
+K = None
 
 class CustomDoubleSpinBox(QDoubleSpinBox):
     def __init__(self, decimals=3, *args, **kwargs):
@@ -32,12 +35,9 @@ class ViewerWithPanel(Viewer):
                              [0, 0, -1],
                              [1, 0, 0]])
         self.Rol = self.Roc @ euler_to_matrix(self.rpy)
-        self.psize = 1
+        self.psize = 2
         self.cloud_num = 1
         self.en_rgb = False
-        self.K = np.array([[903.00238266,   0., 370.99059794],
-                          [0., 903.8561347, 289.84862588,],
-                          [0.,   0.,   1.]])
         super().__init__(**kwargs)
 
     def initUI(self):
@@ -49,7 +49,7 @@ class ViewerWithPanel(Viewer):
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
 
-        # Add a checkbox
+        # Add a checkbox for RGB
         self.checkbox_rgb = QCheckBox("Enable RGB Cloud")
         self.checkbox_rgb.setChecked(False)
         setting_layout.addWidget(self.checkbox_rgb)
@@ -138,6 +138,7 @@ class ViewerWithPanel(Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.viewerWidget.setCameraPosition(distance=5)
+        self.viewerWidget.setBKColor('#ffffff')
         timer.start()
 
     def update_psize(self):
@@ -164,25 +165,33 @@ class ViewerWithPanel(Viewer):
         self.line_quat.setText(np.array2string(
             quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
 
-
     def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
             self.en_rgb = True
         else:
             self.en_rgb = False
 
+
+def cameraInfoCB(data):
+    global remap_info, K
+    if remap_info is None:  # Initialize only once
+        K = np.array(data.K).reshape(3, 3)
+        D = np.array(data.D)
+        rospy.loginfo("Camera intrinsic parameters set")
+        height = data.height
+        width = data.width
+        mapx, mapy = cv2.initUndistortRectifyMap(K, D, None, K, (width, height), cv2.CV_32FC1)
+        remap_info = [mapx, mapy]
+
 def scanCB(data):
-    global viewer
-    global clouds
-    global cloud_accum
-    global cloud_accum_color
+    global viewer, clouds, cloud_accum, cloud_accum_color
     pc = PointCloud.from_msg(data).pc_data
     data_type = viewer['scan'].data_type
     color = pc['intensity'].astype(np.uint32)
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
         dtype=data_type)
-    while (len(clouds) > viewer.cloud_num):
+    while len(clouds) > viewer.cloud_num:
         clouds.pop(0)
     clouds.append(cloud)
     cloud_accum = np.concatenate(clouds)
@@ -195,29 +204,30 @@ def scanCB(data):
         viewer['scan'].setColorMode('I')
 
 def draw_larger_points(image, points, colors, radius):
-    if (radius == 0):
-        image[points[:, 1], points[:, 0]] = colors
-    else:
-        for dx in range(-radius, radius + 1):
-            for dy in range(-radius, radius + 1):
-                distance = np.sqrt(dx**2 + dy**2)
-                if distance <= radius:
-                    x_indices = points[:, 0] + dx
-                    y_indices = points[:, 1] + dy
-                    valid_indices = (x_indices >= 0) & (x_indices < image.shape[1]) & (
-                        y_indices >= 0) & (y_indices < image.shape[0])
-                    image[y_indices[valid_indices],
-                          x_indices[valid_indices]] = colors[valid_indices]
+    for dx in range(-radius + 1, radius):
+        for dy in range(-radius + 1, radius):
+            distance = np.sqrt(dx**2 + dy**2)
+            if distance <= radius:
+                x_indices = points[:, 0] + dx
+                y_indices = points[:, 1] + dy
+                image[y_indices, x_indices] = colors
     return image
 
 
 def imageCB(data):
-    global cloud_accum
-    global cloud_accum_color
+    global cloud_accum, cloud_accum_color, remap_info, K
+    if remap_info is None:
+        rospy.logwarn("Camera parameters not yet received.")
+        return
+
     image = np.frombuffer(data.data, dtype=np.uint8).reshape(
         data.height, data.width, -1)
-    if (data.encoding == 'bgr8'):
-        image = image[:, :, ::-1]  # convert bgr to rgb
+    if data.encoding == 'bgr8':
+        image = image[:, :, ::-1]  # convert BGR to RGB
+
+    # Undistort the image
+    image_un = cv2.remap(image, remap_info[0], remap_info[1], cv2.INTER_LINEAR)
+
 
     if cloud_accum is not None:
         cloud_local = cloud_accum.copy()
@@ -225,21 +235,22 @@ def imageCB(data):
         Rol = viewer.Rol
         pl = cloud_local['xyz']
         po = (Rol @ pl.T + tol[:, np.newaxis]).T
-        u = (viewer.K @ po.T).T
+        u = (K @ po.T).T
         u_mask = u[:, 2] != 0
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
 
         radius = viewer.psize  # Radius of the points to be drawn
-        valid_x = (u[:, 0] >= radius) & (u[:, 0] < image.shape[1]-radius)
-        valid_y = (u[:, 1] >= radius) & (u[:, 1] < image.shape[0]-radius)
+        u = np.round(u).astype(np.int32)
+        valid_x = (u[:, 0] >= radius) & (u[:, 0] < image_un.shape[1]-radius)
+        valid_y = (u[:, 1] >= radius) & (u[:, 1] < image_un.shape[0]-radius)
         valid_points = valid_x & valid_y
-        u_valid = u[valid_points].astype(np.int32)
-        intensity = cloud_local['color'][u_mask] [valid_points]
+        u = u[valid_points]
+
+        intensity = cloud_local['color'][u_mask][valid_points]
         intensity_color = rainbow(intensity).astype(np.uint8)
-        draw_image = image.copy()
-        draw_image = draw_larger_points(
-            draw_image, u_valid, intensity_color, radius)
-        rgb = image[u_valid[:, 1], u_valid[:, 0]]
+        draw_image = image_un.copy()
+        draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
+        rgb = image_un[u[:, 1], u[:, 0]]
         xyz = cloud_local['xyz'][u_mask][valid_points]
         color = (intensity.astype(np.uint32) << 24) | (rgb[:, 0].astype(np.uint32) << 16) | (
             rgb[:, 1].astype(np.uint32) << 8) | (rgb[:, 2].astype(np.uint32) << 0)
@@ -251,16 +262,27 @@ def imageCB(data):
 
 def main():
     global viewer
+    
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Configure topic names for LiDAR, image, and camera info.")
+    parser.add_argument('--lidar', type=str, default='/livox/lidar', help="Topic name for LiDAR data")
+    parser.add_argument('--camera', type=str, default='/usb_cam/image_raw', help="Topic name for camera image data")
+    parser.add_argument('--camera_info', type=str, default='/usb_cam/camera_info', help="Topic name for camera info")
+    args = parser.parse_args()
+
     app = QApplication([])
     viewer = ViewerWithPanel(name='Manual LiDAR Cam Calib')
-    grid_item = GridItem(size=10, spacing=1)
+    grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = CloudItem(size=2, alpha=1, color_mode='I')
     img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_manual_calib', anonymous=True)
-    rospy.Subscriber("/livox/lidar", PointCloud2, scanCB, queue_size=1)
-    rospy.Subscriber('/usb_cam/image_raw', Image, imageCB, queue_size=1)
+    
+    # Use topic names from arguments
+    rospy.Subscriber(args.lidar, PointCloud2, scanCB, queue_size=1)
+    rospy.Subscriber(args.camera, Image, imageCB, queue_size=1)
+    rospy.Subscriber(args.camera_info, CameraInfo, cameraInfoCB, queue_size=1)
 
     viewer.show()
     app.exec_()

@@ -18,6 +18,7 @@ setup(
             'ros_viewer = q3dviewer.tools.ros_viewer:main',
             'mesh_viewer = q3dviewer.tools.mesh_viewer:main',
             'gaussian_viewer = q3dviewer.tools.gaussian_viewer:main',
+            'manual_lidar_cam_calib= q3dviewer.tools.manual_lidar_cam_calib:main',
         ],
     },
 )

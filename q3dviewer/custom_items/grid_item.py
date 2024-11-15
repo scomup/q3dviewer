@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
 
 
 class GridItem(gl.GLGridItem):
-    def __init__(self, size, spacing):
-        super(GridItem, self).__init__()
+    def __init__(self, size, spacing, color=(255, 255, 255, 76.5)):
+        super(GridItem, self).__init__(color=color)
         self.setSize0(size)
         self.setSpacing0(spacing)
 
