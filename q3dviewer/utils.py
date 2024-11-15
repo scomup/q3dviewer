@@ -1,6 +1,5 @@
 import numpy as np
 import time
-from scipy.spatial.transform import Rotation
 
 
 def rainbow(scalars, scalar_min=0, scalar_max=255):
