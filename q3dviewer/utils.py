@@ -1,6 +1,6 @@
 import numpy as np
 import time
-
+from scipy.spatial.transform import Rotation
 
 def rainbow(scalars, scalar_min=0, scalar_max=255):
     range = scalar_max - scalar_min
@@ -52,6 +52,12 @@ def euler_to_matrix(rpy):
     # yaw pitch roll order
     R = Rx @ Ry @ Rz
     return R
+
+def matrix_to_euler(matrix):
+    r = Rotation.from_matrix(matrix.copy())
+    yaw, pitch, roll = r.as_euler('zyx')
+    return np.array([roll, pitch, yaw])
+
 
 def matrix_to_quaternion(matrix):
     trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2]
@@ -123,4 +129,3 @@ class FPSMonitor():
             else:
                 break
         return len(self.stamp_record)
-
