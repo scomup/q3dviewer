@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
 import signal
 import sys
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QCheckBox
 
 
 class SettingWindow(QWidget):

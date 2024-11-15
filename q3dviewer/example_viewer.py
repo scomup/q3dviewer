@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from q3dviewer.custom_items import *
+from q3dviewer.basic_window import *
 import threading
 import time
-import q3dviewer as q3d
 
 
 def update(viewer):
@@ -15,13 +16,13 @@ def update(viewer):
 
 
 def main():
-    app = q3d.QApplication([])
+    app = QApplication([])
 
-    axis_item = q3d.GLAxisItem(size=0.5, width=5)
-    grid_item = q3d.GridItem(size=10, spacing=1)
-    traj_item = q3d.TrajectoryItem(width=2)
+    axis_item = GLAxisItem(size=0.5, width=5)
+    grid_item = GridItem(size=10, spacing=1)
+    traj_item = TrajectoryItem(width=2)
 
-    viewer = q3d.Viewer(name='example')
+    viewer = Viewer(name='example')
     th = threading.Thread(target=update, args=(viewer, ))
     th.start()
 

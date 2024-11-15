@@ -40,14 +40,14 @@ def main():
     app = q3d.QApplication([])
     viewer = MeshViewer()
 
-    gird_item = q3d.GridItem(size=1000, spacing=20)
+    grid_item = q3d.GridItem(size=1000, spacing=20)
     # 'glOptions', 'opaque', 'additive' 'translucent'
     mesh_item = GLMeshItem(smooth=True, drawFaces=True, drawEdges=True,
                            color=(0, 1, 0, 0.2),
                            edgeColor=(1, 1, 1, 1),
                            glOptions='translucent')
 
-    viewer.addItems({'grid': gird_item, 'mesh': mesh_item})
+    viewer.addItems({'grid': grid_item, 'mesh': mesh_item})
 
     viewer.show()
     app.exec_()

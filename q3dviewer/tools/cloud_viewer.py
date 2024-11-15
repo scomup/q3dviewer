@@ -56,9 +56,9 @@ def main():
     viewer = CloudViewer()
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.GLAxisItem(size=0.5, width=5)
-    gird_item = q3d.GridItem(size=1000, spacing=20)
+    grid_item = q3d.GridItem(size=1000, spacing=20)
 
-    viewer.addItems({'cloud': cloud_item, 'grid': gird_item, 'axis': axis_item})
+    viewer.addItems({'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item})
 
     if args.pcd:
         pcd_fn = args.pcd

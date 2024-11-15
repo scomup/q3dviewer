@@ -37,10 +37,10 @@ def main():
     app = q3d.QApplication([])
     viewer = GuassianViewer()
 
-    gird_item = q3d.GridItem(size=1000, spacing=20)
+    grid_item = q3d.GridItem(size=1000, spacing=20)
     gau_item = q3d.GaussianItem()
 
-    viewer.addItems({'grid': gird_item, 'gaussian': gau_item})
+    viewer.addItems({'grid': grid_item, 'gaussian': gau_item})
 
     viewer.show()
     app.exec_()
