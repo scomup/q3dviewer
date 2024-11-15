@@ -147,42 +147,47 @@ class ViewerWithPanel(Viewer):
 
     def perform_icp(self):
         global cloud0_accum, cloud1_accum
+
         if cloud0_accum is not None and cloud1_accum is not None:
             # Convert to Open3D point clouds
             cloud0_o3d = o3d.geometry.PointCloud()
             cloud0_o3d.points = o3d.utility.Vector3dVector(cloud0_accum['xyz'])
             cloud1_o3d = o3d.geometry.PointCloud()
             cloud1_o3d.points = o3d.utility.Vector3dVector(cloud1_accum['xyz'])
-
-            # Initialize transformation matrix with R01 and t01
+            # voxel_size = 0.2
+            # cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
+            # cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
+            cloud0_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
             trans_init = np.eye(4)
             trans_init[:3, :3] = self.R01
             trans_init[:3, 3] = self.t01
             
             # Auto Scan Matching
-            threshold = 0.2
+            threshold = 0.5
             reg_p2p = o3d.pipelines.registration.registration_icp(
                 cloud1_o3d, cloud0_o3d, threshold, trans_init,
-                o3d.pipelines.registration.TransformationEstimationPointToPoint())
+                o3d.pipelines.registration.TransformationEstimationPointToPlane())
             
             transformation_icp = reg_p2p.transformation
-            print("ICP Transformation:", transformation_icp)
+            # print("ICP Transformation:", transformation_icp)
             
             # Update R01 and t01 with ICP result
-            self.R01 = transformation_icp[:3, :3]
-            self.t01 = transformation_icp[:3, 3]
+            R01 = transformation_icp[:3, :3]
+            t01 = transformation_icp[:3, 3]
             
             # Update the UI with new values
-            self.line_trans.setText(np.array2string(self.t01, formatter={
+            self.line_trans.setText(np.array2string(t01, formatter={
                                     'float_kind': lambda x: "%.3f" % x}, separator=', '))
-            quat = matrix_to_quaternion(self.R01)
+            quat = matrix_to_quaternion(R01)
             self.line_quat.setText(np.array2string(
                 quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
-
-            self.rpy01 = matrix_to_euler(self.R01)
-            self.box_roll.setValue(self.rpy01[0])
-            self.box_pitch.setValue(self.rpy01[1])
-            self.box_yaw.setValue(self.rpy01[2])
+            rpy = matrix_to_euler(R01)
+            self.box_roll.setValue(rpy[0])
+            self.box_pitch.setValue(rpy[1])
+            self.box_yaw.setValue(rpy[2])
+            self.box_x.setValue(t01[0])
+            self.box_y.setValue(t01[1])
+            self.box_z.setValue(t01[2])
 
 
 def msg2Cloud(data):
