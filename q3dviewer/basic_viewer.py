@@ -6,8 +6,8 @@ import sys
 
 
 def handler(signal, frame):
-    print("exit")
-    sys.exit(0)
+    QApplication.quit()
+    print("Force close by Ctrl+C")
 
 
 class Viewer(QMainWindow):
@@ -46,8 +46,9 @@ class Viewer(QMainWindow):
         # force update by timer
         self.viewerWidget.update()
 
-    def closeEvent(self, _):
-        sys.exit(0)
+    def closeEvent(self, event):
+        event.accept()
+        QApplication.quit()
 
     def show(self):
         self.viewerWidget.setting_window.addSetting(

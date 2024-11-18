@@ -30,12 +30,15 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
 
 class ViewerWithPanel(Viewer):
     def __init__(self, **kwargs):
-        self.xyz = np.array([0, 0, 0])
-        self.rpy = np.array([0, 0, 0])
-        self.Roc = np.array([[0, -1, 0],
+        # b: camera body frame
+        # c: camera image frame
+        # l: lidar frame
+        self.Rbl = np.eye(3)
+        self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.Rol = self.Roc @ euler_to_matrix(self.rpy)
+        self.tcl = np.array([0, 0, 0])
+        self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
         self.cloud_num = 1
         self.en_rgb = False
@@ -114,11 +117,9 @@ class ViewerWithPanel(Viewer):
         self.line_trans.setReadOnly(True)
         setting_layout.addWidget(self.line_trans)
 
-        self.line_trans.setText(np.array2string(self.xyz, formatter={
-                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
-        quat = matrix_to_quaternion(self.Rol)
-        self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
+        self.line_trans.setText(f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
+        quat = matrix_to_quaternion(self.Rcl)
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -152,19 +153,17 @@ class ViewerWithPanel(Viewer):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
-        self.xyz = np.array([x, y, z])
-        self.line_trans.setText(np.array2string(self.xyz, formatter={
-                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
+        self.tcl = np.array([x, y, z])
+        self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {x:.6f}]")
 
     def update_rpy(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.rpy = np.array([roll, pitch, yaw])
-        self.Rol = self.Roc @ euler_to_matrix(self.rpy)
-        quat = matrix_to_quaternion(self.Rol)
-        self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
+        self.Rbl = euler_to_matrix(np.array([roll, pitch, yaw]))
+        self.Rcl = self.Rcb @ self.Rbl
+        quat = matrix_to_quaternion(self.Rcl)
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
     def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
@@ -234,10 +233,10 @@ def imageCB(data):
 
     if cloud_accum is not None:
         cloud_local = cloud_accum.copy()
-        tol = viewer.xyz
-        Rol = viewer.Rol
+        tcl = viewer.tcl
+        Rcl = viewer.Rcl
         pl = cloud_local['xyz']
-        po = (Rol @ pl.T + tol[:, np.newaxis]).T
+        po = (Rcl @ pl.T + tcl[:, np.newaxis]).T
         u = (K @ po.T).T
         u_mask = u[:, 2] != 0
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]

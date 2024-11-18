@@ -30,9 +30,9 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
 class ViewerWithPanel(Viewer):
     def __init__(self, **kwargs):
         self.t01 = np.array([0, 0, 0])
-        self.rpy01 = np.array([0, 0, 0])
-        self.R01 = euler_to_matrix(self.rpy01)
+        self.R01 = np.eye(3)
         self.cloud_num = 10
+        self.radius = 0.2
         super().__init__(**kwargs)
 
     def initUI(self):
@@ -84,14 +84,22 @@ class ViewerWithPanel(Viewer):
         self.box_cloud_num.valueChanged.connect(self.update_cloud_num)
         setting_layout.addWidget(self.box_cloud_num)
 
-        label_res = QLabel("The lidar-lidar quat and translation:")
+        label_res = QLabel("The lidar0-lidar1 trans and quat:")
         setting_layout.addWidget(label_res)
-        self.line_quat = QLineEdit()
-        self.line_quat.setReadOnly(True)
-        setting_layout.addWidget(self.line_quat)
         self.line_trans = QLineEdit()
         self.line_trans.setReadOnly(True)
         setting_layout.addWidget(self.line_trans)
+        self.line_quat = QLineEdit()
+        self.line_quat.setReadOnly(True)
+        setting_layout.addWidget(self.line_quat)
+
+        label_matching_setting = QLabel("Set matching radius:")
+        setting_layout.addWidget(label_matching_setting)
+        self.box_radius = CustomDoubleSpinBox(decimals=2)
+        self.box_radius.setSingleStep(0.1)
+        self.box_radius.setRange(0.1, 3.0)
+        self.box_radius.setValue(self.radius)
+        setting_layout.addWidget(self.box_radius)
 
         self.icp_button = QPushButton("Auto Scan Matching")
         self.icp_button.clicked.connect(self.perform_icp)
@@ -125,6 +133,9 @@ class ViewerWithPanel(Viewer):
         self.viewerWidget.setBKColor('#ffffff')
         timer.start()
 
+    def update_radius(self):
+        self.radius = self.box_radius.value()
+
     def update_cloud_num(self):
         self.cloud_num = self.box_cloud_num.value()
 
@@ -133,18 +144,15 @@ class ViewerWithPanel(Viewer):
         y = self.box_y.value()
         z = self.box_z.value()
         self.t01 = np.array([x, y, z])
-        self.line_trans.setText(np.array2string(self.t01, formatter={
-                                'float_kind': lambda x: "%.3f" % x}, separator=', '))
+        self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {z:.6f}]")
 
     def update_rpy(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.rpy01 = np.array([roll, pitch, yaw])
-        self.R01 = euler_to_matrix(self.rpy01)
+        self.R01 = euler_to_matrix(np.array([roll, pitch, yaw]))
         quat = matrix_to_quaternion(self.R01)
-        self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.3f" % x}, separator=', '))
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
     def perform_icp(self):
         global cloud0_accum, cloud1_accum
@@ -155,20 +163,24 @@ class ViewerWithPanel(Viewer):
             cloud0_o3d.points = o3d.utility.Vector3dVector(cloud0_accum['xyz'])
             cloud1_o3d = o3d.geometry.PointCloud()
             cloud1_o3d.points = o3d.utility.Vector3dVector(cloud1_accum['xyz'])
-            # voxel_size = 0.2
-            # cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
-            # cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
+            voxel_size = 0.1
+            cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
+            cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
             cloud0_o3d.estimate_normals(
-                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=self.radius, max_nn=30))
             trans_init = np.eye(4)
             trans_init[:3, :3] = self.R01
             trans_init[:3, 3] = self.t01
 
+            criteria = o3d.pipelines.registration.ICPConvergenceCriteria(
+                relative_fitness=1e-4,
+                max_iteration=50)
+
             # Auto Scan Matching
-            threshold = 0.5
             reg_p2p = o3d.pipelines.registration.registration_icp(
-                cloud1_o3d, cloud0_o3d, threshold, trans_init,
-                o3d.pipelines.registration.TransformationEstimationPointToPlane())
+                cloud1_o3d, cloud0_o3d, self.radius, trans_init,
+                o3d.pipelines.registration.TransformationEstimationPointToPlane(),
+                criteria)
 
             transformation_icp = reg_p2p.transformation
             # print("ICP Transformation:", transformation_icp)
@@ -178,11 +190,7 @@ class ViewerWithPanel(Viewer):
             t01 = transformation_icp[:3, 3]
 
             # Update the UI with new values
-            self.line_trans.setText(np.array2string(t01, formatter={
-                                    'float_kind': lambda x: "%.4f" % x}, separator=', '))
             quat = matrix_to_quaternion(R01)
-            self.line_quat.setText(np.array2string(
-                quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
             rpy = matrix_to_euler(R01)
             self.box_roll.setValue(rpy[0])
             self.box_pitch.setValue(rpy[1])
@@ -190,7 +198,14 @@ class ViewerWithPanel(Viewer):
             self.box_x.setValue(t01[0])
             self.box_y.setValue(t01[1])
             self.box_z.setValue(t01[2])
-
+            self.line_trans.setText(f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
+            self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+            self.t01 = t01
+            self.R01 = R01
+            print("Matching results")
+            print(f"translation: [{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
+            print(f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
+            print(f"Quaternion: [{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
 def msg2Cloud(data):
     pc = PointCloud.from_msg(data).pc_data
