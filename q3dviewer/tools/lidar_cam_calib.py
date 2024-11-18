@@ -277,14 +277,14 @@ def main():
                         default='camera_info', help="Topic of camera info")
     args = parser.parse_args()
 
-    app = QApplication([])
-    viewer = ViewerWithPanel(name='Manual LiDAR Cam Calib')
+    app = QApplication(['LiDAR Cam Calib'])
+    viewer = ViewerWithPanel(name='LiDAR Cam Calib')
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = CloudItem(size=2, alpha=1, color_mode='I')
     img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
-    rospy.init_node('lidar_cam_manual_calib', anonymous=True)
+    rospy.init_node('lidar_cam_calib', anonymous=True)
 
     # Use topic names from arguments
     rospy.Subscriber(args.lidar, PointCloud2, scanCB, queue_size=1)
