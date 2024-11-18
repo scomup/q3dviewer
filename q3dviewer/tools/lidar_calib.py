@@ -58,7 +58,7 @@ class ViewerWithPanel(Viewer):
         setting_layout.addWidget(self.box_z)
         self.box_x.setRange(-100.0, 100.0)
         self.box_y.setRange(-100.0, 100.0)
-        self.box_y.setRange(-100.0, 100.0)
+        self.box_z.setRange(-100.0, 100.0)
 
         # Add RPY spin boxes
         label_rpy = QLabel("Set Roll-Pitch-Yaw:")
