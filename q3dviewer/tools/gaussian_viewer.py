@@ -2,7 +2,7 @@
 
 import numpy as np
 import q3dviewer as q3d
-from q3dviewer.gau_io import load_gs
+from q3dviewer.gau_io import load_gs, rotate_gaussian
 
 
 class GuassianViewer(q3d.Viewer):
@@ -29,13 +29,18 @@ class GuassianViewer(q3d.Viewer):
 
         print("Try to load %s ..." % file)
         gs = load_gs(file)
+        # convert camera optical frame (b) to camera frame (c).
+        Rcb = np.array([[0, -1, 0],
+                        [0, 0, -1],
+                        [1, 0, 0]]).T
+        gs = rotate_gaussian(Rcb, gs)
         gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
         gau_item.setData(gs_data=gs_data)
 
 
 def main():
-    app = q3d.QApplication([])
-    viewer = GuassianViewer()
+    app = q3d.QApplication(['Guassian Viewer'])
+    viewer = GuassianViewer(name='Guassian Viewer')
 
     grid_item = q3d.GridItem(size=1000, spacing=20)
     gau_item = q3d.GaussianItem()

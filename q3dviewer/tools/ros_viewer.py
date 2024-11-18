@@ -79,7 +79,7 @@ def main():
     grid_item = q3d.GridItem(size=1000, spacing=20)
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
 
-    app = q3d.QApplication([])
+    app = q3d.QApplication(['ROS Viewer'])
     viewer = q3d.Viewer(name='ROS Viewer')
 
     viewer.addItems({'map': map_item, 'scan': scan_item,

@@ -6,8 +6,8 @@ import q3dviewer as q3d
 
 
 class CloudViewer(q3d.Viewer):
-    def __init__(self):
-        super(CloudViewer, self).__init__(name="Cloud Viewer")
+    def __init__(self, **kwargs):
+        super(CloudViewer, self).__init__(**kwargs)
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
@@ -54,8 +54,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pcd", help="the pcd path")
     args = parser.parse_args()
-    app = q3d.QApplication([])
-    viewer = CloudViewer()
+    app = q3d.QApplication(['Cloud Viewer'])
+    viewer = CloudViewer(name='Cloud Viewer')
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.GLAxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
