@@ -1,7 +1,6 @@
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
-from PyQt5 import QtGui, QtCore
 
 
 class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
