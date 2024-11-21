@@ -1,10 +1,14 @@
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image as PIL_Image
 from PyQt5.QtWidgets import QLabel, QSpinBox
-# from q3dviewer.gl_utils import *
 
 
 # Vertex and Fragment shader source code

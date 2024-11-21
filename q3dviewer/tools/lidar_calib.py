@@ -130,7 +130,7 @@ class ViewerWithPanel(Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.viewerWidget.setCameraPosition(distance=5)
-        self.viewerWidget.setBKColor('#ffffff')
+        self.viewerWidget.set_bk_color('#ffffff')
         timer.start()
 
     def update_radius(self):

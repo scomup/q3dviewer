@@ -1,3 +1,8 @@
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 #!/usr/bin/env python3
 
 import numpy as np
@@ -63,7 +68,7 @@ class ViewWidget(gl.GLViewWidget):
         self.setting_window = SettingWindow()
         super(ViewWidget, self).__init__()
 
-    def onFollowableSelection(self, index):
+    def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]
 
     def update(self):
@@ -78,18 +83,18 @@ class ViewWidget(gl.GLViewWidget):
         box1 = QLineEdit()
         box1.setToolTip("'using '#xxxxxx', i.e. #FF4500")
         box1.setText(str(self.color))
-        box1.textChanged.connect(self.setBKColor)
+        box1.textChanged.connect(self.set_bk_color)
         layout.addWidget(label1)
         layout.addWidget(box1)
         label2 = QLabel("Set Focus:")
         combo2 = QComboBox()
         for name in self.followable_item_name:
             combo2.addItem(name)
-        combo2.currentIndexChanged.connect(self.onFollowableSelection)
+        combo2.currentIndexChanged.connect(self.on_followable_selection)
         layout.addWidget(label2)
         layout.addWidget(combo2)
 
-    def setBKColor(self, color):
+    def set_bk_color(self, color):
         if (type(color) != str):
             return
         if color.startswith("#"):
@@ -99,7 +104,7 @@ class ViewWidget(gl.GLViewWidget):
             except ValueError:
                 return
 
-    def addItem(self, name, item):
+    def add_item(self, name, item):
         self.named_items.update({name: item})
         if (item.__class__.__name__ == 'GLAxisItem'):
             self.followable_item_name.append(name)
@@ -138,7 +143,7 @@ class ViewWidget(gl.GLViewWidget):
 
         if ev.key() == QtCore.Qt.Key_M:  # setting meun
             print("Open setting windows")
-            self.openSettingWindow()
+            self.open_setting_window()
         elif ev.key() == QtCore.Qt.Key_R:
             print("Clear viewer")
             for item in self.named_items.values():
@@ -175,7 +180,7 @@ class ViewWidget(gl.GLViewWidget):
         else:
             super().keyPressEvent(ev)
 
-    def openSettingWindow(self):
+    def open_setting_window(self):
         if self.setting_window.isVisible():
             self.setting_window.raise_()
 

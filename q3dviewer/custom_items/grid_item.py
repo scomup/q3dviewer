@@ -1,3 +1,8 @@
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
 from PyQt5.QtWidgets import QLabel, QDoubleSpinBox

@@ -1,3 +1,8 @@
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 import numpy as np
 from plyfile import PlyData
 

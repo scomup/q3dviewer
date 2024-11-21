@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
 
 from q3dviewer.viewer_widget import *
 import signal
@@ -34,7 +38,7 @@ class Viewer(QMainWindow):
 
     def add_items(self, named_items: dict):
         for name, item in named_items.items():
-            self.viewerWidget.addItem(name, item)
+            self.viewerWidget.add_item(name, item)
 
     def __getitem__(self, name: str):
         if name in self.viewerWidget.named_items:
