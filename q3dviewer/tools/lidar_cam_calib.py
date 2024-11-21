@@ -44,7 +44,7 @@ class ViewerWithPanel(Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def initUI(self):
+    def init_ui(self):
         centerWidget = QWidget()
         self.setCentralWidget(centerWidget)
         main_layout = QHBoxLayout()
@@ -172,7 +172,7 @@ class ViewerWithPanel(Viewer):
             self.en_rgb = False
 
 
-def cameraInfoCB(data):
+def camera_info_cb(data):
     global remap_info, K
     if remap_info is None:  # Initialize only once
         K = np.array(data.K).reshape(3, 3)
@@ -185,7 +185,7 @@ def cameraInfoCB(data):
         remap_info = [mapx, mapy]
 
 
-def scanCB(data):
+def scan_cb(data):
     global viewer, clouds, cloud_accum, cloud_accum_color
     pc = PointCloud.from_msg(data).pc_data
     data_type = viewer['scan'].data_type
@@ -199,11 +199,11 @@ def scanCB(data):
     cloud_accum = np.concatenate(clouds)
 
     if cloud_accum_color is not None and viewer.en_rgb:
-        viewer['scan'].setData(data=cloud_accum_color)
-        viewer['scan'].setColorMode('RGB')
+        viewer['scan'].set_data(data=cloud_accum_color)
+        viewer['scan'].set_color_mode('RGB')
     else:
-        viewer['scan'].setData(data=cloud_accum)
-        viewer['scan'].setColorMode('I')
+        viewer['scan'].set_data(data=cloud_accum)
+        viewer['scan'].set_color_mode('I')
 
 
 def draw_larger_points(image, points, colors, radius):
@@ -217,7 +217,7 @@ def draw_larger_points(image, points, colors, radius):
     return image
 
 
-def imageCB(data):
+def image_cb(data):
     global cloud_accum, cloud_accum_color, remap_info, K
     if remap_info is None:
         rospy.logwarn("Camera parameters not yet received.")
@@ -261,7 +261,7 @@ def imageCB(data):
         cloud_accum_color = np.rec.fromarrays(
             [xyz, color],
             dtype=viewer['scan'].data_type)
-        viewer['img'].setData(data=draw_image)
+        viewer['img'].set_data(data=draw_image)
 
 
 def main():
@@ -282,14 +282,14 @@ def main():
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = CloudItem(size=2, alpha=1, color_mode='I')
     img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
-    viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
+    viewer.add_items({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_calib', anonymous=True)
 
     # Use topic names from arguments
-    rospy.Subscriber(args.lidar, PointCloud2, scanCB, queue_size=1)
-    rospy.Subscriber(args.camera, Image, imageCB, queue_size=1)
-    rospy.Subscriber(args.camera_info, CameraInfo, cameraInfoCB, queue_size=1)
+    rospy.Subscriber(args.lidar, PointCloud2, scan_cb, queue_size=1)
+    rospy.Subscriber(args.camera, Image, image_cb, queue_size=1)
+    rospy.Subscriber(args.camera_info, CameraInfo, camera_info_cb, queue_size=1)
 
     viewer.show()
     app.exec_()

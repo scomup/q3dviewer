@@ -21,9 +21,11 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         self.setDecimals(self.decimals)  # Set the number of decimal places
 
     def textFromValue(self, value):
+        # override
         return f"{value:.{self.decimals}f}"
 
     def valueFromText(self, text):
+        # override
         return float(text)
 
 
@@ -35,7 +37,7 @@ class ViewerWithPanel(Viewer):
         self.radius = 0.2
         super().__init__(**kwargs)
 
-    def initUI(self):
+    def init_ui(self):
         centerWidget = QWidget()
         self.setCentralWidget(centerWidget)
         main_layout = QHBoxLayout()
@@ -105,11 +107,9 @@ class ViewerWithPanel(Viewer):
         self.icp_button.clicked.connect(self.perform_icp)
         setting_layout.addWidget(self.icp_button)
 
-        self.line_trans.setText(np.array2string(self.t01, formatter={
-                                'float_kind': lambda x: "%.4f" % x}, separator=', '))
+        self.line_trans.setText(f"[{self.t01[0]:.6f}, {self.t01[1]:.6f}, {self.t01[2]:.6f}]")
         quat = matrix_to_quaternion(self.R01)
-        self.line_quat.setText(np.array2string(
-            quat, formatter={'float_kind': lambda x: "%.4f" % x}, separator=', '))
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -207,7 +207,7 @@ class ViewerWithPanel(Viewer):
             print(f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
             print(f"Quaternion: [{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
-def msg2Cloud(data):
+def msg_cloud(data):
     pc = PointCloud.from_msg(data).pc_data
     data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
     color = pc['intensity'].astype(np.uint32)
@@ -217,19 +217,19 @@ def msg2Cloud(data):
     return cloud
 
 
-def scan0CB(data):
+def scan0_cb(data):
     global viewer, clouds0, cloud0_accum
-    cloud = msg2Cloud(data)
+    cloud = msg_cloud(data)
     while len(clouds0) > viewer.cloud_num:
         clouds0.pop(0)
     clouds0.append(cloud)
     cloud0_accum = np.concatenate(clouds0)
-    viewer['scan0'].setData(data=cloud0_accum)
+    viewer['scan0'].set_data(data=cloud0_accum)
 
 
-def scan1CB(data):
+def scan1_cb(data):
     global viewer, clouds1, cloud1_accum
-    cloud = msg2Cloud(data)
+    cloud = msg_cloud(data)
     while len(clouds1) > viewer.cloud_num:
         clouds1.pop(0)
     clouds1.append(cloud)
@@ -238,7 +238,7 @@ def scan1CB(data):
     cloud0_accum_new['xyz'] = (
         viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
 
-    viewer['scan1'].setData(data=cloud0_accum_new)
+    viewer['scan1'].set_data(data=cloud0_accum_new)
 
 
 def main():
@@ -257,14 +257,14 @@ def main():
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan0_item = CloudItem(size=2, alpha=1, color_mode='#FF0000')
     scan1_item = CloudItem(size=2, alpha=1, color_mode='#00FF00')
-    viewer.addItems(
+    viewer.add_items(
         {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 
     rospy.init_node('lidar_calib', anonymous=True)
 
     # Use topic names from arguments
-    rospy.Subscriber(args.lidar0, PointCloud2, scan0CB, queue_size=1)
-    rospy.Subscriber(args.lidar1, PointCloud2, scan1CB, queue_size=1)
+    rospy.Subscriber(args.lidar0, PointCloud2, scan0_cb, queue_size=1)
+    rospy.Subscriber(args.lidar1, PointCloud2, scan1_cb, queue_size=1)
 
     viewer.show()
     app.exec_()

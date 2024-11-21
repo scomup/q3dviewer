@@ -4,6 +4,7 @@ import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image as PIL_Image
 from PyQt5.QtWidgets import QLabel, QSpinBox
+# from q3dviewer.gl_utils import *
 
 
 # Vertex and Fragment shader source code
@@ -34,16 +35,6 @@ void main()
     color = texture(ourTexture, TexCoord);
 }
 """
-
-
-def set_uniform_mat4(shader, content, name):
-    content = content.T
-    glUniformMatrix4fv(
-        glGetUniformLocation(shader, name),
-        1,
-        GL_FALSE,
-        content.astype(np.float32)
-    )
 
 
 class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
@@ -112,7 +103,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glBindVertexArray(0)
 
-    def setData(self, data):
+    def set_data(self, data):
         if isinstance(data, np.ndarray):
             pass
         elif isinstance(data, PIL_Image.Image):
@@ -155,15 +146,15 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("Set Alpha:")
         layout.addWidget(label1)
         box1 = QSpinBox()
         box1.setSingleStep(1)
         box1.setRange(0, 255)
         box1.setValue(self.alpha)
-        box1.valueChanged.connect(self.setAlpha)
+        box1.valueChanged.connect(self.set_alpha)
         layout.addWidget(box1)
 
-    def setAlpha(self, alpha):
+    def set_alpha(self, alpha):
         self.alpha = alpha

@@ -11,7 +11,7 @@ def update(viewer):
     while True:
         i += 0.05
         time.sleep(0.1)
-        viewer['traj'].setData(np.array([np.sin(i) * i, np.cos(i) * i, i]))
+        viewer['traj'].set_data(np.array([np.sin(i) * i, np.cos(i) * i, i]))
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
     th = threading.Thread(target=update, args=(viewer, ))
     th.start()
 
-    viewer.addItems({
+    viewer.add_items({
         'grid': grid_item,
         'axis': axis_item,
         'traj': traj_item})

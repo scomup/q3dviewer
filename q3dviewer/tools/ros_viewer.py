@@ -16,7 +16,7 @@ point_num_per_scan = None
 color_mode = None
 
 
-def odomCB(data):
+def odom_cb(data):
     global viewer
     pose = np.array(
         [data.pose.pose.position.x,
@@ -31,7 +31,7 @@ def odomCB(data):
     viewer['odom'].setTransform(transform)
 
 
-def scanCB(data):
+def scan_cb(data):
     global viewer
     global point_num_per_scan
     global color_mode
@@ -47,7 +47,7 @@ def scanCB(data):
             color_mode = 'RGB'
         else:
             color_mode = 'I'
-        viewer['map'].setColorMode(color_mode)
+        viewer['map'].set_color_mode(color_mode)
     
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
@@ -55,16 +55,16 @@ def scanCB(data):
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    viewer['map'].setData(data=cloud, append=True)
-    viewer['scan'].setData(data=cloud)
+    viewer['map'].set_data(data=cloud, append=True)
+    viewer['scan'].set_data(data=cloud)
 
 
-def imageCB(data):
+def image_cb(data):
     image = np.frombuffer(data.data, dtype=np.uint8).reshape(
         data.height, data.width, -1)
     if (data.encoding == 'bgr8'):
         image = image[:, :, ::-1]  # convert bgr to rgb
-    viewer['img'].setData(data=image)
+    viewer['img'].set_data(data=image)
 
 
 def main():
@@ -82,17 +82,17 @@ def main():
     app = q3d.QApplication(['ROS Viewer'])
     viewer = q3d.Viewer(name='ROS Viewer')
 
-    viewer.addItems({'map': map_item, 'scan': scan_item,
+    viewer.add_items({'map': map_item, 'scan': scan_item,
                     'odom': odom_item, 'grid': grid_item, 'img': img_item})
 
     point_num_per_scan = rospy.get_param("scan_num", 100000)
     print("point_num_per_scan: %d" % point_num_per_scan)
     rospy.Subscriber(
-        "/cloud_registered", PointCloud2, scanCB,
+        "/cloud_registered", PointCloud2, scan_cb,
         queue_size=1, buff_size=2**24)
     rospy.Subscriber(
-        "/odometry", Odometry, odomCB, queue_size=1, buff_size=2**24)
-    rospy.Subscriber('/image', Image, imageCB)
+        "/odometry", Odometry, odom_cb, queue_size=1, buff_size=2**24)
+    rospy.Subscriber('/image', Image, image_cb)
 
     viewer.show()
     app.exec_()

@@ -9,41 +9,11 @@ import numpy as np
 import os
 from PyQt5.QtWidgets import QComboBox, QLabel
 from OpenGL.GL import shaders
+from q3dviewer.gl_utils import *
 
 
 def div_round_up(x, y):
     return int((x + y - 1) / y)
-
-
-def set_uniform_mat4(shader, content, name):
-    content = content.T
-    glUniformMatrix4fv(
-        glGetUniformLocation(shader, name),
-        1,
-        GL_FALSE,
-        content.astype(np.float32)
-    )
-
-
-def set_uniform_1int(shader, content, name):
-    glUniform1i(
-        glGetUniformLocation(shader, name),
-        content
-    )
-
-
-def set_uniform_v2(shader, contents, name):
-    glUniform2f(
-        glGetUniformLocation(shader, name),
-        *contents
-    )
-
-
-def set_uniform_v3(shader, contents, name):
-    glUniform3f(
-        glGetUniformLocation(shader, name),
-        *contents
-    )
 
 
 class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
@@ -63,7 +33,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         except ImportError:
                 self.sort = self.opengl_sort
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("set render mode:")
         layout.addWidget(label1)
         combo = QComboBox()
@@ -75,7 +45,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def on_combobox_selection(self, index):
         glUseProgram(self.program)
-        set_uniform_1int(self.program, index, "render_mod")
+        set_uniform_1i(self.program, index, "render_mod")
         glUseProgram(0)
 
     def initializeGL(self):
@@ -94,8 +64,6 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             shaders.compileShader(vertex_shader, GL_VERTEX_SHADER),
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
-        positions = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32)
-
         self.vao = glGenVertexArrays(1)
 
         # trade a gaussian as a square (4 2d points)
@@ -135,13 +103,13 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
         glUseProgram(self.prep_program)
-        set_uniform_mat4(self.prep_program, project_matrix, 'projection_matrix')
-        set_uniform_v2(self.prep_program, [focal_x, focal_y], 'focal')
+        set_uniform_mat4fv(self.prep_program, project_matrix, 'projection_matrix')
+        set_uniform_2f(self.prep_program, [focal_x, focal_y], 'focal')
         glUseProgram(0)
 
         glUseProgram(self.program)
-        set_uniform_v2(self.program, [width, height], 'win_size')
-        set_uniform_1int(self.program, 0, "render_mod")
+        set_uniform_2f(self.program, [width, height], 'win_size')
+        set_uniform_1i(self.program, 0, "render_mod")
         glUseProgram(0)
 
         # opengl settings
@@ -182,8 +150,8 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
             glUseProgram(self.prep_program)
-            set_uniform_1int(self.prep_program, self.sh_dim, "sh_dim")
-            set_uniform_1int(self.prep_program, self.gs_data.shape[0], "gs_num")
+            set_uniform_1i(self.prep_program, self.sh_dim, "sh_dim")
+            set_uniform_1i(self.prep_program, self.gs_data.shape[0], "gs_num")
             glUseProgram(0)
             self.need_update_gs = False
 
@@ -232,8 +200,8 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         # can we move this loop to gpu?
         for level in 2**np.arange(1, int(np.ceil(np.log2(self.num_sort))+1)):  # level = level*2
             for stage in level/2**np.arange(1, np.log2(level)+1):   # stage =stage / 2
-                set_uniform_1int(self.sort_program, int(level), "level")
-                set_uniform_1int(self.sort_program, int(stage), "stage")
+                set_uniform_1i(self.sort_program, int(level), "level")
+                set_uniform_1i(self.sort_program, int(stage), "stage")
                 glDispatchCompute(div_round_up(self.num_sort//2, 256), 1, 1)
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         # glFinish()
@@ -254,12 +222,12 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def preprocess_gs(self):
         glUseProgram(self.prep_program)
-        set_uniform_mat4(self.prep_program, self.view_matrix, 'view_matrix')
+        set_uniform_mat4fv(self.prep_program, self.view_matrix, 'view_matrix')
         glDispatchCompute(div_round_up(self.gs_data.shape[0], 256), 1, 1)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         glUseProgram(0)
 
-    def setData(self, **kwds):
+    def set_data(self, **kwds):
         if 'gs_data' in kwds:
             gs_data = kwds.pop('gs_data')
             self.gs_data = np.ascontiguousarray(gs_data, dtype=np.float32)

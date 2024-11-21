@@ -30,7 +30,7 @@ class SettingWindow(QWidget):
         self.setGeometry(200, 200, 300, 200)
         self.items = {}
 
-    def addSetting(self, name, item):
+    def add_setting(self, name, item):
         self.items.update({name: item})
         self.combo_items.addItem("%s(%s)" % (name, item.__class__.__name__))
 
@@ -48,7 +48,7 @@ class SettingWindow(QWidget):
         key = list(self.items.keys())
         try:
             item = self.items[key[index]]
-            item.addSetting(self.layout)
+            item.add_setting(self.layout)
             self.layout.addItem(self.stretch)
         except AttributeError:
             print("%s: No setting." % (item.__class__.__name__))
@@ -72,7 +72,7 @@ class ViewWidget(gl.GLViewWidget):
             self.opts['center'] = QVector3D(pos[0], pos[1], pos[2])
         super().update()
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("Set background color:")
         label1.setToolTip("using '#xxxxxx', i.e. #FF4500")
         box1 = QLineEdit()
@@ -103,7 +103,7 @@ class ViewWidget(gl.GLViewWidget):
         self.named_items.update({name: item})
         if (item.__class__.__name__ == 'GLAxisItem'):
             self.followable_item_name.append(name)
-        self.setting_window.addSetting(name, item)
+        self.setting_window.add_setting(name, item)
         super().addItem(item)
 
     def mouseReleaseEvent(self, ev):

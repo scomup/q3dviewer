@@ -8,9 +8,8 @@ from OpenGL.GLUT import *
 import numpy as np
 import threading
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
-from PyQt5.QtGui import QValidator
 from OpenGL.GL import shaders
-
+from q3dviewer.gl_utils import *
 
 vertex_shader = """
 #version 330 core
@@ -94,16 +93,6 @@ void main()
 """
 
 
-def set_uniform_mat4(shader, content, name):
-    content = content.T
-    glUniformMatrix4fv(
-        glGetUniformLocation(shader, name),
-        1,
-        GL_FALSE,
-        content.astype(np.float32)
-    )
-
-
 # draw points with color (x, y, z, color)
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def __init__(self, size, alpha, color_mode='I'):
@@ -115,21 +104,21 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
         self.color_mode = color_mode
-        self.setColorMode(color_mode)
+        self.set_color_mode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
         self.need_update_setting = True
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("Set Size:")
         layout.addWidget(label1)
         box1 = QSpinBox()
         box1.setSingleStep(1)
         layout.addWidget(box1)
         box1.setValue(self.size)
-        box1.valueChanged.connect(self.setSize)
+        box1.valueChanged.connect(self.set_size)
         box1.setRange(0, 100)
 
         label2 = QLabel("Set Alpha:")
@@ -138,7 +127,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         layout.addWidget(box2)
         box2.setSingleStep(0.01)
         box2.setValue(self.alpha)
-        box2.valueChanged.connect(self.setAlpha)
+        box2.valueChanged.connect(self.set_alpha)
         box2.setRange(0, 1)
 
         label3 = QLabel("Set ColorMode:")
@@ -150,10 +139,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             "'I': intensity mode; 'IRGB': IRGB mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
 
         box3.setText(str(self.color_mode))
-        box3.textChanged.connect(self.setColorMode)
+        box3.textChanged.connect(self.set_color_mode)
         layout.addWidget(box3)
 
-    def setAlpha(self, alpha):
+    def set_alpha(self, alpha):
         self.alpha = alpha
         self.need_update_setting = True
 
@@ -161,7 +150,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.vmax = vmax
         self.need_update_setting = True
 
-    def setColorMode(self, color_mode):
+    def set_color_mode(self, color_mode):
         """
         intensity mode: -1;
         rgb mode: -2;
@@ -184,14 +173,14 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.color_mode = color_mode
         self.need_update_setting = True
 
-    def setSize(self, size):
+    def set_size(self, size):
         self.size = size
 
     def clear(self):
         data = np.empty((0), self.data_type)
-        self.setData(data)
+        self.set_data(data)
 
-    def setData(self, data, append=False):
+    def set_data(self, data, append=False):
         if data.dtype is np.dtype('float32') or data.dtype is np.dtype('float64'):
             xyz = data[:, :3]
             if (data.shape[1] == 4):
@@ -213,7 +202,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
-    def updateSetting(self):
+    def update_setting(self):
         if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
@@ -224,7 +213,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glUseProgram(0)
         self.need_update_setting = False
 
-    def updateRenderBuffer(self):
+    def update_render_buffer(self):
         # is not new data dont update buff
         if (self.wait_add_data is None):
             return
@@ -261,15 +250,15 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         )
         # Bind attribute locations
         # set constant parameter for cloud shader
-        self.setAlpha(self.alpha)
-        self.setColorMode(self.color_mode)
+        self.set_alpha(self.alpha)
+        self.set_color_mode(self.color_mode)
         self.setVmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
     def paint(self):
         self.setupGLState()
-        self.updateRenderBuffer()
-        self.updateSetting()
+        self.update_render_buffer()
+        self.update_setting()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
@@ -282,10 +271,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         view_matrix = np.array(
             self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
-        set_uniform_mat4(self.program, view_matrix, 'view_matrix')
+        set_uniform_mat4fv(self.program, view_matrix, 'view_matrix')
         project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T
-        set_uniform_mat4(self.program, project_matrix, 'projection_matrix')
+        set_uniform_mat4fv(self.program, project_matrix, 'projection_matrix')
 
         glPointSize(self.size)
         glDrawArrays(GL_POINTS, 0, self.valid_buff_top)

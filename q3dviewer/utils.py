@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 
 def rainbow(scalars, scalar_min=0, scalar_max=255):
@@ -124,21 +123,6 @@ def make_transform(pose, rotation):
     transform[0:3, 0:3] = quaternion_to_matrix(rotation)
     transform[0:3, 3] = pose
     return transform
-
-
-class FPSMonitor():
-    def __init__(self):
-        self.stamp_record = []
-
-    def count(self):
-        cur_stamp = time.time()
-        self.stamp_record.append(cur_stamp)
-        while len(self.stamp_record) > 0:
-            if(cur_stamp - self.stamp_record[0] > 1.):
-                self.stamp_record.pop(0)
-            else:
-                break
-        return len(self.stamp_record)
 
 
 # euler = np.array([1, 0.1, 0.1])

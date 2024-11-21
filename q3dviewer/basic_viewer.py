@@ -16,10 +16,10 @@ class Viewer(QMainWindow):
         super(Viewer, self).__init__()
         self.vw = vw
         self.setGeometry(0, 0, win_size[0], win_size[1])
-        self.initUI()
+        self.init_ui()
         self.setWindowTitle(name)
 
-    def initUI(self):
+    def init_ui(self):
         centerWidget = QWidget()
         self.setCentralWidget(centerWidget)
         layout = QVBoxLayout()
@@ -32,7 +32,7 @@ class Viewer(QMainWindow):
         self.viewerWidget.setCameraPosition(distance=40)
         timer.start()
 
-    def addItems(self, named_items: dict):
+    def add_items(self, named_items: dict):
         for name, item in named_items.items():
             self.viewerWidget.addItem(name, item)
 
@@ -51,6 +51,6 @@ class Viewer(QMainWindow):
         QApplication.quit()
 
     def show(self):
-        self.viewerWidget.setting_window.addSetting(
+        self.viewerWidget.setting_window.add_setting(
             "main win", self.viewerWidget)
         super().show()

@@ -16,8 +16,8 @@ class CloudIOItem(CloudItem):
         super().__init__(**kwargs)
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
 
-    def addSetting(self, layout):
-        super().addSetting(layout)
+    def add_setting(self, layout):
+        super().add_setting(layout)
 
         label4 = QLabel("Save Path:")
         layout.addWidget(label4)
@@ -65,19 +65,19 @@ class CloudIOItem(CloudItem):
 
             try:
                 color = pc["rgb"].astype(np.uint32)
-                self.setColorMode('RGB')
+                self.set_color_mode('RGB')
             except ValueError:
                 try:
                     color = pc["intensity"].astype(np.uint32)
-                    self.setColorMode('I')
+                    self.set_color_mode('I')
                 except ValueError:
                     color = pc['z'].astype(np.uint32)
-                    self.setColorMode('#FFFFFF')
+                    self.set_color_mode('#FFFFFF')
 
             cloud = np.rec.fromarrays(
                 [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
                 dtype=self.data_type)
-            self.setData(data=cloud)
+            self.set_data(data=cloud)
 
     def setPath(self, path):
         self.save_path = path

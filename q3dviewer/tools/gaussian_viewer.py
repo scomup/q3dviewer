@@ -6,22 +6,24 @@ from q3dviewer.gau_io import load_gs, rotate_gaussian
 
 
 class GuassianViewer(q3d.Viewer):
-    def __init__(self):
-        super(GuassianViewer, self).__init__(name="Guassian Viewer")
+    def __init__(self, **kwds):
+        super(GuassianViewer, self).__init__(**kwds)
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
+        # override
         if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
+        # override
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            self.openGuassianFile(file_path)
+            self.open_guassian_file(file_path)
 
-    def openGuassianFile(self, file):
+    def open_guassian_file(self, file):
         gau_item = self['gaussian']
         if gau_item is None:
             print("Can't find gaussianitem")
@@ -35,7 +37,7 @@ class GuassianViewer(q3d.Viewer):
                         [1, 0, 0]]).T
         gs = rotate_gaussian(Rcb, gs)
         gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
-        gau_item.setData(gs_data=gs_data)
+        gau_item.set_data(gs_data=gs_data)
 
 
 def main():
@@ -45,7 +47,7 @@ def main():
     grid_item = q3d.GridItem(size=1000, spacing=20)
     gau_item = q3d.GaussianItem()
 
-    viewer.addItems({'grid': grid_item, 'gaussian': gau_item})
+    viewer.add_items({'grid': grid_item, 'gaussian': gau_item})
 
     viewer.show()
     app.exec_()

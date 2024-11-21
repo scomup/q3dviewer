@@ -20,9 +20,9 @@ class MeshViewer(q3d.Viewer):
     def dropEvent(self, event):
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            self.openMeshFile(file_path)
+            self.open_mesh_file(file_path)
 
-    def openMeshFile(self, file):
+    def open_mesh_file(self, file):
         mesh_item = self['mesh']
         if mesh_item is None:
             print("Can't find meshitem")
@@ -47,7 +47,7 @@ def main():
                            edgeColor=(1, 1, 1, 1),
                            glOptions='translucent')
 
-    viewer.addItems({'grid': grid_item, 'mesh': mesh_item})
+    viewer.add_items({'grid': grid_item, 'mesh': mesh_item})
 
     viewer.show()
     app.exec_()
