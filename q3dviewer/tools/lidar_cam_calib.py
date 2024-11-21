@@ -236,9 +236,9 @@ def image_cb(data):
         tcl = viewer.tcl
         Rcl = viewer.Rcl
         pl = cloud_local['xyz']
-        po = (Rcl @ pl.T + tcl[:, np.newaxis]).T
-        u = (K @ po.T).T
-        u_mask = u[:, 2] != 0
+        pc = (Rcl @ pl.T + tcl[:, np.newaxis]).T
+        u = (K @ pc.T).T
+        u_mask = (u[:, 2] != 0) & (pc[:,2] > 0.2)
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
 
         radius = viewer.psize  # Radius of the points to be drawn
