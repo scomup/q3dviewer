@@ -38,10 +38,10 @@ class ViewerWithPanel(Viewer):
         super().__init__(**kwargs)
 
     def init_ui(self):
-        centerWidget = QWidget()
-        self.setCentralWidget(centerWidget)
+        center_widget = QWidget()
+        self.setCentralWidget(center_widget)
         main_layout = QHBoxLayout()
-        centerWidget.setLayout(main_layout)
+        center_widget.setLayout(main_layout)
 
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
@@ -122,15 +122,15 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.viewerWidget = self.vw()
+        self.glv_widget = self.vw()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.viewerWidget, 1)
+        main_layout.addWidget(self.glv_widget, 1)
 
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.viewerWidget.setCameraPosition(distance=5)
-        self.viewerWidget.set_bk_color('#ffffff')
+        self.glv_widget.setCameraPosition(distance=5)
+        self.glv_widget.set_bk_color('#ffffff')
         timer.start()
 
     def update_radius(self):

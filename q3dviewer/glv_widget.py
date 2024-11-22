@@ -59,14 +59,14 @@ class SettingWindow(QWidget):
             print("%s: No setting." % (item.__class__.__name__))
 
 
-class ViewWidget(gl.GLViewWidget):
+class GLVWidget(gl.GLViewWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
         self.color = '#000000'
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
-        super(ViewWidget, self).__init__()
+        super(GLVWidget, self).__init__()
 
     def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]

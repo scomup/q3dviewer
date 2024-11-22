@@ -34,21 +34,22 @@ class ViewerWithPanel(Viewer):
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
+        self.Rbl = euler_to_matrix(np.array([0, 0.3491, 0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.tcl = np.array([0, 0, 0])
+        self.tcl = np.array([-0.05, -0.05, -0.01])
         self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
-        self.cloud_num = 1
+        self.cloud_num = 10
         self.en_rgb = False
         super().__init__(**kwargs)
 
     def init_ui(self):
-        centerWidget = QWidget()
-        self.setCentralWidget(centerWidget)
+        center_widget = QWidget()
+        self.setCentralWidget(center_widget)
         main_layout = QHBoxLayout()
-        centerWidget.setLayout(main_layout)
+        center_widget.setLayout(main_layout)
 
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
@@ -74,7 +75,10 @@ class ViewerWithPanel(Viewer):
         setting_layout.addWidget(self.box_z)
         self.box_x.setRange(-100.0, 100.0)
         self.box_y.setRange(-100.0, 100.0)
-        self.box_y.setRange(-100.0, 100.0)
+        self.box_z.setRange(-100.0, 100.0)
+        self.box_x.setValue(self.tcl[0])
+        self.box_y.setValue(self.tcl[1])
+        self.box_z.setValue(self.tcl[2])
 
         # Add RPY spin boxes
         label_rpy = QLabel("Set Roll-Pitch-Yaw:")
@@ -91,6 +95,10 @@ class ViewerWithPanel(Viewer):
         self.box_roll.setRange(-np.pi, np.pi)
         self.box_pitch.setRange(-np.pi, np.pi)
         self.box_yaw.setRange(-np.pi, np.pi)
+        rpy = matrix_to_euler(self.Rbl)
+        self.box_roll.setValue(rpy[0])
+        self.box_pitch.setValue(rpy[1])
+        self.box_yaw.setValue(rpy[2])
 
         label_psize = QLabel("Set point size:")
         setting_layout.addWidget(label_psize)
@@ -132,15 +140,15 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.viewerWidget = self.vw()
+        self.glv_widget = self.vw()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.viewerWidget, 1)
+        main_layout.addWidget(self.glv_widget, 1)
 
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.viewerWidget.setCameraPosition(distance=5)
-        self.viewerWidget.set_bk_color('#ffffff')
+        self.glv_widget.setCameraPosition(distance=5)
+        self.glv_widget.set_bk_color('#ffffff')
         timer.start()
 
     def update_psize(self):
@@ -237,6 +245,9 @@ def image_cb(data):
         Rcl = viewer.Rcl
         pl = cloud_local['xyz']
         pc = (Rcl @ pl.T + tcl[:, np.newaxis]).T
+        K = np.array([901.74915927,   0., 369.15527196,
+                      0., 900.0041538, 272.22645052,
+                      0.,   0.,   1.]).reshape([3, 3])
         u = (K @ pc.T).T
         u_mask = (u[:, 2] != 0) & (pc[:,2] > 0.2)
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
