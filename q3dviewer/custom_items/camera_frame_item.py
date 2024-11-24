@@ -105,7 +105,7 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
             shaders.compileShader(fragment_shader_source, GL_FRAGMENT_SHADER),
         )
         glUseProgram(self.program)
-        set_uniform_mat4fv(self.program, project_matrix, 'project_matrix')
+        set_uniform(self.program, project_matrix, 'project_matrix')
         glUseProgram(0)
 
         self.texture = glGenTextures(1)
@@ -135,8 +135,8 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         glUseProgram(self.program)
-        set_uniform_mat4fv(self.program, self.view_matrix, 'view_matrix')
-        set_uniform_mat4fv(self.program, project_matrix, 'project_matrix')
+        set_uniform(self.program, self.view_matrix, 'view_matrix')
+        set_uniform(self.program, project_matrix, 'project_matrix')
         glBindVertexArray(self.vao)
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)

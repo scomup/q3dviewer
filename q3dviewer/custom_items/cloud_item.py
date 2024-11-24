@@ -3,6 +3,7 @@ Copyright 2024  Liu Yang
 Distributed under MIT license. See LICENSE for more information.
 """
 
+
 import numpy as np
 import pyqtgraph.opengl as gl
 from OpenGL.GL import *
@@ -10,7 +11,8 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
 import threading
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+    QSpinBox, QComboBox
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
 
@@ -22,10 +24,13 @@ layout (location = 1) in uint value;
 
 uniform mat4 view_matrix;
 uniform mat4 projection_matrix;
-uniform float alpha;
-uniform int color_mode;
+uniform float alpha = 1;
+uniform int color_mode = 0;
 uniform float vmin = 0;
 uniform float vmax = 255;
+uniform float focal = 1000;
+uniform int point_type = 0; // 0 pixel, 1 flat square
+uniform float point_size_world = 0.01;  // World size for each point (meter)
 out vec4 color;
 
 vec3 getRainbowColor(uint value_raw) {
@@ -56,6 +61,12 @@ void main()
     vec4 pw = vec4(position, 1.0);
     vec4 pc = view_matrix * pw;
     gl_Position = projection_matrix * pc;
+
+    // Calculate point size in pixels based on distance
+    if (point_type == 0)
+        gl_PointSize = int(point_size_world);
+    else
+        gl_PointSize = point_size_world / gl_Position.w * focal;
     vec3 c = vec3(1.0, 1.0, 1.0);
     if (color_mode == -1)
     {
@@ -110,19 +121,27 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.set_color_mode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
+        self.point_type = 0
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
         self.need_update_setting = True
 
     def add_setting(self, layout):
-        label1 = QLabel("Set Size:")
-        layout.addWidget(label1)
-        box1 = QSpinBox()
-        box1.setSingleStep(1)
-        layout.addWidget(box1)
-        box1.setValue(self.size)
-        box1.valueChanged.connect(self.set_size)
-        box1.setRange(0, 100)
+        label0 = QLabel("Set Point Type:")
+        layout.addWidget(label0)
+        combo0 = QComboBox()
+        combo0.addItem("pixel")
+        combo0.addItem("flat square")
+        combo0.currentIndexChanged.connect(self.on_combo_selection)
+        layout.addWidget(combo0)
+        self.label_size = QLabel("Set Size: (pixel)")
+        layout.addWidget(self.label_size)
+        self.box_size = QDoubleSpinBox()
+        self.box_size.setSingleStep(0.01)
+        layout.addWidget(self.box_size)
+        self.box_size.setValue(self.size)
+        self.box_size.valueChanged.connect(self.set_size)
+        self.box_size.setRange(0, 100)
 
         label2 = QLabel("Set Alpha:")
         layout.addWidget(label2)
@@ -145,11 +164,24 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box3.textChanged.connect(self.set_color_mode)
         layout.addWidget(box3)
 
+    def on_combo_selection(self, index):
+        if (index == 0):
+            self.label_size.setText("Set Size: (pixel)")
+            self.box_size.setSingleStep(1)
+            self.point_type = 0
+            self.box_size.setValue(1)
+        else:
+            self.label_size.setText("Set Size: (meter)")
+            self.box_size.setSingleStep(0.01)
+            self.point_type = 1
+            self.box_size.setValue(0.01)
+        self.need_update_setting = True
+
     def set_alpha(self, alpha):
         self.alpha = alpha
         self.need_update_setting = True
 
-    def setVmax(self, vmax):
+    def set_vmax(self, vmax):
         self.vmax = vmax
         self.need_update_setting = True
 
@@ -178,6 +210,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def set_size(self, size):
         self.size = size
+        self.need_update_setting = True
 
     def clear(self):
         data = np.empty((0), self.data_type)
@@ -209,10 +242,11 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
-        glUniform1i(glGetUniformLocation(
-            self.program, "color_mode"), self.color_mode_int)
-        glUniform1f(glGetUniformLocation(self.program, "vmax"), self.vmax)
-        glUniform1f(glGetUniformLocation(self.program, "alpha"), self.alpha)
+        set_uniform(self.program, int(self.color_mode_int), 'color_mode')
+        set_uniform(self.program, float(self.vmax), 'vmax')
+        set_uniform(self.program, float(self.alpha), 'alpha')
+        set_uniform(self.program, float(self.size), 'point_size_world')
+        set_uniform(self.program, int(self.point_type), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
 
@@ -255,7 +289,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         # set constant parameter for cloud shader
         self.set_alpha(self.alpha)
         self.set_color_mode(self.color_mode)
-        self.setVmax(self.vmax)
+        self.set_vmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
     def paint(self):
@@ -263,6 +297,9 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.update_render_buffer()
         self.update_setting()
         glEnable(GL_BLEND)
+        glEnable(GL_PROGRAM_POINT_SIZE)
+        # glDisable(GL_POINT_SMOOTH)
+
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
@@ -274,12 +311,14 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         view_matrix = np.array(
             self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
-        set_uniform_mat4fv(self.program, view_matrix, 'view_matrix')
+        set_uniform(self.program, view_matrix, 'view_matrix')
         project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T
-        set_uniform_mat4fv(self.program, project_matrix, 'projection_matrix')
+        set_uniform(self.program, project_matrix, 'projection_matrix')
+        width = self._GLGraphicsItem__view.deviceWidth()
+        focal = project_matrix[0, 0] * width / 2
+        set_uniform(self.program, float(focal), 'focal')
 
-        glPointSize(self.size)
         glDrawArrays(GL_POINTS, 0, self.valid_buff_top)
 
         # unbind VBO

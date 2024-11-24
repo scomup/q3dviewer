@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 import numpy as np
 from pypcd4 import PointCloud
 import q3dviewer as q3d

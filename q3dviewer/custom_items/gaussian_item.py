@@ -34,7 +34,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             self.cuda_pw = None
             self.sort = self.torch_sort
         except ImportError:
-                self.sort = self.opengl_sort
+            self.sort = self.opengl_sort
 
     def add_setting(self, layout):
         label1 = QLabel("set render mode:")
@@ -48,13 +48,16 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def on_combobox_selection(self, index):
         glUseProgram(self.program)
-        set_uniform_1i(self.program, index, "render_mod")
+        set_uniform(self.program, index, 'render_mod')
         glUseProgram(0)
 
     def initializeGL(self):
-        fragment_shader = open(self.path + '/../shaders/gau_frag.glsl', 'r').read()
-        vertex_shader = open(self.path + '/../shaders/gau_vert.glsl', 'r').read()
-        sort_shader = open(self.path + '/../shaders/sort_by_key.glsl', 'r').read()
+        fragment_shader = open(
+            self.path + '/../shaders/gau_frag.glsl', 'r').read()
+        vertex_shader = open(
+            self.path + '/../shaders/gau_vert.glsl', 'r').read()
+        sort_shader = open(
+            self.path + '/../shaders/sort_by_key.glsl', 'r').read()
         prep_shader = open(self.path + '/../shaders/gau_prep.glsl', 'r').read()
 
         self.sort_program = shaders.compileProgram(
@@ -77,7 +80,8 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         vbo = glGenBuffers(1)
         glBindVertexArray(self.vao)
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
-        glBufferData(GL_ARRAY_BUFFER, square_vert.nbytes, square_vert, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, square_vert.nbytes,
+                     square_vert, GL_STATIC_DRAW)
         pos = glGetAttribLocation(self.program, 'vert')
         glVertexAttribPointer(pos, 2, GL_FLOAT, False, 0, None)
         glEnableVertexAttribArray(pos)
@@ -102,17 +106,19 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         height = self._GLGraphicsItem__view.deviceHeight()
 
         # set constant parameter for gaussian shader
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix().data(), np.float32).reshape([4, 4]).T
+        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
+        ).data(), np.float32).reshape([4, 4]).T
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
         glUseProgram(self.prep_program)
-        set_uniform_mat4fv(self.prep_program, project_matrix, 'projection_matrix')
-        set_uniform_2f(self.prep_program, [focal_x, focal_y], 'focal')
+        set_uniform(self.prep_program,
+                    project_matrix, 'projection_matrix')
+        set_uniform(self.prep_program, np.array([focal_x, focal_y]), 'focal')
         glUseProgram(0)
 
         glUseProgram(self.program)
-        set_uniform_2f(self.program, [width, height], 'win_size')
-        set_uniform_1i(self.program, 0, "render_mod")
+        set_uniform(self.program, np.array([width, height]), 'win_size')
+        set_uniform(self.program, 0, 'render_mod')
         glUseProgram(0)
 
         # opengl settings
@@ -127,20 +133,23 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
             # set input gaussian data
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_gs)
-            glBufferData(GL_SHADER_STORAGE_BUFFER, self.gs_data.nbytes, self.gs_data.reshape(-1), GL_STATIC_DRAW)
+            glBufferData(GL_SHADER_STORAGE_BUFFER, self.gs_data.nbytes,
+                         self.gs_data.reshape(-1), GL_STATIC_DRAW)
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self.ssbo_gs)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
             # set depth for sorting
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_dp)
-            glBufferData(GL_SHADER_STORAGE_BUFFER, self.num_sort * 4, None, GL_STATIC_DRAW)
+            glBufferData(GL_SHADER_STORAGE_BUFFER,
+                         self.num_sort * 4, None, GL_STATIC_DRAW)
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.ssbo_dp)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
             # set index for sorting (the index need be initialized)
             gi = np.arange(self.num_sort, dtype=np.uint32)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_gi)
-            glBufferData(GL_SHADER_STORAGE_BUFFER, self.num_sort * 4, gi, GL_STATIC_DRAW)
+            glBufferData(GL_SHADER_STORAGE_BUFFER,
+                         self.num_sort * 4, gi, GL_STATIC_DRAW)
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.ssbo_gi)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
@@ -153,14 +162,16 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
             glUseProgram(self.prep_program)
-            set_uniform_1i(self.prep_program, self.sh_dim, "sh_dim")
-            set_uniform_1i(self.prep_program, self.gs_data.shape[0], "gs_num")
+            set_uniform(self.prep_program, self.sh_dim, 'sh_dim')
+            set_uniform(self.prep_program,
+                        self.gs_data.shape[0], 'gs_num')
             glUseProgram(0)
             self.need_update_gs = False
 
     def paint(self):
         # get current view matrix
-        self.view_matrix = np.array(self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
+        self.view_matrix = np.array(
+            self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.update_gs()
@@ -178,7 +189,8 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindVertexArray(self.vao)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
         # draw instances
-        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, self.gs_data.shape[0])
+        glDrawElementsInstanced(
+            GL_TRIANGLES, 6, GL_UNSIGNED_INT, None, self.gs_data.shape[0])
         # upbind vao and ebo
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
@@ -201,10 +213,12 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
     def opengl_sort(self):
         glUseProgram(self.sort_program)
         # can we move this loop to gpu?
-        for level in 2**np.arange(1, int(np.ceil(np.log2(self.num_sort))+1)):  # level = level*2
-            for stage in level/2**np.arange(1, np.log2(level)+1):   # stage =stage / 2
-                set_uniform_1i(self.sort_program, int(level), "level")
-                set_uniform_1i(self.sort_program, int(stage), "stage")
+        # level = level*2
+        for level in 2**np.arange(1, int(np.ceil(np.log2(self.num_sort))+1)):
+            # stage =stage / 2
+            for stage in level/2**np.arange(1, np.log2(level)+1):
+                set_uniform(self.sort_program, int(level), 'level')
+                set_uniform(self.sort_program, int(stage), 'stage')
                 glDispatchCompute(div_round_up(self.num_sort//2, 256), 1, 1)
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         # glFinish()
@@ -218,14 +232,15 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         depth = Rz @ self.cuda_pw.T
         index = torch.argsort(depth).type(torch.int32).cpu().numpy()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_gi)
-        glBufferData(GL_SHADER_STORAGE_BUFFER, index.nbytes, index, GL_STATIC_DRAW)
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                     index.nbytes, index, GL_STATIC_DRAW)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self.ssbo_gi)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
         return index
 
     def preprocess_gs(self):
         glUseProgram(self.prep_program)
-        set_uniform_mat4fv(self.prep_program, self.view_matrix, 'view_matrix')
+        set_uniform(self.prep_program, self.view_matrix, 'view_matrix')
         glDispatchCompute(div_round_up(self.gs_data.shape[0], 256), 1, 1)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         glUseProgram(0)

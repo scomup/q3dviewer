@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 from q3dviewer import *
 import rospy
@@ -34,14 +39,14 @@ class ViewerWithPanel(Viewer):
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = euler_to_matrix(np.array([0, 0.3491, 0]))
+        self.Rbl = euler_to_matrix(np.array([0, 0, 0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.tcl = np.array([-0.05, -0.05, -0.01])
+        self.tcl = np.array([0, 0, 0])
         self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
-        self.cloud_num = 10
+        self.cloud_num = 1
         self.en_rgb = False
         super().__init__(**kwargs)
 
@@ -125,9 +130,11 @@ class ViewerWithPanel(Viewer):
         self.line_trans.setReadOnly(True)
         setting_layout.addWidget(self.line_trans)
 
-        self.line_trans.setText(f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
+        self.line_trans.setText(
+            f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
         quat = matrix_to_quaternion(self.Rcl)
-        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        self.line_quat.setText(
+            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -171,7 +178,8 @@ class ViewerWithPanel(Viewer):
         self.Rbl = euler_to_matrix(np.array([roll, pitch, yaw]))
         self.Rcl = self.Rcb @ self.Rbl
         quat = matrix_to_quaternion(self.Rcl)
-        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        self.line_quat.setText(
+            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
     def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
@@ -249,7 +257,7 @@ def image_cb(data):
                       0., 900.0041538, 272.22645052,
                       0.,   0.,   1.]).reshape([3, 3])
         u = (K @ pc.T).T
-        u_mask = (u[:, 2] != 0) & (pc[:,2] > 0.2)
+        u_mask = (u[:, 2] != 0) & (pc[:, 2] > 0.2)
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
 
         radius = viewer.psize  # Radius of the points to be drawn
@@ -300,7 +308,8 @@ def main():
     # Use topic names from arguments
     rospy.Subscriber(args.lidar, PointCloud2, scan_cb, queue_size=1)
     rospy.Subscriber(args.camera, Image, image_cb, queue_size=1)
-    rospy.Subscriber(args.camera_info, CameraInfo, camera_info_cb, queue_size=1)
+    rospy.Subscriber(args.camera_info, CameraInfo,
+                     camera_info_cb, queue_size=1)
 
     viewer.show()
     app.exec_()

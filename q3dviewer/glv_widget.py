@@ -3,8 +3,6 @@ Copyright 2024  Liu Yang
 Distributed under MIT license. See LICENSE for more information.
 """
 
-#!/usr/bin/env python3
-
 import numpy as np
 import pyqtgraph.opengl as gl
 from pyqtgraph.Qt import QtCore
@@ -22,7 +20,7 @@ class SettingWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.combo_items = QComboBox()
-        self.combo_items.currentIndexChanged.connect(self.onComboboxSelection)
+        self.combo_items.currentIndexChanged.connect(self.on_combo_selection)
         main_layout = QVBoxLayout()
         self.stretch = QSpacerItem(
             10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -39,16 +37,16 @@ class SettingWindow(QWidget):
         self.items.update({name: item})
         self.combo_items.addItem("%s(%s)" % (name, item.__class__.__name__))
 
-    def clearSetting(self):
+    def clear_setting(self):
         while self.layout.count():
             child = self.layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-    def onComboboxSelection(self, index):
+    def on_combo_selection(self, index):
         self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
-        self.clearSetting()
+        self.clear_setting()
 
         key = list(self.items.keys())
         try:

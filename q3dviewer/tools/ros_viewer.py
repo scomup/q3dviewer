@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
 
 from q3dviewer.utils import make_transform
 import q3dviewer as q3d
@@ -41,14 +45,14 @@ def scan_cb(data):
         color = pc['rgb'].view(np.uint32)
     else:
         color = pc['intensity']
-    
+
     if color_mode is None:
         if 'rgb' in pc.dtype.names:
             color_mode = 'RGB'
         else:
             color_mode = 'I'
         viewer['map'].set_color_mode(color_mode)
-    
+
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
         dtype=data_type)

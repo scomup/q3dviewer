@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+Copyright 2024  Liu Yang
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 from sensor_msgs.msg import PointCloud2
 from q3dviewer import *
 import rospy
@@ -107,9 +112,11 @@ class ViewerWithPanel(Viewer):
         self.icp_button.clicked.connect(self.perform_icp)
         setting_layout.addWidget(self.icp_button)
 
-        self.line_trans.setText(f"[{self.t01[0]:.6f}, {self.t01[1]:.6f}, {self.t01[2]:.6f}]")
+        self.line_trans.setText(
+            f"[{self.t01[0]:.6f}, {self.t01[1]:.6f}, {self.t01[2]:.6f}]")
         quat = matrix_to_quaternion(self.R01)
-        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        self.line_quat.setText(
+            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
         self.box_x.valueChanged.connect(self.update_xyz)
@@ -152,7 +159,8 @@ class ViewerWithPanel(Viewer):
         yaw = self.box_yaw.value()
         self.R01 = euler_to_matrix(np.array([roll, pitch, yaw]))
         quat = matrix_to_quaternion(self.R01)
-        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        self.line_quat.setText(
+            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
     def perform_icp(self):
         global cloud0_accum, cloud1_accum
@@ -198,14 +206,19 @@ class ViewerWithPanel(Viewer):
             self.box_x.setValue(t01[0])
             self.box_y.setValue(t01[1])
             self.box_z.setValue(t01[2])
-            self.line_trans.setText(f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
-            self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+            self.line_trans.setText(
+                f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
+            self.line_quat.setText(
+                f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
             self.t01 = t01
             self.R01 = R01
             print("Matching results")
             print(f"translation: [{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
-            print(f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
-            print(f"Quaternion: [{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+            print(
+                f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
+            print(
+                f"Quaternion: [{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+
 
 def msg_cloud(data):
     pc = PointCloud.from_msg(data).pc_data

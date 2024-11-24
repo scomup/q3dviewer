@@ -26,7 +26,7 @@ class CloudIOItem(CloudItem):
         layout.addWidget(label4)
         box4 = QLineEdit()
         box4.setText(self.save_path)
-        box4.textChanged.connect(self.setPath)
+        box4.textChanged.connect(self.set_path)
         layout.addWidget(box4)
         save_button = QPushButton("Save Cloud")
         save_button.clicked.connect(self.save)
@@ -82,5 +82,5 @@ class CloudIOItem(CloudItem):
                 dtype=self.data_type)
             self.set_data(data=cloud)
 
-    def setPath(self, path):
+    def set_path(self, path):
         self.save_path = path
