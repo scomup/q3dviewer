@@ -9,10 +9,9 @@ import pyqtgraph.opengl as gl
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
-import numpy as np
 import threading
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QSpinBox, QComboBox
+    QComboBox
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
 
@@ -30,7 +29,7 @@ uniform float vmin = 0;
 uniform float vmax = 255;
 uniform float focal = 1000;
 uniform int point_type = 0; // 0 pixel, 1 flat square
-uniform float point_size_world = 0.01;  // World size for each point (meter)
+uniform float point_size = 0.01;  // World size for each point (meter)
 out vec4 color;
 
 vec3 getRainbowColor(uint value_raw) {
@@ -64,9 +63,9 @@ void main()
 
     // Calculate point size in pixels based on distance
     if (point_type == 0)
-        gl_PointSize = int(point_size_world);
+        gl_PointSize = int(point_size);
     else
-        gl_PointSize = point_size_world / gl_Position.w * focal;
+        gl_PointSize = point_size / gl_Position.w * focal;
     vec3 c = vec3(1.0, 1.0, 1.0);
     if (color_mode == -1)
     {
@@ -127,17 +126,18 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.need_update_setting = True
 
     def add_setting(self, layout):
-        label0 = QLabel("Set Point Type:")
+        label0 = QLabel("Set point display type:")
         layout.addWidget(label0)
         combo0 = QComboBox()
         combo0.addItem("pixel")
         combo0.addItem("flat square")
         combo0.currentIndexChanged.connect(self.on_combo_selection)
         layout.addWidget(combo0)
-        self.label_size = QLabel("Set Size: (pixel)")
+        self.label_size = QLabel("Set size: (pixel)")
         layout.addWidget(self.label_size)
         self.box_size = QDoubleSpinBox()
-        self.box_size.setSingleStep(0.01)
+        self.box_size.setSingleStep(1)
+        self.box_size.setDecimals(0)
         layout.addWidget(self.box_size)
         self.box_size.setValue(self.size)
         self.box_size.valueChanged.connect(self.set_size)
@@ -166,15 +166,19 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def on_combo_selection(self, index):
         if (index == 0):
-            self.label_size.setText("Set Size: (pixel)")
+            self.label_size.setText("Set size: (pixel)")
+            self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
             self.point_type = 0
             self.box_size.setValue(1)
+            self.size = 1
         else:
-            self.label_size.setText("Set Size: (meter)")
+            self.label_size.setText("Set size: (meter)")
+            self.box_size.setDecimals(2)
             self.box_size.setSingleStep(0.01)
             self.point_type = 1
             self.box_size.setValue(0.01)
+            self.size = 0.01
         self.need_update_setting = True
 
     def set_alpha(self, alpha):
@@ -187,23 +191,23 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def set_color_mode(self, color_mode):
         """
-        intensity mode: -1;
-        rgb mode: -2;
-        matplotlib color: i.e. '#FF4500';
+        Set the color mode.
+        Supports intensity ('I'), RGB, IRGB, or hex color strings (e.g., '#FF4500').
         """
-        if (type(color_mode) == str):
+        if isinstance(color_mode, str):
             if color_mode.startswith("#"):
                 try:
                     self.color_mode_int = int(color_mode[1:], 16)
                 except ValueError:
+                    print(f"Invalid color mode: {color_mode}")
                     return
-            elif color_mode == 'RGB':
-                self.color_mode_int = -2
-            elif color_mode == 'IRGB':
-                self.color_mode_int = -3
-            elif color_mode == 'I':
-                self.color_mode_int = -1
+            elif color_mode in {'RGB', 'IRGB', 'I'}:
+                self.color_mode_int = {'RGB': -2, 'IRGB': -3, 'I': -1}[color_mode]
+            else:
+                print(f"Unsupported color mode: {color_mode}")
+                return
         else:
+            print(f"Invalid input type for color mode: {type(color_mode)}")
             return
         self.color_mode = color_mode
         self.need_update_setting = True
@@ -217,26 +221,26 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.set_data(data)
 
     def set_data(self, data, append=False):
-        if data.dtype is np.dtype('float32') or data.dtype is np.dtype('float64'):
+        if not isinstance(data, np.ndarray):
+            raise ValueError("Input data must be a numpy array.")
+
+        if data.dtype in {np.float32, np.float64}:
             xyz = data[:, :3]
-            if (data.shape[1] == 4):
-                color = data[:, 3].view(np.uint32)
+            color = data[:, 3].view(np.uint32) if data.shape[1] == 4 else \
+                np.zeros( data.shape[0], dtype=np.uint32)
+            data = np.rec.fromarrays([xyz, color], dtype=self.data_type)
+
+        with self.mutex:
+            if append:
+                if self.wait_add_data is None:
+                    self.wait_add_data = data
+                else:
+                    self.wait_add_data = np.concatenate(
+                        [self.wait_add_data, data])
+                self.add_buff_loc = self.valid_buff_top
             else:
-                color = np.zeros(data.shape[0], dtype=np.uint32)
-            data = np.rec.fromarrays(
-                [xyz, color],
-                dtype=self.data_type)
-        self.mutex.acquire()
-        if (append is False):
-            self.wait_add_data = data
-            self.add_buff_loc = 0
-        else:
-            if (self.wait_add_data is None):
                 self.wait_add_data = data
-            else:
-                self.wait_add_data = np.concatenate([self.wait_add_data, data])
-            self.add_buff_loc = self.valid_buff_top
-        self.mutex.release()
+                self.add_buff_loc = 0
 
     def update_setting(self):
         if (self.need_update_setting is False):
@@ -245,7 +249,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         set_uniform(self.program, int(self.color_mode_int), 'color_mode')
         set_uniform(self.program, float(self.vmax), 'vmax')
         set_uniform(self.program, float(self.alpha), 'alpha')
-        set_uniform(self.program, float(self.size), 'point_size_world')
+        set_uniform(self.program, float(self.size), 'point_size')
         set_uniform(self.program, int(self.point_type), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
