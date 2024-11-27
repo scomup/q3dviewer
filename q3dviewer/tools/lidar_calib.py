@@ -42,7 +42,7 @@ class ViewerWithPanel(Viewer):
         self.radius = 0.2
         super().__init__(**kwargs)
 
-    def init_ui(self):
+    def initUI(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
         main_layout = QHBoxLayout()
@@ -88,7 +88,7 @@ class ViewerWithPanel(Viewer):
         self.box_cloud_num = QSpinBox()
         self.box_cloud_num.setValue(self.cloud_num)
         self.box_cloud_num.setRange(1, 100)
-        self.box_cloud_num.valueChanged.connect(self.update_cloud_num)
+        self.box_cloud_num.valueChanged.connect(self.updateCloudNum)
         setting_layout.addWidget(self.box_cloud_num)
 
         label_res = QLabel("The lidar0-lidar1 trans and quat:")
@@ -109,7 +109,7 @@ class ViewerWithPanel(Viewer):
         setting_layout.addWidget(self.box_radius)
 
         self.icp_button = QPushButton("Auto Scan Matching")
-        self.icp_button.clicked.connect(self.perform_icp)
+        self.icp_button.clicked.connect(self.performICP)
         setting_layout.addWidget(self.icp_button)
 
         self.line_trans.setText(
@@ -119,12 +119,12 @@ class ViewerWithPanel(Viewer):
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
-        self.box_x.valueChanged.connect(self.update_xyz)
-        self.box_y.valueChanged.connect(self.update_xyz)
-        self.box_z.valueChanged.connect(self.update_xyz)
-        self.box_roll.valueChanged.connect(self.update_rpy)
-        self.box_pitch.valueChanged.connect(self.update_rpy)
-        self.box_yaw.valueChanged.connect(self.update_rpy)
+        self.box_x.valueChanged.connect(self.updateXYZ)
+        self.box_y.valueChanged.connect(self.updateXYZ)
+        self.box_z.valueChanged.connect(self.updateXYZ)
+        self.box_roll.valueChanged.connect(self.updateRPY)
+        self.box_pitch.valueChanged.connect(self.updateRPY)
+        self.box_yaw.valueChanged.connect(self.updateRPY)
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
@@ -137,23 +137,23 @@ class ViewerWithPanel(Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.glv_widget.setCameraPosition(distance=5)
-        self.glv_widget.set_bk_color('#ffffff')
+        self.glv_widget.setBKcolor('#ffffff')
         timer.start()
 
-    def update_radius(self):
+    def updateRadius(self):
         self.radius = self.box_radius.value()
 
-    def update_cloud_num(self):
+    def updateCloudNum(self):
         self.cloud_num = self.box_cloud_num.value()
 
-    def update_xyz(self):
+    def updateXYZ(self):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
         self.t01 = np.array([x, y, z])
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {z:.6f}]")
 
-    def update_rpy(self):
+    def updateRPY(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
@@ -162,7 +162,7 @@ class ViewerWithPanel(Viewer):
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
-    def perform_icp(self):
+    def performICP(self):
         global cloud0_accum, cloud1_accum
 
         if cloud0_accum is not None and cloud1_accum is not None:
@@ -237,7 +237,7 @@ def scan0_cb(data):
         clouds0.pop(0)
     clouds0.append(cloud)
     cloud0_accum = np.concatenate(clouds0)
-    viewer['scan0'].set_data(data=cloud0_accum)
+    viewer['scan0'].setData(data=cloud0_accum)
 
 
 def scan1_cb(data):
@@ -251,7 +251,7 @@ def scan1_cb(data):
     cloud0_accum_new['xyz'] = (
         viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
 
-    viewer['scan1'].set_data(data=cloud0_accum_new)
+    viewer['scan1'].setData(data=cloud0_accum_new)
 
 
 def main():
@@ -270,7 +270,7 @@ def main():
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan0_item = CloudItem(size=2, alpha=1, color_mode='#FF0000')
     scan1_item = CloudItem(size=2, alpha=1, color_mode='#00FF00')
-    viewer.add_items(
+    viewer.addItems(
         {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 
     rospy.init_node('lidar_calib', anonymous=True)

@@ -12,7 +12,7 @@ class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
     """Draws text over opengl 3D."""
 
     def __init__(self, **kwds):
-        """All keyword arguments are passed to set_data()"""
+        """All keyword arguments are passed to setData()"""
         gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
         glopts = kwds.pop('glOptions', 'additive')
         self.setGLOptions(glopts)
@@ -20,13 +20,14 @@ class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.color = QtCore.Qt.GlobalColor.white
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
-        self.set_data(**kwds)
+        self.setData(**kwds)
 
-    def set_data(self, **kwds):
+    def setData(self, **kwds):
         args = ['pos', 'color', 'text', 'size', 'font']
         for k in kwds.keys():
             if k not in args:
-                raise ValueError('Invalid keyword argument: %s (allowed arguments are %s)' % (k, str(args)))
+                raise ValueError('Invalid keyword argument: %s\
+                    (allowed arguments are %s)' % (k, str(args)))
         for arg in args:
             if arg in kwds:
                 value = kwds[arg]
@@ -51,7 +52,7 @@ class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
         painter = QtGui.QPainter(self.view())
         painter.setPen(self.color)
         painter.setFont(self.font)
-        painter.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing | QtGui.QPainter.RenderHint.TextAntialiasing)
+        painter.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing |
+                               QtGui.QPainter.RenderHint.TextAntialiasing)
         painter.drawText(text_pos, self.text)
         painter.end()
-

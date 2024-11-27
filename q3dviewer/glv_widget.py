@@ -20,7 +20,7 @@ class SettingWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.combo_items = QComboBox()
-        self.combo_items.currentIndexChanged.connect(self.on_combo_selection)
+        self.combo_items.currentIndexChanged.connect(self.onComboSelection)
         main_layout = QVBoxLayout()
         self.stretch = QSpacerItem(
             10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -33,25 +33,25 @@ class SettingWindow(QWidget):
         self.setGeometry(200, 200, 300, 200)
         self.items = {}
 
-    def add_setting(self, name, item):
+    def addSetting(self, name, item):
         self.items.update({name: item})
         self.combo_items.addItem("%s(%s)" % (name, item.__class__.__name__))
 
-    def clear_setting(self):
+    def clearSetting(self):
         while self.layout.count():
             child = self.layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-    def on_combo_selection(self, index):
+    def onComboSelection(self, index):
         self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
-        self.clear_setting()
+        self.clearSetting()
 
         key = list(self.items.keys())
         try:
             item = self.items[key[index]]
-            item.add_setting(self.layout)
+            item.addSetting(self.layout)
             self.layout.addItem(self.stretch)
         except AttributeError:
             print("%s: No setting." % (item.__class__.__name__))
@@ -75,13 +75,13 @@ class GLVWidget(gl.GLViewWidget):
             self.opts['center'] = QVector3D(pos[0], pos[1], pos[2])
         super().update()
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label1 = QLabel("Set background color:")
         label1.setToolTip("using '#xxxxxx', i.e. #FF4500")
         box1 = QLineEdit()
         box1.setToolTip("'using '#xxxxxx', i.e. #FF4500")
         box1.setText(str(self.color))
-        box1.textChanged.connect(self.set_bk_color)
+        box1.textChanged.connect(self.setBKcolor)
         layout.addWidget(label1)
         layout.addWidget(box1)
         label2 = QLabel("Set Focus:")
@@ -92,7 +92,7 @@ class GLVWidget(gl.GLViewWidget):
         layout.addWidget(label2)
         layout.addWidget(combo2)
 
-    def set_bk_color(self, color):
+    def setBKcolor(self, color):
         if (type(color) != str):
             return
         if color.startswith("#"):
@@ -102,11 +102,11 @@ class GLVWidget(gl.GLViewWidget):
             except ValueError:
                 return
 
-    def add_item(self, name, item):
+    def addItem(self, name, item):
         self.named_items.update({name: item})
         if (item.__class__.__name__ == 'GLAxisItem'):
             self.followable_item_name.append(name)
-        self.setting_window.add_setting(name, item)
+        self.setting_window.addSetting(name, item)
         super().addItem(item)
 
     def mouseReleaseEvent(self, ev):
@@ -141,7 +141,7 @@ class GLVWidget(gl.GLViewWidget):
 
         if ev.key() == QtCore.Qt.Key_M:  # setting meun
             print("Open setting windows")
-            self.open_setting_window()
+            self.openSettingWindow()
         elif ev.key() == QtCore.Qt.Key_R:
             print("Clear viewer")
             for item in self.named_items.values():
@@ -178,7 +178,7 @@ class GLVWidget(gl.GLViewWidget):
         else:
             super().keyPressEvent(ev)
 
-    def open_setting_window(self):
+    def openSettingWindow(self):
         if self.setting_window.isVisible():
             self.setting_window.raise_()
 

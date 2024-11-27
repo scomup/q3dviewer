@@ -19,10 +19,10 @@ class Viewer(QMainWindow):
         signal.signal(signal.SIGINT, handler)
         super(Viewer, self).__init__()
         self.setGeometry(0, 0, win_size[0], win_size[1])
-        self.init_ui()
+        self.initUI()
         self.setWindowTitle(name)
 
-    def init_ui(self):
+    def initUI(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
         layout = QVBoxLayout()
@@ -35,9 +35,9 @@ class Viewer(QMainWindow):
         self.glv_widget.setCameraPosition(distance=40)
         timer.start()
 
-    def add_items(self, named_items: dict):
+    def addItems(self, named_items: dict):
         for name, item in named_items.items():
-            self.glv_widget.add_item(name, item)
+            self.glv_widget.addItem(name, item)
 
     def __getitem__(self, name: str):
         if name in self.glv_widget.named_items:
@@ -54,6 +54,6 @@ class Viewer(QMainWindow):
         QApplication.quit()
 
     def show(self):
-        self.glv_widget.setting_window.add_setting(
+        self.glv_widget.setting_window.addSetting(
             "main win", self.glv_widget)
         super().show()

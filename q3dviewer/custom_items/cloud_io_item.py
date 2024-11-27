@@ -19,14 +19,14 @@ class CloudIOItem(CloudItem):
         super().__init__(**kwargs)
         self.save_path = str(Path(os.getcwd(), "data.pcd"))
 
-    def add_setting(self, layout):
-        super().add_setting(layout)
+    def addSetting(self, layout):
+        super().addSetting(layout)
 
         label4 = QLabel("Save Path:")
         layout.addWidget(label4)
         box4 = QLineEdit()
         box4.setText(self.save_path)
-        box4.textChanged.connect(self.set_path)
+        box4.textChanged.connect(self.setPath)
         layout.addWidget(box4)
         save_button = QPushButton("Save Cloud")
         save_button.clicked.connect(self.save)
@@ -53,7 +53,7 @@ class CloudIOItem(CloudItem):
                 save_msg.setWindowTitle("save")
                 save_msg.setStandardButtons(QMessageBox.Ok)
                 save_msg.setText("save cloud to  %s" % self.save_path)
-            except:
+            except Exception as e:
                 save_msg.setText("Cannot save to %s" % self.save_path)
             save_msg.exec()
 
@@ -63,24 +63,24 @@ class CloudIOItem(CloudItem):
             print("Not supported cloud file type!")
 
     def load(self, file):
-            print("Try to load %s ..." % file)
-            pc = PointCloud.from_path(file).pc_data
+        print("Try to load %s ..." % file)
+        pc = PointCloud.from_path(file).pc_data
 
+        try:
+            color = pc["rgb"].astype(np.uint32)
+            self.setColorMode('RGB')
+        except ValueError:
             try:
-                color = pc["rgb"].astype(np.uint32)
-                self.set_color_mode('RGB')
+                color = pc["intensity"].astype(np.uint32)
+                self.setColorMode('I')
             except ValueError:
-                try:
-                    color = pc["intensity"].astype(np.uint32)
-                    self.set_color_mode('I')
-                except ValueError:
-                    color = pc['z'].astype(np.uint32)
-                    self.set_color_mode('#FFFFFF')
+                color = pc['z'].astype(np.uint32)
+                self.setColorMode('#FFFFFF')
 
-            cloud = np.rec.fromarrays(
-                [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
-                dtype=self.data_type)
-            self.set_data(data=cloud)
+        cloud = np.rec.fromarrays(
+            [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
+            dtype=self.data_type)
+        self.setData(data=cloud)
 
-    def set_path(self, path):
+    def setPath(self, path):
         self.save_path = path

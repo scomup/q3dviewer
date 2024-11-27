@@ -34,7 +34,8 @@ def matrix_to_quaternion_wxyz(matrices):
     z[t_positive] = (m10[t_positive] - m01[t_positive]) * s[t_positive]
 
     c1 = np.logical_and(m00 > m11, m00 > m22)
-    cond1 = np.logical_and(np.logical_not(t_positive), np.logical_and(m00 > m11, m00 > m22))
+    cond1 = np.logical_and(np.logical_not(t_positive),
+                           np.logical_and(m00 > m11, m00 > m22))
 
     s[cond1] = 2.0 * np.sqrt(1.0 + m00[cond1] - m11[cond1] - m22[cond1])
     w[cond1] = (m21[cond1] - m12[cond1]) / s[cond1]

@@ -25,14 +25,14 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.T = np.eye(4)
         self.settings = []
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label1 = QLabel("Set size:")
         layout.addWidget(label1)
         box1 = QDoubleSpinBox()
         box1.setSingleStep(0.1)
         layout.addWidget(box1)
         box1.setValue(self.size)
-        box1.valueChanged.connect(self.set_size)
+        box1.valueChanged.connect(self.setSize)
         box1.setRange(0.0, 100)
 
         label2 = QLabel("Set Width:")
@@ -41,16 +41,16 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         layout.addWidget(box2)
         box2.setSingleStep(0.1)
         box2.setValue(self.width)
-        box2.valueChanged.connect(self.set_width)
+        box2.valueChanged.connect(self.setWidth)
         box2.setRange(0, 1000)
 
-    def set_size(self, size):
+    def setSize(self, size):
         self.size = size
         self.axis_x = np.array([self.size, 0, 0, 1])
         self.axis_y = np.array([0, self.size, 0, 1])
         self.axis_z = np.array([0, 0, self.size, 1])
 
-    def set_width(self, width):
+    def setWidth(self, width):
         self.width = width
 
     def setTransform(self, T):

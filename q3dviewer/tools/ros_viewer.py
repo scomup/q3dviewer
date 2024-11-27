@@ -51,7 +51,7 @@ def scan_cb(data):
             color_mode = 'RGB'
         else:
             color_mode = 'I'
-        viewer['map'].set_color_mode(color_mode)
+        viewer['map'].setColorMode(color_mode)
 
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
@@ -59,8 +59,8 @@ def scan_cb(data):
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    viewer['map'].set_data(data=cloud, append=True)
-    viewer['scan'].set_data(data=cloud)
+    viewer['map'].setData(data=cloud, append=True)
+    viewer['scan'].setData(data=cloud)
 
 
 def image_cb(data):
@@ -68,7 +68,7 @@ def image_cb(data):
         data.height, data.width, -1)
     if (data.encoding == 'bgr8'):
         image = image[:, :, ::-1]  # convert bgr to rgb
-    viewer['img'].set_data(data=image)
+    viewer['img'].setData(data=image)
 
 
 def main():
@@ -86,8 +86,9 @@ def main():
     app = q3d.QApplication(['ROS Viewer'])
     viewer = q3d.Viewer(name='ROS Viewer')
 
-    viewer.add_items({'map': map_item, 'scan': scan_item,
-                    'odom': odom_item, 'grid': grid_item, 'img': img_item})
+    viewer.addItems({'map': map_item, 'scan': scan_item,
+                     'odom': odom_item, 'grid': grid_item,
+                     'img': img_item})
 
     point_num_per_scan = rospy.get_param("scan_num", 100000)
     print("point_num_per_scan: %d" % point_num_per_scan)

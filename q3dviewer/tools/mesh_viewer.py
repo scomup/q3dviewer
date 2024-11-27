@@ -52,7 +52,7 @@ def main():
                            edgeColor=(1, 1, 1, 1),
                            glOptions='translucent')
 
-    viewer.add_items({'grid': grid_item, 'mesh': mesh_item})
+    viewer.addItems({'grid': grid_item, 'mesh': mesh_item})
 
     viewer.show()
     app.exec_()

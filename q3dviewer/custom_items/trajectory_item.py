@@ -20,10 +20,10 @@ class TrajectoryItem(gl.GLGridItem):
         self.valid_buff_top = 0
         self.color = color
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         pass
 
-    def set_data(self, data, append=True):
+    def setData(self, data, append=True):
         self.mutex.acquire()
         data = data.astype(np.float32).reshape(-1, 3)
         if (append is False):
@@ -37,7 +37,7 @@ class TrajectoryItem(gl.GLGridItem):
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
-    def update_render_buffer(self):
+    def updateRenderBuffer(self):
         if (self.wait_add_data is None):
             return
         self.mutex.acquire()
@@ -57,7 +57,8 @@ class TrajectoryItem(gl.GLGridItem):
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * 12,
-                            self.wait_add_data.shape[0] * 12, self.wait_add_data)
+                            self.wait_add_data.shape[0] * 12,
+                            self.wait_add_data)
         self.valid_buff_top = new_buff_top
         self.wait_add_data = None
         self.mutex.release()
@@ -67,7 +68,7 @@ class TrajectoryItem(gl.GLGridItem):
 
     def paint(self):
         self.setupGLState()
-        self.update_render_buffer()
+        self.updateRenderBuffer()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)

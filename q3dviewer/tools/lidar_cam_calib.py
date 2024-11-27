@@ -50,7 +50,7 @@ class ViewerWithPanel(Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def init_ui(self):
+    def initUI(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
         main_layout = QHBoxLayout()
@@ -64,7 +64,7 @@ class ViewerWithPanel(Viewer):
         self.checkbox_rgb.setChecked(False)
         setting_layout.addWidget(self.checkbox_rgb)
         self.checkbox_rgb.stateChanged.connect(
-            self.checkbox_changed)
+            self.checkboxChanged)
 
         # Add XYZ spin boxes
         label_xyz = QLabel("Set XYZ:")
@@ -110,7 +110,7 @@ class ViewerWithPanel(Viewer):
         self.box_psize = QSpinBox()
         self.box_psize.setValue(self.psize)
         self.box_psize.setRange(0, 5)
-        self.box_psize.valueChanged.connect(self.update_psize)
+        self.box_psize.valueChanged.connect(self.updatePsize)
         setting_layout.addWidget(self.box_psize)
 
         label_cloud_num = QLabel("Set cloud frame number:")
@@ -118,7 +118,7 @@ class ViewerWithPanel(Viewer):
         self.box_cloud_num = QSpinBox()
         self.box_cloud_num.setValue(self.cloud_num)
         self.box_cloud_num.setRange(1, 100)
-        self.box_cloud_num.valueChanged.connect(self.update_cloud_num)
+        self.box_cloud_num.valueChanged.connect(self.updateCloudNum)
         setting_layout.addWidget(self.box_cloud_num)
 
         label_res = QLabel("The cam-lidar quat and translation:")
@@ -137,12 +137,12 @@ class ViewerWithPanel(Viewer):
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
-        self.box_x.valueChanged.connect(self.update_xyz)
-        self.box_y.valueChanged.connect(self.update_xyz)
-        self.box_z.valueChanged.connect(self.update_xyz)
-        self.box_roll.valueChanged.connect(self.update_rpy)
-        self.box_pitch.valueChanged.connect(self.update_rpy)
-        self.box_yaw.valueChanged.connect(self.update_rpy)
+        self.box_x.valueChanged.connect(self.updateXYZ)
+        self.box_y.valueChanged.connect(self.updateXYZ)
+        self.box_z.valueChanged.connect(self.updateXYZ)
+        self.box_roll.valueChanged.connect(self.updateRPY)
+        self.box_pitch.valueChanged.connect(self.updateRPY)
+        self.box_yaw.valueChanged.connect(self.updateRPY)
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
@@ -155,23 +155,23 @@ class ViewerWithPanel(Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.glv_widget.setCameraPosition(distance=5)
-        self.glv_widget.set_bk_color('#ffffff')
+        self.glv_widget.setBKcolor('#ffffff')
         timer.start()
 
-    def update_psize(self):
+    def updatePsize(self):
         self.psize = self.box_psize.value()
 
-    def update_cloud_num(self):
+    def updateCloudNum(self):
         self.cloud_num = self.box_cloud_num.value()
 
-    def update_xyz(self):
+    def updateXYZ(self):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
         self.tcl = np.array([x, y, z])
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {x:.6f}]")
 
-    def update_rpy(self):
+    def updateRPY(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
@@ -181,7 +181,7 @@ class ViewerWithPanel(Viewer):
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
-    def checkbox_changed(self, state):
+    def checkboxChanged(self, state):
         if state == QtCore.Qt.Checked:
             self.en_rgb = True
         else:
@@ -215,11 +215,11 @@ def scan_cb(data):
     cloud_accum = np.concatenate(clouds)
 
     if cloud_accum_color is not None and viewer.en_rgb:
-        viewer['scan'].set_data(data=cloud_accum_color)
-        viewer['scan'].set_color_mode('RGB')
+        viewer['scan'].setData(data=cloud_accum_color)
+        viewer['scan'].setColorMode('RGB')
     else:
-        viewer['scan'].set_data(data=cloud_accum)
-        viewer['scan'].set_color_mode('I')
+        viewer['scan'].setData(data=cloud_accum)
+        viewer['scan'].setColorMode('I')
 
 
 def draw_larger_points(image, points, colors, radius):
@@ -280,7 +280,7 @@ def image_cb(data):
         cloud_accum_color = np.rec.fromarrays(
             [xyz, color],
             dtype=viewer['scan'].data_type)
-        viewer['img'].set_data(data=draw_image)
+        viewer['img'].setData(data=draw_image)
 
 
 def main():
@@ -301,7 +301,7 @@ def main():
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = CloudItem(size=2, alpha=1, color_mode='I')
     img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
-    viewer.add_items({'scan': scan_item, 'grid': grid_item, 'img': img_item})
+    viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_calib', anonymous=True)
 

@@ -11,17 +11,17 @@ from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
 class GridItem(gl.GLGridItem):
     def __init__(self, size, spacing, color=(255, 255, 255, 76.5)):
         super(GridItem, self).__init__(color=color)
-        self.set_size(size)
-        self.set_spacing(spacing)
+        self.setSize0(size)
+        self.setSpacing0(spacing)
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label1 = QLabel("Set size:")
         layout.addWidget(label1)
         box1 = QDoubleSpinBox()
         box1.setSingleStep(1.0)
         layout.addWidget(box1)
         box1.setValue(self.size0)
-        box1.valueChanged.connect(self.set_size)
+        box1.valueChanged.connect(self.setSize0)
         box1.setRange(0, 100000)
 
         label2 = QLabel("Set spacing:")
@@ -33,10 +33,10 @@ class GridItem(gl.GLGridItem):
         box2.valueChanged.connect(self.set_spacing)
         box2.setRange(0, 1000)
 
-    def set_size(self, size):
+    def setSize0(self, size):
         self.size0 = size
         self.setSize(self.size0, self.size0)
 
-    def set_spacing(self, spacing):
+    def setSpacing0(self, spacing):
         self.spacing0 = spacing
         self.setSpacing(self.spacing0, self.spacing0)

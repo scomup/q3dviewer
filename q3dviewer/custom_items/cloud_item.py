@@ -117,7 +117,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
         self.color_mode = color_mode
-        self.set_color_mode(color_mode)
+        self.setColorMode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
         self.point_type = 0
@@ -125,13 +125,13 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.wait_add_data = None
         self.need_update_setting = True
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label0 = QLabel("Set point display type:")
         layout.addWidget(label0)
         combo0 = QComboBox()
         combo0.addItem("pixel")
         combo0.addItem("flat square")
-        combo0.currentIndexChanged.connect(self.on_combo_selection)
+        combo0.currentIndexChanged.connect(self.onComboSelection)
         layout.addWidget(combo0)
         self.label_size = QLabel("Set size: (pixel)")
         layout.addWidget(self.label_size)
@@ -140,7 +140,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.box_size.setDecimals(0)
         layout.addWidget(self.box_size)
         self.box_size.setValue(self.size)
-        self.box_size.valueChanged.connect(self.set_size)
+        self.box_size.valueChanged.connect(self.setSize)
         self.box_size.setRange(0, 100)
 
         label2 = QLabel("Set Alpha:")
@@ -149,22 +149,24 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         layout.addWidget(box2)
         box2.setSingleStep(0.01)
         box2.setValue(self.alpha)
-        box2.valueChanged.connect(self.set_alpha)
+        box2.valueChanged.connect(self.setAlpha)
         box2.setRange(0, 1)
 
         label3 = QLabel("Set ColorMode:")
         label3.setToolTip(
-            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
+            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
+            rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
         layout.addWidget(label3)
         box3 = QLineEdit()
         box3.setToolTip(
-            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB': rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
+            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
+                rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
 
         box3.setText(str(self.color_mode))
-        box3.textChanged.connect(self.set_color_mode)
+        box3.textChanged.connect(self.setColorMode)
         layout.addWidget(box3)
 
-    def on_combo_selection(self, index):
+    def onComboSelection(self, index):
         if (index == 0):
             self.label_size.setText("Set size: (pixel)")
             self.box_size.setDecimals(0)
@@ -181,18 +183,19 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             self.size = 0.01
         self.need_update_setting = True
 
-    def set_alpha(self, alpha):
+    def setAlpha(self, alpha):
         self.alpha = alpha
         self.need_update_setting = True
 
-    def set_vmax(self, vmax):
+    def setVmax(self, vmax):
         self.vmax = vmax
         self.need_update_setting = True
 
-    def set_color_mode(self, color_mode):
+    def setColorMode(self, color_mode):
         """
         Set the color mode.
-        Supports intensity ('I'), RGB, IRGB, or hex color strings (e.g., '#FF4500').
+        Supports intensity ('I'), RGB, IRGB, or
+        hex color strings (e.g., '#FF4500').
         """
         if isinstance(color_mode, str):
             if color_mode.startswith("#"):
@@ -202,7 +205,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
                     print(f"Invalid color mode: {color_mode}")
                     return
             elif color_mode in {'RGB', 'IRGB', 'I'}:
-                self.color_mode_int = {'RGB': -2, 'IRGB': -3, 'I': -1}[color_mode]
+                self.color_mode_int = {'RGB': -2,
+                                       'IRGB': -3, 'I': -1}[color_mode]
             else:
                 print(f"Unsupported color mode: {color_mode}")
                 return
@@ -212,23 +216,24 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.color_mode = color_mode
         self.need_update_setting = True
 
-    def set_size(self, size):
+    def setSize(self, size):
         self.size = size
         self.need_update_setting = True
 
     def clear(self):
         data = np.empty((0), self.data_type)
-        self.set_data(data)
+        self.setData(data)
 
-    def set_data(self, data, append=False):
+    def setData(self, data, append=False):
         if not isinstance(data, np.ndarray):
             raise ValueError("Input data must be a numpy array.")
 
-        if data.dtype in {np.float32, np.float64}:
+        if data.dtype in {np.dtype('float32'), np.dtype('float64')}:
             xyz = data[:, :3]
             color = data[:, 3].view(np.uint32) if data.shape[1] == 4 else \
-                np.zeros( data.shape[0], dtype=np.uint32)
-            data = np.rec.fromarrays([xyz, color], dtype=self.data_type)
+                np.zeros(data.shape[0], dtype=np.uint32)
+            data = np.rec.fromarrays(
+                [xyz, color[:data.shape[0]]], dtype=self.data_type)
 
         with self.mutex:
             if append:
@@ -242,7 +247,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
                 self.wait_add_data = data
                 self.add_buff_loc = 0
 
-    def update_setting(self):
+    def updateSetting(self):
         if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
@@ -254,7 +259,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glUseProgram(0)
         self.need_update_setting = False
 
-    def update_render_buffer(self):
+    def updateRenderBuffer(self):
         # is not new data dont update buff
         if (self.wait_add_data is None):
             return
@@ -279,7 +284,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * 16,
-                            self.wait_add_data.shape[0] * 16, self.wait_add_data)
+                            self.wait_add_data.shape[0] * 16,
+                            self.wait_add_data)
         self.valid_buff_top = new_buff_top
         self.wait_add_data = None
         self.mutex.release()
@@ -291,15 +297,15 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         )
         # Bind attribute locations
         # set constant parameter for cloud shader
-        self.set_alpha(self.alpha)
-        self.set_color_mode(self.color_mode)
-        self.set_vmax(self.vmax)
+        self.setAlpha(self.alpha)
+        self.setColorMode(self.color_mode)
+        self.setVmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
     def paint(self):
         self.setupGLState()
-        self.update_render_buffer()
-        self.update_setting()
+        self.updateRenderBuffer()
+        self.updateSetting()
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         # glDisable(GL_POINT_SMOOTH)
@@ -313,8 +319,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = np.array(
-            self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
+        view_matrix = self._GLGraphicsItem__view.viewMatrix().data()
+        view_matrix = np.array(view_matrix, np.float32).reshape([4, 4]).T
         set_uniform(self.program, view_matrix, 'view_matrix')
         project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T

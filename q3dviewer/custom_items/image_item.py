@@ -107,7 +107,7 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glBindVertexArray(0)
 
-    def set_data(self, data):
+    def setData(self, data):
         if isinstance(data, np.ndarray):
             pass
         elif isinstance(data, PIL_Image.Image):
@@ -150,15 +150,15 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label1 = QLabel("Set Alpha:")
         layout.addWidget(label1)
         box1 = QSpinBox()
         box1.setSingleStep(1)
         box1.setRange(0, 255)
         box1.setValue(self.alpha)
-        box1.valueChanged.connect(self.set_alpha)
+        box1.valueChanged.connect(self.setAlpha)
         layout.addWidget(box1)
 
-    def set_alpha(self, alpha):
+    def setAlpha(self, alpha):
         self.alpha = alpha

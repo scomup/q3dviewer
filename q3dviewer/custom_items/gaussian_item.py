@@ -22,7 +22,7 @@ def div_round_up(x, y):
 class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
     def __init__(self, **kwds):
         super().__init__()
-        self.need_update_gs = False
+        self.need_updateGS = False
         self.sh_dim = 0
         self.gs_data = np.empty([0])
         self.prev_Rz = np.array([np.inf, np.inf, np.inf])
@@ -32,21 +32,21 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             if not torch.cuda.is_available():
                 raise ImportError
             self.cuda_pw = None
-            self.sort = self.torch_sort
+            self.sort = self.torchSort
         except ImportError:
-            self.sort = self.opengl_sort
+            self.sort = self.openglSort
 
-    def add_setting(self, layout):
+    def addSetting(self, layout):
         label1 = QLabel("set render mode:")
         layout.addWidget(label1)
         combo = QComboBox()
         combo.addItem("render normal guassian")
         combo.addItem("render ball")
         combo.addItem("render inverse guassian")
-        combo.currentIndexChanged.connect(self.on_combobox_selection)
+        combo.currentIndexChanged.connect(self.onComboboxSelection)
         layout.addWidget(combo)
 
-    def on_combobox_selection(self, index):
+    def onComboboxSelection(self, index):
         glUseProgram(self.program)
         set_uniform(self.program, index, 'render_mod')
         glUseProgram(0)
@@ -126,8 +126,8 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    def update_gs(self):
-        if (self.need_update_gs):
+    def updateGS(self):
+        if (self.need_updateGS):
             # compute sorting size
             self.num_sort = int(2**np.ceil(np.log2(self.gs_data.shape[0])))
 
@@ -154,9 +154,11 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
 
             # set preprocess buffer
-            # the dim of preprocess data is 12 u(3), covinv(3), color(3), area(2), alpha(1)
+            # the dim of preprocess data is 12 u(3),
+            # covinv(3), color(3), area(2), alpha(1)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_pp)
-            glBufferData(GL_SHADER_STORAGE_BUFFER, self.gs_data.shape[0] * 4 * 12,
+            glBufferData(GL_SHADER_STORAGE_BUFFER,
+                         self.gs_data.shape[0] * 4 * 12,
                          None, GL_STATIC_DRAW)
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, self.ssbo_pp)
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
@@ -166,22 +168,23 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             set_uniform(self.prep_program,
                         self.gs_data.shape[0], 'gs_num')
             glUseProgram(0)
-            self.need_update_gs = False
+            self.need_updateGS = False
 
     def paint(self):
         # get current view matrix
+        view_matrix_raw = self._GLGraphicsItem__view.viewMatrix().data()
         self.view_matrix = np.array(
-            self._GLGraphicsItem__view.viewMatrix().data(), np.float32).reshape([4, 4]).T
+            view_matrix_raw, np.float32).reshape([4, 4]).T
 
         # if gaussian data is update, renew vao, ssbo, etc...
-        self.update_gs()
+        self.updateGS()
 
         if (self.gs_data.shape[0] == 0):
             return
 
         # preprocess and sort gaussian by compute shader.
-        self.preprocess_gs()
-        self.try_sort()
+        self.preprocessGS()
+        self.trySort()
 
         # draw by vert shader
         glUseProgram(self.program)
@@ -196,7 +199,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindVertexArray(0)
         glUseProgram(0)
 
-    def try_sort(self):
+    def trySort(self):
         # don't sort if the depths are not change.
         Rz = self.view_matrix[2, :3]
         if (np.linalg.norm(self.prev_Rz - Rz) > 0.1):
@@ -210,7 +213,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
             # time_diff = end - start
             # print(time_diff)
 
-    def opengl_sort(self):
+    def openglSort(self):
         glUseProgram(self.sort_program)
         # can we move this loop to gpu?
         # level = level*2
@@ -224,7 +227,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         # glFinish()
         glUseProgram(0)
 
-    def torch_sort(self):
+    def torchSort(self):
         import torch
         if self.cuda_pw is None:
             self.cuda_pw = torch.tensor(self.gs_data[:, :3]).cuda()
@@ -238,16 +241,16 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
         return index
 
-    def preprocess_gs(self):
+    def preprocessGS(self):
         glUseProgram(self.prep_program)
         set_uniform(self.prep_program, self.view_matrix, 'view_matrix')
         glDispatchCompute(div_round_up(self.gs_data.shape[0], 256), 1, 1)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         glUseProgram(0)
 
-    def set_data(self, **kwds):
+    def setData(self, **kwds):
         if 'gs_data' in kwds:
             gs_data = kwds.pop('gs_data')
             self.gs_data = np.ascontiguousarray(gs_data, dtype=np.float32)
             self.sh_dim = self.gs_data.shape[-1] - (3 + 4 + 3 + 1)
-        self.need_update_gs = True
+        self.need_updateGS = True
