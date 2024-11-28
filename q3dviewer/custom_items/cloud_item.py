@@ -32,26 +32,23 @@ uniform int point_type = 0; // 0 pixel, 1 flat square, 2 sphere
 uniform float point_size = 0.01;  // World size for each point (meter)
 out vec4 color;
 
+
 vec3 getRainbowColor(uint value_raw) {
-    // Normalize value to [0, 1]
     float range = vmax - vmin;
     float value = 1.0 - (float(value_raw) - vmin) / range;
     value = clamp(value, 0.0, 1.0);
-    // Convert value to hue in the range [0, 1]
     float hue = value * 5.0 + 1.0;
     int i = int(floor(hue));
     float f = hue - float(i);
-    if (mod(i, 2) == 0) f = 1.0 - f; // if i is even
+    if (mod(i, 2) == 0) f = 1.0 - f;
     float n = 1.0 - f;
 
-    // Determine RGB components based on hue value
     vec3 color;
     if (i <= 1) color = vec3(n, 0.0, 1.0);
     else if (i == 2) color = vec3(0.0, n, 1.0);
     else if (i == 3) color = vec3(0.0, 1.0, n);
     else if (i == 4) color = vec3(n, 1.0, 0.0);
-    else if (i >= 5) color = vec3(1.0, n, 0.0);
-
+    else color = vec3(1.0, n, 0.0);
     return color;
 }
 
@@ -130,6 +127,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
         self.color_mode = color_mode
+        self.flat_rgb = "#FF0000"
         self.setColorMode(color_mode)
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmax = 255
@@ -167,18 +165,30 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box_alpha.setRange(0, 1)
 
         label_color = QLabel("Set ColorMode:")
-        label_color.setToolTip(
-            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
-            rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
         layout.addWidget(label_color)
-        box3 = QLineEdit()
-        box3.setToolTip(
-            "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
-                rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
+        combo_color = QComboBox()
+        combo_color.addItem("flat color")
+        combo_color.addItem("intensity")
+        combo_color.addItem("RGB")
+        combo_color.addItem("intensity for RGB data")
+        combo_color.currentIndexChanged.connect(self.onColorModeSelection)
+        layout.addWidget(combo_color)
 
-        box3.setText(str(self.color_mode))
-        box3.textChanged.connect(self.setColorMode)
-        layout.addWidget(box3)
+        self.edit_rgb = QLineEdit()
+        self.edit_rgb.setToolTip("Hex number, i.e. #FF4500;")
+
+        self.edit_rgb.setText(self.flat_rgb)
+        self.edit_rgb.textChanged.connect(self.setRGB)
+        layout.addWidget(self.edit_rgb)
+        combo_color.setCurrentIndex(-self.color_value)
+
+    def onColorModeSelection(self, index):
+        self.color_value = -index
+        self.edit_rgb.hide()
+        if (index == 0):  # flat color
+            self.edit_rgb.show()
+            self.setRGB(self.flat_rgb)
+        self.need_update_setting = True
 
     def onPTypeSelection(self, index):
         self.point_type = index
@@ -204,30 +214,34 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.vmax = vmax
         self.need_update_setting = True
 
+    def setRGB(self, rgb):
+        if not isinstance(rgb, str):
+            return
+        if not rgb.startswith("#"):
+            return
+        try:
+            self.color_value = int(rgb[1:], 16)
+        except ValueError:
+            print(f"Invalid color mode: {color_mode}")
+            return
+        self.need_update_setting = True
+
     def setColorMode(self, color_mode):
         """
         Set the color mode.
         Supports intensity ('I'), RGB, IRGB, or
         hex color strings (e.g., '#FF4500').
         """
-        if isinstance(color_mode, str):
-            if color_mode.startswith("#"):
-                try:
-                    self.color_mode_int = int(color_mode[1:], 16)
-                except ValueError:
-                    print(f"Invalid color mode: {color_mode}")
-                    return
-            elif color_mode in {'RGB', 'IRGB', 'I'}:
-                self.color_mode_int = {'RGB': -2,
-                                       'IRGB': -3, 'I': -1}[color_mode]
-            else:
-                print(f"Unsupported color mode: {color_mode}")
+        if color_mode in {'RGB', 'IRGB', 'I'}:
+            self.color_value = {'I': -1, 'RGB': -2, 'IRGB': -3}[color_mode]
+        if color_mode == 'FLAT':
+            if not self.flat_rgb.startswith("#"):
+                self.color_value = 0
+            try:
+                self.color_value = int(self.flat_rgb[1:], 16)
+            except ValueError:
+                print(f"Invalid color mode: {self.flat_rgb}")
                 return
-        else:
-            print(f"Invalid input type for color mode: {type(color_mode)}")
-            return
-        self.color_mode = color_mode
-        self.need_update_setting = True
 
     def setSize(self, size):
         self.size = size
@@ -264,11 +278,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
-        set_uniform(self.program, int(self.color_mode_int), 'color_mode')
+        set_uniform(self.program, int(self.color_value), 'color_mode')
         set_uniform(self.program, float(self.vmax), 'vmax')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, float(self.size), 'point_size')
-        print("self.point_type", self.point_type)
         set_uniform(self.program, int(self.point_type), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
@@ -312,7 +325,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         # Bind attribute locations
         # set constant parameter for cloud shader
         self.setAlpha(self.alpha)
-        self.setColorMode(self.color_mode)
+        self.setRGB(self.color_mode)
         self.setVmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
