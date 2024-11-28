@@ -39,11 +39,11 @@ class ViewerWithPanel(Viewer):
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = euler_to_matrix(np.array([0, 0, 0]))
+        self.Rbl = euler_to_matrix(np.array([-0.0300, 0.349066, 0.0040]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.tcl = np.array([0, 0, 0])
+        self.tcl = np.array([-0.0550, -0.05, -0.20])
         self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
         self.cloud_num = 1
@@ -147,7 +147,7 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = self.vw()
+        self.glv_widget = GLVWidget()
         main_layout.addLayout(setting_layout)
         main_layout.addWidget(self.glv_widget, 1)
 
@@ -246,16 +246,12 @@ def image_cb(data):
 
     # Undistort the image
     image_un = cv2.remap(image, remap_info[0], remap_info[1], cv2.INTER_LINEAR)
-
     if cloud_accum is not None:
         cloud_local = cloud_accum.copy()
         tcl = viewer.tcl
         Rcl = viewer.Rcl
         pl = cloud_local['xyz']
         pc = (Rcl @ pl.T + tcl[:, np.newaxis]).T
-        K = np.array([901.74915927,   0., 369.15527196,
-                      0., 900.0041538, 272.22645052,
-                      0.,   0.,   1.]).reshape([3, 3])
         u = (K @ pc.T).T
         u_mask = (u[:, 2] != 0) & (pc[:, 2] > 0.2)
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
@@ -268,7 +264,7 @@ def image_cb(data):
         u = u[valid_points]
 
         intensity = cloud_local['color'][u_mask][valid_points]
-        intensity_color = rainbow(intensity).astype(np.uint8)
+        intensity_color = rainbow(intensity, scalar_min=0, scalar_max=200).astype(np.uint8)
         draw_image = image_un.copy()
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]

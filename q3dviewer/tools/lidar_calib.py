@@ -129,7 +129,7 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = self.vw()
+        self.glv_widget = GLVWidget()
         main_layout.addLayout(setting_layout)
         main_layout.addWidget(self.glv_widget, 1)
 
