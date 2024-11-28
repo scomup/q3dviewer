@@ -28,7 +28,7 @@ uniform int color_mode = 0;
 uniform float vmin = 0;
 uniform float vmax = 255;
 uniform float focal = 1000;
-uniform int point_type = 0; // 0 pixel, 1 flat square
+uniform int point_type = 0; // 0 pixel, 1 flat square, 2 sphere
 uniform float point_size = 0.01;  // World size for each point (meter)
 out vec4 color;
 
@@ -95,12 +95,25 @@ void main()
 fragment_shader = """
 #version 330 core
 
+uniform int point_type;
+
 in vec4 color;
 
 out vec4 finalColor;
 
 void main()
 {
+    // only do this when point_type is sphere
+    if (point_type == 2)
+    {
+        vec2 coord = gl_PointCoord * 2.0 - vec2(1.0); // Map [0,1] to [-1,1]
+        float distance = dot(coord, coord); // Squared distance
+
+        // Discard fragments outside the circle (radius = 1.0)
+        if (distance > 1.0)
+            discard;
+    }
+
     finalColor = color;
 }
 """
@@ -126,13 +139,14 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.need_update_setting = True
 
     def addSetting(self, layout):
-        label0 = QLabel("Set point display type:")
-        layout.addWidget(label0)
-        combo0 = QComboBox()
-        combo0.addItem("pixel")
-        combo0.addItem("flat square")
-        combo0.currentIndexChanged.connect(self.onComboSelection)
-        layout.addWidget(combo0)
+        label_ptype = QLabel("Set point display type:")
+        layout.addWidget(label_ptype)
+        combo_ptype = QComboBox()
+        combo_ptype.addItem("pixels")
+        combo_ptype.addItem("flat squares")
+        combo_ptype.addItem("spheres")
+        combo_ptype.currentIndexChanged.connect(self.onPTypeSelection)
+        layout.addWidget(combo_ptype)
         self.label_size = QLabel("Set size: (pixel)")
         layout.addWidget(self.label_size)
         self.box_size = QDoubleSpinBox()
@@ -143,20 +157,20 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.box_size.valueChanged.connect(self.setSize)
         self.box_size.setRange(0, 100)
 
-        label2 = QLabel("Set Alpha:")
-        layout.addWidget(label2)
-        box2 = QDoubleSpinBox()
-        layout.addWidget(box2)
-        box2.setSingleStep(0.01)
-        box2.setValue(self.alpha)
-        box2.valueChanged.connect(self.setAlpha)
-        box2.setRange(0, 1)
+        label_alpha = QLabel("Set Alpha:")
+        layout.addWidget(label_alpha)
+        box_alpha = QDoubleSpinBox()
+        layout.addWidget(box_alpha)
+        box_alpha.setSingleStep(0.01)
+        box_alpha.setValue(self.alpha)
+        box_alpha.valueChanged.connect(self.setAlpha)
+        box_alpha.setRange(0, 1)
 
-        label3 = QLabel("Set ColorMode:")
-        label3.setToolTip(
+        label_color = QLabel("Set ColorMode:")
+        label_color.setToolTip(
             "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
             rgb mode; '#xxxxxx'; matplotlib color, i.e. #FF4500;")
-        layout.addWidget(label3)
+        layout.addWidget(label_color)
         box3 = QLineEdit()
         box3.setToolTip(
             "'I': intensity mode; 'IRGB': IRGB mode; 'RGB':\
@@ -166,19 +180,18 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         box3.textChanged.connect(self.setColorMode)
         layout.addWidget(box3)
 
-    def onComboSelection(self, index):
+    def onPTypeSelection(self, index):
+        self.point_type = index
         if (index == 0):
             self.label_size.setText("Set size: (pixel)")
             self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
-            self.point_type = 0
             self.box_size.setValue(1)
             self.size = 1
         else:
             self.label_size.setText("Set size: (meter)")
             self.box_size.setDecimals(2)
             self.box_size.setSingleStep(0.01)
-            self.point_type = 1
             self.box_size.setValue(0.01)
             self.size = 0.01
         self.need_update_setting = True
@@ -255,6 +268,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         set_uniform(self.program, float(self.vmax), 'vmax')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, float(self.size), 'point_size')
+        print("self.point_type", self.point_type)
         set_uniform(self.program, int(self.point_type), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
@@ -308,6 +322,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.updateSetting()
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
+        glEnable(GL_POINT_SPRITE)
         # glDisable(GL_POINT_SMOOTH)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
