@@ -268,8 +268,10 @@ def main():
     app = QApplication(["LiDAR Calib"])
     viewer = ViewerWithPanel(name='LiDAR Calib')
     grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
-    scan0_item = CloudItem(size=2, alpha=1, color_mode='#FF0000')
-    scan1_item = CloudItem(size=2, alpha=1, color_mode='#00FF00')
+    scan0_item = CloudItem(
+        size=2, alpha=1, color_mode='FLAT', color='0xff0000')
+    scan1_item = CloudItem(
+        size=2, alpha=1, color_mode='FLAT', color='0x00ff00')
     viewer.addItems(
         {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 

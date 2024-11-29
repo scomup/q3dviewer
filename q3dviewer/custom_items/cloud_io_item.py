@@ -75,7 +75,7 @@ class CloudIOItem(CloudItem):
                 self.setColorMode('I')
             except ValueError:
                 color = pc['z'].astype(np.uint32)
-                self.setColorMode('#FFFFFF')
+                self.setFlatRGB('0xffffff')
 
         cloud = np.rec.fromarrays(
             [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],

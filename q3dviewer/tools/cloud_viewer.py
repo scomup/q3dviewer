@@ -43,7 +43,8 @@ class CloudViewer(q3d.Viewer):
                 cloud_item.setColorMode('I')
             else:
                 color = pc['z'].astype(np.uint32)
-                cloud_item.setColorMode('#FFFFFF')
+                cloud_item.setFlatRGB('0xffffff')
+
             cloud = np.rec.fromarrays(
                 [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
                 dtype=cloud_item.data_type)
