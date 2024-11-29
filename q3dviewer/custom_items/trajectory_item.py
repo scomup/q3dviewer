@@ -81,4 +81,4 @@ class TrajectoryItem(gl.GLGridItem):
         glDisableClientState(GL_VERTEX_ARRAY)
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-        glUseProgram(0)
+        glDisable(GL_BLEND)

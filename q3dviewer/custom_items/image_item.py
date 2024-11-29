@@ -130,7 +130,8 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
             img_data = img_data.tobytes()
             glBindTexture(GL_TEXTURE_2D, self.texture)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.image.shape[1],
-                         self.image.shape[0], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+                         self.image.shape[0], 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, img_data)
             glGenerateMipmap(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, 0)
             self.image = None

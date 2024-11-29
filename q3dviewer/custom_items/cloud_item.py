@@ -121,6 +121,7 @@ void main()
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def __init__(self, size, alpha, color_mode='I', color='0xffffff'):
         super().__init__()
+        self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
         self.add_buff_loc = 0
         self.alpha = alpha
@@ -281,9 +282,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.need_update_setting = False
 
     def updateRenderBuffer(self):
-        # is not new data dont update buff
+        # Ensure there is data waiting to be added to the buffer
         if (self.wait_add_data is None):
             return
+        # Acquire lock to update the buffer safely
         self.mutex.acquire()
 
         new_buff_top = self.add_buff_loc + self.wait_add_data.shape[0]
@@ -304,8 +306,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         else:
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * 16,
-                            self.wait_add_data.shape[0] * 16,
+            glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * self.STRIDE,
+                            self.wait_add_data.shape[0] * self.STRIDE,
                             self.wait_add_data)
         self.valid_buff_top = new_buff_top
         self.wait_add_data = None
@@ -317,9 +319,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
         # Bind attribute locations
-        # set constant parameter for cloud shader
-        self.setAlpha(self.alpha)
-        self.setVmax(self.vmax)
         self.vbo = glGenBuffers(1)
 
     def paint(self):
@@ -329,14 +328,14 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        # glDisable(GL_POINT_SMOOTH)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                              self.STRIDE, ctypes.c_void_p(0))
         glVertexAttribPointer(
-            1, 1, GL_FLOAT, GL_UNSIGNED_INT, 16, ctypes.c_void_p(12))
+            1, 1, GL_FLOAT, GL_UNSIGNED_INT, self.STRIDE, ctypes.c_void_p(12))
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
@@ -357,3 +356,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glDisableVertexAttribArray(1)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glUseProgram(0)
+        glDisable(GL_POINT_SPRITE)
+        glDisable(GL_PROGRAM_POINT_SIZE)
+        glDisable(GL_BLEND)

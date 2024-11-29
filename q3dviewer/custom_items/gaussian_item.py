@@ -123,7 +123,6 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         # opengl settings
         glDisable(GL_CULL_FACE)
-        glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def updateGS(self):
@@ -185,7 +184,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         # preprocess and sort gaussian by compute shader.
         self.preprocessGS()
         self.trySort()
-
+        glEnable(GL_BLEND)
         # draw by vert shader
         glUseProgram(self.program)
         # bind vao and ebo
@@ -198,6 +197,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
         glUseProgram(0)
+        glDisable(GL_BLEND)
 
     def trySort(self):
         # don't sort if the depths are not change.
