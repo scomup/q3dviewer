@@ -78,7 +78,8 @@ def main():
     global point_num_per_scan
     point_num_per_scan = 10000
     map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
-    scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='#FFFFFF')
+    scan_item = q3d.CloudItem(
+        size=2, alpha=1, color_mode='FLAT', color='0xffffff')
     odom_item = q3d.GLAxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))

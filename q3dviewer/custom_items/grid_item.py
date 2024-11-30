@@ -30,7 +30,7 @@ class GridItem(gl.GLGridItem):
         layout.addWidget(box2)
         box2.setSingleStep(0.1)
         box2.setValue(self.spacing0)
-        box2.valueChanged.connect(self.set_spacing)
+        box2.valueChanged.connect(self.setSpacing0)
         box2.setRange(0, 1000)
 
     def setSize0(self, size):

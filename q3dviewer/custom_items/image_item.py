@@ -115,11 +115,13 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         else:
             print("not support image type")
             raise NotImplementedError
-        
+
         if data.ndim == 2:  # Grayscale image
             data = np.stack((data,) * 3 + (np.ones_like(data) * 255,), axis=-1)
         elif data.shape[-1] == 3:  # RGB image
-            alpha_channel = np.ones((data.shape[0], data.shape[1], 1), dtype=data.dtype) * self.alpha
+            alpha_channel = np.ones(
+                (data.shape[0], data.shape[1], 1),
+                dtype=data.dtype) * self.alpha
             data = np.concatenate((data, alpha_channel), axis=-1)
         self.image = data
 

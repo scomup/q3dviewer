@@ -11,7 +11,6 @@ import rospy
 import numpy as np
 import argparse
 import open3d as o3d
-
 viewer = None
 cloud0_accum = None
 clouds0 = []
@@ -175,7 +174,8 @@ class ViewerWithPanel(Viewer):
             cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
             cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
             cloud0_o3d.estimate_normals(
-                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=self.radius, max_nn=30))
+                search_param=o3d.geometry.KDTreeSearchParamHybrid
+                (radius=self.radius, max_nn=30))
             trans_init = np.eye(4)
             trans_init[:3, :3] = self.R01
             trans_init[:3, 3] = self.t01
@@ -187,7 +187,8 @@ class ViewerWithPanel(Viewer):
             # Auto Scan Matching
             reg_p2p = o3d.pipelines.registration.registration_icp(
                 cloud1_o3d, cloud0_o3d, self.radius, trans_init,
-                o3d.pipelines.registration.TransformationEstimationPointToPlane(),
+                o3d.pipelines.registration.
+                TransformationEstimationPointToPlane(),
                 criteria)
 
             transformation_icp = reg_p2p.transformation
@@ -209,7 +210,8 @@ class ViewerWithPanel(Viewer):
             self.line_trans.setText(
                 f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
             self.line_quat.setText(
-                f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+                f"[{quat[0]: .6f}, {quat[1]: .6f},\
+                   {quat[2]: .6f}, {quat[3]: .6f}]")
             self.t01 = t01
             self.R01 = R01
             print("Matching results")
@@ -217,7 +219,8 @@ class ViewerWithPanel(Viewer):
             print(
                 f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
             print(
-                f"Quaternion: [{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+                f"Quaternion: [{quat[0]: .6f}, {quat[1]: .6f},\
+                               {quat[2]: .6f}, {quat[3]: .6f}]")
 
 
 def msg_cloud(data):

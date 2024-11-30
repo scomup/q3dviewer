@@ -14,6 +14,10 @@ from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QComboBox
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
+from q3dviewer.range_slider import RangeSlider
+from PyQt5.QtCore import QRegularExpression
+from PyQt5.QtGui import QRegularExpressionValidator
+
 
 vertex_shader = """
 #version 330 core
@@ -119,7 +123,7 @@ void main()
 
 # draw points with color (x, y, z, color)
 class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
-    def __init__(self, size, alpha, color_mode='I', color='0xffffff'):
+    def __init__(self, size, alpha, color_mode='I', color='#ffffff'):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
@@ -128,10 +132,11 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.size = size
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
-        self.flat_rgb = int(color, 16)
+        self.flat_rgb = int(color[1:], 16)
         self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2,  'IRGB': 3}
         self.color_mode = self.mode_table[color_mode]
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
+        self.vmin = 0
         self.vmax = 255
         self.point_type = 0
         self.buff = np.empty((0), self.data_type)
@@ -177,26 +182,43 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         layout.addWidget(self.combo_color)
 
         self.edit_rgb = QLineEdit()
-        self.edit_rgb.setToolTip("Hex number, i.e. 0xFF4500")
-
-        self.edit_rgb.setText(hex(self.flat_rgb))
-        self.edit_rgb.textChanged.connect(self._onFlatRGB)
+        self.edit_rgb.setToolTip("Hex number, i.e. #FF4500")
+        self.edit_rgb.setText(f"#{self.flat_rgb:06x}")
+        self.edit_rgb.textChanged.connect(self._onColor)
+        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
+        validator = QRegularExpressionValidator(regex)
+        self.edit_rgb.setValidator(validator)
         layout.addWidget(self.edit_rgb)
+
+        self.slider_v = RangeSlider()
+        self.slider_v.setRange(0, 255)
+        self.slider_v.rangeChanged.connect(self._onRangeV)
+
+        layout.addWidget(self.slider_v)
         self.combo_color.setCurrentIndex(self.color_mode)
+
+    def _onRangeV(self, lower, upper):
+        self.vmin = lower
+        self.vmax = upper
+        self.need_update_setting = True
 
     def _onColorMode(self, index):
         self.color_mode = index
         self.edit_rgb.hide()
+        self.slider_v.hide()
         if (index == self.mode_table['FLAT']):  # flat color
             self.edit_rgb.show()
-            self.edit_rgb.setText(hex(self.flat_rgb))
+        elif (index == self.mode_table['IRGB']):  # flat color
+            self.slider_v.show()
+        elif (index == self.mode_table['I']):  # flat color
+            self.slider_v.show()
         self.need_update_setting = True
 
     def setColorMode(self, color_mode):
         if color_mode in {'FLAT', 'RGB', 'IRGB', 'I'}:
             self.combo_color.setCurrentIndex(self.mode_table[color_mode])
         else:
-            print(f"Invalid color mode: {self.flat_rgb}")
+            print(f"Invalid color mode: {color_mode}")
 
     def _onPTypeSelection(self, index):
         self.point_type = index
@@ -218,20 +240,15 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.alpha = alpha
         self.need_update_setting = True
 
-    def setVmax(self, vmax):
-        self.vmax = vmax
-        self.need_update_setting = True
-
-    def setFlatRGB(self, rgb):
+    def setFlatRGB(self, color):
         try:
-            flat_rgb = int(rgb, 16)
-            self.edit_rgb.setText(rgb)
+            self.edit_rgb.setText(color)
         except ValueError:
             pass
 
-    def _onFlatRGB(self, rgb):
+    def _onColor(self, color):
         try:
-            flat_rgb = int(rgb, 16)
+            flat_rgb = int(color[1:], 16)
             self.flat_rgb = flat_rgb
             self.need_update_setting = True
         except ValueError:
@@ -275,6 +292,7 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         set_uniform(self.program, int(self.flat_rgb), 'flat_rgb')
         set_uniform(self.program, int(self.color_mode), 'color_mode')
         set_uniform(self.program, float(self.vmax), 'vmax')
+        set_uniform(self.program, float(self.vmin), 'vmin')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, float(self.size), 'point_size')
         set_uniform(self.program, int(self.point_type), 'point_type')

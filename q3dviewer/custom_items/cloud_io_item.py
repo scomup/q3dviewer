@@ -17,7 +17,7 @@ class CloudIOItem(CloudItem):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.save_path = str(Path(os.getcwd(), "data.pcd"))
+        self.save_path = str(Path(os.path.expanduser("~"), "data.pcd"))
 
     def addSetting(self, layout):
         super().addSetting(layout)

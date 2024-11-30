@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
 from PyQt5.QtWidgets import QLabel, QLineEdit, \
     QDoubleSpinBox, QSpinBox, QCheckBox
+from PyQt5.QtCore import QRegularExpression
+from PyQt5.QtGui import QRegularExpressionValidator
 
 
 class SettingWindow(QWidget):
@@ -49,11 +51,11 @@ class SettingWindow(QWidget):
         self.clearSetting()
 
         key = list(self.items.keys())
-        try:
-            item = self.items[key[index]]
+        item = self.items[key[index]]
+        if hasattr(item, "addSetting"):
             item.addSetting(self.layout)
             self.layout.addItem(self.stretch)
-        except AttributeError:
+        else:
             print("%s: No setting." % (item.__class__.__name__))
 
 
@@ -76,31 +78,30 @@ class GLVWidget(gl.GLViewWidget):
         super().update()
 
     def addSetting(self, layout):
-        label1 = QLabel("Set background color:")
-        label1.setToolTip("using '#xxxxxx', i.e. #FF4500")
-        box1 = QLineEdit()
-        box1.setToolTip("'using '#xxxxxx', i.e. #FF4500")
-        box1.setText(str(self.color))
-        box1.textChanged.connect(self.setBKcolor)
-        layout.addWidget(label1)
-        layout.addWidget(box1)
-        label2 = QLabel("Set Focus:")
-        combo2 = QComboBox()
+        label_color = QLabel("Set background color:")
+        layout.addWidget(label_color)
+        color_edit = QLineEdit()
+        color_edit.setToolTip("'using hex color, i.e. #FF4500")
+        color_edit.setText(self.color)
+        color_edit.textChanged.connect(self.setBKcolor)
+        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
+        validator = QRegularExpressionValidator(regex)
+        color_edit.setValidator(validator)
+        layout.addWidget(color_edit)
+        label_focus = QLabel("Set Focus:")
+        combo_focus = QComboBox()
         for name in self.followable_item_name:
-            combo2.addItem(name)
-        combo2.currentIndexChanged.connect(self.on_followable_selection)
-        layout.addWidget(label2)
-        layout.addWidget(combo2)
+            combo_focus.addItem(name)
+        combo_focus.currentIndexChanged.connect(self.on_followable_selection)
+        layout.addWidget(label_focus)
+        layout.addWidget(combo_focus)
 
     def setBKcolor(self, color):
-        if (type(color) != str):
+        try:
+            self.setBackgroundColor(color)
+            self.color = color
+        except ValueError:
             return
-        if color.startswith("#"):
-            try:
-                self.setBackgroundColor(color)
-                self.color = color
-            except ValueError:
-                return
 
     def addItem(self, name, item):
         self.named_items.update({name: item})
