@@ -14,7 +14,10 @@ from pye57 import E57
 
 
 def save_as_ply(cloud, save_path):
-    dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('rgb', 'u4')]
+    if (np.max((cloud['color']) >> 16 & 0xff)):
+        dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('rgb', 'u4')]
+    else:
+        dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('intensity', 'u4')]
     ply_element = PlyElement.describe(cloud.view(dtype), 'vertex')
     PlyData([ply_element], byte_order='>').write(save_path)
 
@@ -43,7 +46,10 @@ def load_ply(file):
 
 
 def save_as_pcd(cloud, save_path):
-    fields = ('x', 'y', 'z', 'rgb')
+    if (np.max((cloud['color']) >> 16 & 0xff)):
+        fields = ('x', 'y', 'z', 'rgb')
+    else:
+        fields = ('x', 'y', 'z', 'intensity')
     metadata = MetaData.model_validate(
         {
             "fields": fields,
@@ -53,7 +59,7 @@ def save_as_pcd(cloud, save_path):
             "width": cloud.shape[0],
             "points": cloud.shape[0],
         })
-    PointCloud(metadata, cloud).save(self.save_path)
+    PointCloud(metadata, cloud).save(save_path)
 
 
 def load_pcd(file):
