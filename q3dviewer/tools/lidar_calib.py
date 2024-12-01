@@ -25,11 +25,9 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         self.setDecimals(self.decimals)  # Set the number of decimal places
 
     def textFromValue(self, value):
-        # override
         return f"{value:.{self.decimals}f}"
 
     def valueFromText(self, text):
-        # override
         return float(text)
 
 

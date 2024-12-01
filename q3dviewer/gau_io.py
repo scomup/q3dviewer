@@ -92,7 +92,8 @@ def load_ply(path, T=None):
         name = "f_rest_%d" % i
         shs[:, 3 + i] = np.asarray(plydata.elements[0][name])
 
-    shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim//3).transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
+    shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim//3)\
+        .transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
 
     pws = pws.astype(np.float32)
     rots = rots.astype(np.float32)

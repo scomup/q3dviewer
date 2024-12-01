@@ -16,14 +16,12 @@ class CloudViewer(q3d.Viewer):
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
-        # override
         if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        # override
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
             self.openCloudFile(file_path)
@@ -33,34 +31,13 @@ class CloudViewer(q3d.Viewer):
         if cloud_item is None:
             print("Can't find clouditem.")
             return
-        if file.endswith('.pcd'):
-            pc = PointCloud.from_path(file).pc_data
-            if 'rgb' in pc.dtype.names:
-                color = pc["rgb"].astype(np.uint32)
-                cloud_item.setColorMode('RGB')
-            elif 'intensity' in pc.dtype.names:
-                color = pc["intensity"].astype(np.uint32)
-                cloud_item.setColorMode('I')
-            else:
-                color = pc['z'].astype(np.uint32)
-                cloud_item.setFlatRGB('0xffffff')
-
-            cloud = np.rec.fromarrays(
-                [np.stack([pc["x"], pc["y"], pc["z"]], axis=1), color],
-                dtype=cloud_item.data_type)
-        elif file.endswith('.npy'):
-            pc = np.load(file)
-            cloud = np.rec.fromarrays(
-                [np.stack([pc[:, 0], pc[:, 1], pc[:, 2]], axis=1),
-                 pc[:, 3].astype(np.uint32)],
-                dtype=cloud_item.data_type)
-        cloud_item.setData(data=cloud)
+        cloud_item.load(file)
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pcd", help="the pcd path")
+    parser.add_argument("--path", help="the cloud file path")
     args = parser.parse_args()
     app = q3d.QApplication(['Cloud Viewer'])
     viewer = CloudViewer(name='Cloud Viewer')
@@ -71,8 +48,8 @@ def main():
     viewer.addItems(
         {'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item})
 
-    if args.pcd:
-        pcd_fn = args.pcd
+    if args.path:
+        pcd_fn = args.path
         viewer.openCloudFile(pcd_fn)
 
     viewer.show()

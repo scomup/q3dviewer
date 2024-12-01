@@ -11,6 +11,8 @@ setup(
         'PyOpenGL',
         'pypcd4',
         'pillow'
+        'plyfile'
+        'pye57'
         ],
     entry_points={
         'console_scripts': [
