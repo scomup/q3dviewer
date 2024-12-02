@@ -10,8 +10,8 @@ setup(
         'pyqt5',
         'PyOpenGL',
         'pypcd4',
-        'pillow'
-        'plyfile'
+        'pillow',
+        'plyfile',
         'pye57'
         ],
     entry_points={

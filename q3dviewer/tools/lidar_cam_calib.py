@@ -39,11 +39,12 @@ class ViewerWithPanel(Viewer):
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = euler_to_matrix(np.array([-0.0300, 0.349066, 0.0040]))
+        self.Rbl = euler_to_matrix(np.array([0.0, 0.0, 0.0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.tcl = np.array([-0.0550, -0.05, -0.20])
+        self.tbl = np.array([0.0, 0.0, 0.0])
+        self.tcl = self.Rcb @ self.tbl
         self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
         self.cloud_num = 1
@@ -81,9 +82,9 @@ class ViewerWithPanel(Viewer):
         self.box_x.setRange(-100.0, 100.0)
         self.box_y.setRange(-100.0, 100.0)
         self.box_z.setRange(-100.0, 100.0)
-        self.box_x.setValue(self.tcl[0])
-        self.box_y.setValue(self.tcl[1])
-        self.box_z.setValue(self.tcl[2])
+        self.box_x.setValue(self.tbl[0])
+        self.box_y.setValue(self.tbl[1])
+        self.box_z.setValue(self.tbl[2])
 
         # Add RPY spin boxes
         label_rpy = QLabel("Set Roll-Pitch-Yaw:")
@@ -168,7 +169,9 @@ class ViewerWithPanel(Viewer):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
-        self.tcl = np.array([x, y, z])
+        self.tbl = np.array([x, y, z])
+        self.tcl =  self.Rcb @ self.tbl
+        x, y, z = self.tcl
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {x:.6f}]")
 
     def updateRPY(self):
@@ -264,7 +267,9 @@ def image_cb(data):
         u = u[valid_points]
 
         intensity = cloud_local['color'][u_mask][valid_points]
-        intensity_color = rainbow(intensity, scalar_min=0, scalar_max=200).astype(np.uint8)
+        vmin = viewer['scan'].vmin
+        vmax = viewer['scan'].vmax
+        intensity_color = rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
         draw_image = image_un.copy()
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]
