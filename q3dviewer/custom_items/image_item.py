@@ -8,7 +8,7 @@ from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image as PIL_Image
-from PyQt5.QtWidgets import QLabel, QSpinBox
+from PyQt5.QtWidgets import QLabel, QSpinBox, QCheckBox
 
 
 # Vertex and Fragment shader source code
@@ -154,14 +154,22 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
         glDisable(GL_BLEND)
 
     def addSetting(self, layout):
-        label1 = QLabel("Set Alpha:")
-        layout.addWidget(label1)
-        box1 = QSpinBox()
-        box1.setSingleStep(1)
-        box1.setRange(0, 255)
-        box1.setValue(self.alpha)
-        box1.valueChanged.connect(self.setAlpha)
-        layout.addWidget(box1)
+        alpha_label = QLabel("Set Alpha:")
+        layout.addWidget(alpha_label)
+        spinbox_alpha = QSpinBox()
+        spinbox_alpha.setSingleStep(1)
+        spinbox_alpha.setRange(0, 255)
+        spinbox_alpha.setValue(self.alpha)
+        spinbox_alpha.valueChanged.connect(self.setAlpha)
+        layout.addWidget(spinbox_alpha)
+        
+        checkbox_show = QCheckBox("Show Image")
+        checkbox_show.setChecked(True)
+        checkbox_show.stateChanged.connect(self.setVisible)
+        layout.addWidget(checkbox_show)
 
     def setAlpha(self, alpha):
         self.alpha = alpha
+
+    def setShow(self, state):
+        self.setVisible(state)
