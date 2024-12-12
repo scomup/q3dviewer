@@ -6,15 +6,18 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
-from q3dviewer import *
 import rospy
 import numpy as np
-import argparse
+import q3dviewer as q3d
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+    QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
+from pyqtgraph.Qt import QtCore
+from pypcd4 import PointCloud
+import rospy
 import cv2
+import argparse
 
-viewer = None
-cloud_accum = None
-cloud_accum_color = None
+
 clouds = []
 remap_info = None
 K = None
@@ -33,13 +36,13 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return float(text)
 
 
-class ViewerWithPanel(Viewer):
+class ViewerWithPanel(q3d.Viewer):
     def __init__(self, **kwargs):
         # b: camera body frame
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = euler_to_matrix(np.array([0.0, 0.0, 0.0]))
+        self.Rbl = q3d.euler_to_matrix(np.array([0.0, 0.0, 0.0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
@@ -101,7 +104,7 @@ class ViewerWithPanel(Viewer):
         self.box_roll.setRange(-np.pi, np.pi)
         self.box_pitch.setRange(-np.pi, np.pi)
         self.box_yaw.setRange(-np.pi, np.pi)
-        rpy = matrix_to_euler(self.Rbl)
+        rpy = q3d.matrix_to_euler(self.Rbl)
         self.box_roll.setValue(rpy[0])
         self.box_pitch.setValue(rpy[1])
         self.box_yaw.setValue(rpy[2])
@@ -133,7 +136,7 @@ class ViewerWithPanel(Viewer):
 
         self.line_trans.setText(
             f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
-        quat = matrix_to_quaternion(self.Rcl)
+        quat = q3d.matrix_to_quaternion(self.Rcl)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
@@ -148,7 +151,7 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = GLVWidget()
+        self.glv_widget = q3d.GLVWidget()
         main_layout.addLayout(setting_layout)
         main_layout.addWidget(self.glv_widget, 1)
 
@@ -178,9 +181,9 @@ class ViewerWithPanel(Viewer):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.Rbl = euler_to_matrix(np.array([roll, pitch, yaw]))
+        self.Rbl = q3d.euler_to_matrix(np.array([roll, pitch, yaw]))
         self.Rcl = self.Rcb @ self.Rbl
-        quat = matrix_to_quaternion(self.Rcl)
+        quat = q3d.matrix_to_quaternion(self.Rcl)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
@@ -269,7 +272,7 @@ def image_cb(data):
         intensity = cloud_local['color'][u_mask][valid_points]
         vmin = viewer['scan'].vmin
         vmax = viewer['scan'].vmax
-        intensity_color = rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
+        intensity_color = q3d.rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
         draw_image = image_un.copy()
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]
@@ -297,11 +300,11 @@ def main():
                         default='camera_info', help="Topic of camera info")
     args = parser.parse_args()
 
-    app = QApplication(['LiDAR Cam Calib'])
+    app = q3d.QApplication(['LiDAR Cam Calib'])
     viewer = ViewerWithPanel(name='LiDAR Cam Calib')
-    grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
-    scan_item = CloudItem(size=2, alpha=1, color_mode='I')
-    img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
+    grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
+    scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
+    img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_calib', anonymous=True)

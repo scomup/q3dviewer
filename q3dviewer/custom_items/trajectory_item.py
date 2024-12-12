@@ -16,7 +16,7 @@ class TrajectoryItem(gl.GLGridItem):
         self.buff = np.empty((0, 3), np.float32)
         self.wait_add_data = None
         self.mutex = threading.Lock()
-        self.CAPACITY = 100000
+        self.capacity = 100000
         self.valid_buff_top = 0
         self.color = color
 
@@ -46,7 +46,7 @@ class TrajectoryItem(gl.GLGridItem):
         if new_buff_top > self.buff.shape[0]:
             buff_capacity = self.buff.shape[0]
             while (new_buff_top > buff_capacity):
-                buff_capacity += self.CAPACITY
+                buff_capacity += self.capacity
             self.buff = np.empty((buff_capacity, 3), np.float32)
             self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)

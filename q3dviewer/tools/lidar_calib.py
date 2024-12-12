@@ -6,11 +6,17 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from sensor_msgs.msg import PointCloud2
-from q3dviewer import *
 import rospy
 import numpy as np
 import argparse
 import open3d as o3d
+import q3dviewer as q3d
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+    QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
+from pyqtgraph.Qt import QtCore
+from pypcd4 import PointCloud
+
+
 viewer = None
 cloud0_accum = None
 clouds0 = []
@@ -20,9 +26,9 @@ clouds1 = []
 
 class CustomDoubleSpinBox(QDoubleSpinBox):
     def __init__(self, decimals=4, *args, **kwargs):
-        self.decimals = decimals
         super().__init__(*args, **kwargs)
-        self.setDecimals(self.decimals)  # Set the number of decimal places
+        self.decimals = decimals
+        self.setDecimals(self.decimals)
 
     def textFromValue(self, value):
         return f"{value:.{self.decimals}f}"
@@ -31,7 +37,7 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return float(text)
 
 
-class ViewerWithPanel(Viewer):
+class ViewerWithPanel(q3d.Viewer):
     def __init__(self, **kwargs):
         self.t01 = np.array([0, 0, 0])
         self.R01 = np.eye(3)
@@ -88,8 +94,8 @@ class ViewerWithPanel(Viewer):
         self.box_cloud_num.valueChanged.connect(self.updateCloudNum)
         setting_layout.addWidget(self.box_cloud_num)
 
-        label_res = QLabel("The lidar0-lidar1 trans and quat:")
-        setting_layout.addWidget(label_res)
+        label_trans_quat = QLabel("The lidar0-lidar1 trans and quat:")
+        setting_layout.addWidget(label_trans_quat)
         self.line_trans = QLineEdit()
         self.line_trans.setReadOnly(True)
         setting_layout.addWidget(self.line_trans)
@@ -111,7 +117,7 @@ class ViewerWithPanel(Viewer):
 
         self.line_trans.setText(
             f"[{self.t01[0]:.6f}, {self.t01[1]:.6f}, {self.t01[2]:.6f}]")
-        quat = matrix_to_quaternion(self.R01)
+        quat = q3d.matrix_to_quaternion(self.R01)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
@@ -126,7 +132,7 @@ class ViewerWithPanel(Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = GLVWidget()
+        self.glv_widget = q3d.GLVWidget()
         main_layout.addLayout(setting_layout)
         main_layout.addWidget(self.glv_widget, 1)
 
@@ -154,8 +160,8 @@ class ViewerWithPanel(Viewer):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.R01 = euler_to_matrix(np.array([roll, pitch, yaw]))
-        quat = matrix_to_quaternion(self.R01)
+        self.R01 = q3d.euler_to_matrix(np.array([roll, pitch, yaw]))
+        quat = q3d.matrix_to_quaternion(self.R01)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
@@ -197,8 +203,8 @@ class ViewerWithPanel(Viewer):
             t01 = transformation_icp[:3, 3]
 
             # Update the UI with new values
-            quat = matrix_to_quaternion(R01)
-            rpy = matrix_to_euler(R01)
+            quat = q3d.matrix_to_quaternion(R01)
+            rpy = q3d.matrix_to_euler(R01)
             self.box_roll.setValue(rpy[0])
             self.box_pitch.setValue(rpy[1])
             self.box_yaw.setValue(rpy[2])
@@ -266,13 +272,13 @@ def main():
                         help="Topic name for camera image data")
     args = parser.parse_args()
 
-    app = QApplication(["LiDAR Calib"])
+    app = q3d.QApplication(["LiDAR Calib"])
     viewer = ViewerWithPanel(name='LiDAR Calib')
-    grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
-    scan0_item = CloudItem(
-        size=2, alpha=1, color_mode='FLAT', color='0xff0000')
-    scan1_item = CloudItem(
-        size=2, alpha=1, color_mode='FLAT', color='0x00ff00')
+    grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
+    scan0_item = q3d.CloudItem(
+        size=2, alpha=1, color_mode='FLAT', color='#ff0000')
+    scan1_item = q3d.CloudItem(
+        size=2, alpha=1, color_mode='FLAT', color='#00ff00')
     viewer.addItems(
         {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 
