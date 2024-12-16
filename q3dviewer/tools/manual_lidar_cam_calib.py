@@ -1,23 +1,15 @@
 #!/usr/bin/env python3
 
-"""
-Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
-Distributed under MIT license. See LICENSE for more information.
-"""
-
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
+from q3dviewer import *
 import rospy
 import numpy as np
-import q3dviewer as q3d
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
-from pyqtgraph.Qt import QtCore
-from pypcd4 import PointCloud
-import rospy
-import cv2
 import argparse
+import cv2
 
-
+viewer = None
+cloud_accum = None
+cloud_accum_color = None
 clouds = []
 remap_info = None
 K = None
@@ -36,18 +28,16 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return float(text)
 
 
-class ViewerWithPanel(q3d.Viewer):
+class ViewerWithPanel(Viewer):
     def __init__(self, **kwargs):
         # b: camera body frame
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = q3d.euler_to_matrix(np.array([0.0, 0.0, 0.0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
-        self.tbl = np.array([0.0, 0.0, 0.0])
-        self.tcl = self.Rcb @ self.tbl
+        self.tcl = np.array([0, 0, 0])
         self.Rcl = self.Rcb @ self.Rbl
         self.psize = 2
         self.cloud_num = 1
@@ -55,10 +45,10 @@ class ViewerWithPanel(q3d.Viewer):
         super().__init__(**kwargs)
 
     def initUI(self):
-        center_widget = QWidget()
-        self.setCentralWidget(center_widget)
+        centerWidget = QWidget()
+        self.setCentralWidget(centerWidget)
         main_layout = QHBoxLayout()
-        center_widget.setLayout(main_layout)
+        centerWidget.setLayout(main_layout)
 
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
@@ -68,7 +58,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.checkbox_rgb.setChecked(False)
         setting_layout.addWidget(self.checkbox_rgb)
         self.checkbox_rgb.stateChanged.connect(
-            self.checkboxChanged)
+            self.checkbox_changed)
 
         # Add XYZ spin boxes
         label_xyz = QLabel("Set XYZ:")
@@ -84,10 +74,7 @@ class ViewerWithPanel(q3d.Viewer):
         setting_layout.addWidget(self.box_z)
         self.box_x.setRange(-100.0, 100.0)
         self.box_y.setRange(-100.0, 100.0)
-        self.box_z.setRange(-100.0, 100.0)
-        self.box_x.setValue(self.tbl[0])
-        self.box_y.setValue(self.tbl[1])
-        self.box_z.setValue(self.tbl[2])
+        self.box_y.setRange(-100.0, 100.0)
 
         # Add RPY spin boxes
         label_rpy = QLabel("Set Roll-Pitch-Yaw:")
@@ -104,17 +91,13 @@ class ViewerWithPanel(q3d.Viewer):
         self.box_roll.setRange(-np.pi, np.pi)
         self.box_pitch.setRange(-np.pi, np.pi)
         self.box_yaw.setRange(-np.pi, np.pi)
-        rpy = q3d.matrix_to_euler(self.Rbl)
-        self.box_roll.setValue(rpy[0])
-        self.box_pitch.setValue(rpy[1])
-        self.box_yaw.setValue(rpy[2])
 
         label_psize = QLabel("Set point size:")
         setting_layout.addWidget(label_psize)
         self.box_psize = QSpinBox()
         self.box_psize.setValue(self.psize)
         self.box_psize.setRange(0, 5)
-        self.box_psize.valueChanged.connect(self.updatePsize)
+        self.box_psize.valueChanged.connect(self.update_psize)
         setting_layout.addWidget(self.box_psize)
 
         label_cloud_num = QLabel("Set cloud frame number:")
@@ -122,7 +105,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.box_cloud_num = QSpinBox()
         self.box_cloud_num.setValue(self.cloud_num)
         self.box_cloud_num.setRange(1, 100)
-        self.box_cloud_num.valueChanged.connect(self.updateCloudNum)
+        self.box_cloud_num.valueChanged.connect(self.update_cloud_num)
         setting_layout.addWidget(self.box_cloud_num)
 
         label_res = QLabel("The cam-lidar quat and translation:")
@@ -134,67 +117,62 @@ class ViewerWithPanel(q3d.Viewer):
         self.line_trans.setReadOnly(True)
         setting_layout.addWidget(self.line_trans)
 
-        self.line_trans.setText(
-            f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
-        quat = q3d.matrix_to_quaternion(self.Rcl)
-        self.line_quat.setText(
-            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        self.line_trans.setText(f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
+        quat = matrix_to_quaternion(self.Rcl)
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
-        self.box_x.valueChanged.connect(self.updateXYZ)
-        self.box_y.valueChanged.connect(self.updateXYZ)
-        self.box_z.valueChanged.connect(self.updateXYZ)
-        self.box_roll.valueChanged.connect(self.updateRPY)
-        self.box_pitch.valueChanged.connect(self.updateRPY)
-        self.box_yaw.valueChanged.connect(self.updateRPY)
+        self.box_x.valueChanged.connect(self.update_xyz)
+        self.box_y.valueChanged.connect(self.update_xyz)
+        self.box_z.valueChanged.connect(self.update_xyz)
+        self.box_roll.valueChanged.connect(self.update_rpy)
+        self.box_pitch.valueChanged.connect(self.update_rpy)
+        self.box_yaw.valueChanged.connect(self.update_rpy)
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = q3d.GLVWidget()
+        self.viewerWidget = self.vw()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.glv_widget, 1)
+        main_layout.addWidget(self.viewerWidget, 1)
 
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.glv_widget.setCameraPosition(distance=5)
-        self.glv_widget.setBKcolor('#ffffff')
+        self.viewerWidget.setCameraPosition(distance=5)
+        self.viewerWidget.setBKColor('#ffffff')
         timer.start()
 
-    def updatePsize(self):
+    def update_psize(self):
         self.psize = self.box_psize.value()
 
-    def updateCloudNum(self):
+    def update_cloud_num(self):
         self.cloud_num = self.box_cloud_num.value()
 
-    def updateXYZ(self):
+    def update_xyz(self):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
-        self.tbl = np.array([x, y, z])
-        self.tcl =  self.Rcb @ self.tbl
-        x, y, z = self.tcl
+        self.tcl = np.array([x, y, z])
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {x:.6f}]")
 
-    def updateRPY(self):
+    def update_rpy(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.Rbl = q3d.euler_to_matrix(np.array([roll, pitch, yaw]))
+        self.Rbl = euler_to_matrix(np.array([roll, pitch, yaw]))
         self.Rcl = self.Rcb @ self.Rbl
-        quat = q3d.matrix_to_quaternion(self.Rcl)
-        self.line_quat.setText(
-            f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        quat = matrix_to_quaternion(self.Rcl)
+        self.line_quat.setText(f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
-    def checkboxChanged(self, state):
+    def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
             self.en_rgb = True
         else:
             self.en_rgb = False
 
 
-def camera_info_cb(data):
+def cameraInfoCB(data):
     global remap_info, K
     if remap_info is None:  # Initialize only once
         K = np.array(data.K).reshape(3, 3)
@@ -207,7 +185,7 @@ def camera_info_cb(data):
         remap_info = [mapx, mapy]
 
 
-def scan_cb(data):
+def scanCB(data):
     global viewer, clouds, cloud_accum, cloud_accum_color
     pc = PointCloud.from_msg(data).pc_data
     data_type = viewer['scan'].data_type
@@ -239,7 +217,7 @@ def draw_larger_points(image, points, colors, radius):
     return image
 
 
-def image_cb(data):
+def imageCB(data):
     global cloud_accum, cloud_accum_color, remap_info, K
     if remap_info is None:
         rospy.logwarn("Camera parameters not yet received.")
@@ -252,14 +230,15 @@ def image_cb(data):
 
     # Undistort the image
     image_un = cv2.remap(image, remap_info[0], remap_info[1], cv2.INTER_LINEAR)
+
     if cloud_accum is not None:
         cloud_local = cloud_accum.copy()
         tcl = viewer.tcl
         Rcl = viewer.Rcl
         pl = cloud_local['xyz']
-        pc = (Rcl @ pl.T + tcl[:, np.newaxis]).T
-        u = (K @ pc.T).T
-        u_mask = (u[:, 2] != 0) & (pc[:, 2] > 0.2)
+        po = (Rcl @ pl.T + tcl[:, np.newaxis]).T
+        u = (K @ po.T).T
+        u_mask = u[:, 2] != 0
         u = u[:, :2][u_mask] / u[:, 2][u_mask][:, np.newaxis]
 
         radius = viewer.psize  # Radius of the points to be drawn
@@ -270,9 +249,7 @@ def image_cb(data):
         u = u[valid_points]
 
         intensity = cloud_local['color'][u_mask][valid_points]
-        vmin = viewer['scan'].vmin
-        vmax = viewer['scan'].vmax
-        intensity_color = q3d.rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
+        intensity_color = rainbow(intensity).astype(np.uint8)
         draw_image = image_un.copy()
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]
@@ -300,20 +277,19 @@ def main():
                         default='camera_info', help="Topic of camera info")
     args = parser.parse_args()
 
-    app = q3d.QApplication(['LiDAR Cam Calib'])
-    viewer = ViewerWithPanel(name='LiDAR Cam Calib')
-    grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
-    scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
-    img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
+    app = QApplication([])
+    viewer = ViewerWithPanel(name='Manual LiDAR Cam Calib')
+    grid_item = GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
+    scan_item = CloudItem(size=2, alpha=1, color_mode='I')
+    img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
-    rospy.init_node('lidar_cam_calib', anonymous=True)
+    rospy.init_node('lidar_cam_manual_calib', anonymous=True)
 
     # Use topic names from arguments
-    rospy.Subscriber(args.lidar, PointCloud2, scan_cb, queue_size=1)
-    rospy.Subscriber(args.camera, Image, image_cb, queue_size=1)
-    rospy.Subscriber(args.camera_info, CameraInfo,
-                     camera_info_cb, queue_size=1)
+    rospy.Subscriber(args.lidar, PointCloud2, scanCB, queue_size=1)
+    rospy.Subscriber(args.camera, Image, imageCB, queue_size=1)
+    rospy.Subscriber(args.camera_info, CameraInfo, cameraInfoCB, queue_size=1)
 
     viewer.show()
     app.exec_()

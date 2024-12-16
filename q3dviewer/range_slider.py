@@ -1,5 +1,5 @@
 """
-Copyright 2024  Liu Yang
+Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
@@ -62,8 +62,8 @@ class RangeSlider(QSlider):
         painter.drawRect(0, bar_y, self.width(), bar_height)
 
         # Draw the selected range
-        lower_x = self.valueToPixelPos(self.lower_value)
-        upper_x = self.valueToPixelPos(self.upper_value)
+        lower_x = int(self.valueToPixelPos(self.lower_value))
+        upper_x = int(self.valueToPixelPos(self.upper_value))
         painter.setBrush(highlight_color)
         painter.drawRect(lower_x, bar_y, upper_x - lower_x, bar_height)
 
@@ -72,6 +72,8 @@ class RangeSlider(QSlider):
         painter.setBrush(handle_color)
         painter.drawEllipse(lower_x - 5, bar_y - 4, 12, 12)
         painter.drawEllipse(upper_x - 5, bar_y - 4, 12, 12)
+
+        painter.end()
 
     def pixelPosToValue(self, pos):
         """Convert pixel position to slider value."""

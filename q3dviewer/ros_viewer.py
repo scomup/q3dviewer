@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-"""
-Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
-Distributed under MIT license. See LICENSE for more information.
-"""
 
 from q3dviewer.utils import make_transform
-import q3dviewer as q3d
+from q3dviewer.basic_window import *
+from q3dviewer.custom_items import *
 import rospy
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
@@ -19,8 +16,7 @@ viewer = None
 point_num_per_scan = None
 color_mode = None
 
-
-def odom_cb(data):
+def odomCB(data):
     global viewer
     pose = np.array(
         [data.pose.pose.position.x,
@@ -35,7 +31,7 @@ def odom_cb(data):
     viewer['odom'].setTransform(transform)
 
 
-def scan_cb(data):
+def scanCB(data):
     global viewer
     global point_num_per_scan
     global color_mode
@@ -45,14 +41,14 @@ def scan_cb(data):
         color = pc['rgb'].view(np.uint32)
     else:
         color = pc['intensity']
-
+    
     if color_mode is None:
         if 'rgb' in pc.dtype.names:
             color_mode = 'RGB'
         else:
             color_mode = 'I'
         viewer['map'].setColorMode(color_mode)
-
+    
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
         dtype=data_type)
@@ -63,7 +59,7 @@ def scan_cb(data):
     viewer['scan'].setData(data=cloud)
 
 
-def image_cb(data):
+def imageCB(data):
     image = np.frombuffer(data.data, dtype=np.uint8).reshape(
         data.height, data.width, -1)
     if (data.encoding == 'bgr8'):
@@ -77,28 +73,26 @@ def main():
     global viewer
     global point_num_per_scan
     point_num_per_scan = 10000
-    map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
-    scan_item = q3d.CloudItem(
-        size=2, alpha=1, color_mode='FLAT', color='0xffffff')
-    odom_item = q3d.GLAxisItem(size=0.5, width=5)
-    grid_item = q3d.GridItem(size=1000, spacing=20)
-    img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
+    map_item = CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
+    scan_item = CloudItem(size=2, alpha=1, color_mode='#FFFFFF')
+    odom_item = GLAxisItem(size=0.5, width=5)
+    grid_item = GridItem(size=1000, spacing=20)
+    img_item = ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
 
-    app = q3d.QApplication(['ROS Viewer'])
-    viewer = q3d.Viewer(name='ROS Viewer')
+    app = QApplication([])
+    viewer = Viewer(name='ROS Viewer')
 
     viewer.addItems({'map': map_item, 'scan': scan_item,
-                     'odom': odom_item, 'grid': grid_item,
-                     'img': img_item})
+                    'odom': odom_item, 'grid': grid_item, 'img': img_item})
 
     point_num_per_scan = rospy.get_param("scan_num", 100000)
     print("point_num_per_scan: %d" % point_num_per_scan)
     rospy.Subscriber(
-        "/cloud_registered", PointCloud2, scan_cb,
+        "/cloud_registered", PointCloud2, scanCB,
         queue_size=1, buff_size=2**24)
     rospy.Subscriber(
-        "/odometry", Odometry, odom_cb, queue_size=1, buff_size=2**24)
-    rospy.Subscriber('/image', Image, image_cb)
+        "/odometry", Odometry, odomCB, queue_size=1, buff_size=2**24)
+    rospy.Subscriber('/image', Image, imageCB)
 
     viewer.show()
     app.exec_()

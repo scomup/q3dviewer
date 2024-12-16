@@ -1,7 +1,4 @@
-"""
-Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
-Distributed under MIT license. See LICENSE for more information.
-"""
+#!/usr/bin/env python3
 
 import numpy as np
 import pyqtgraph.opengl as gl
@@ -14,15 +11,13 @@ from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
 from PyQt5.QtWidgets import QLabel, QLineEdit, \
     QDoubleSpinBox, QSpinBox, QCheckBox
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
 
 
 class SettingWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.combo_items = QComboBox()
-        self.combo_items.currentIndexChanged.connect(self.onComboSelection)
+        self.combo_items.currentIndexChanged.connect(self.onComboboxSelection)
         main_layout = QVBoxLayout()
         self.stretch = QSpacerItem(
             10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -45,30 +40,30 @@ class SettingWindow(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
-    def onComboSelection(self, index):
+    def onComboboxSelection(self, index):
         self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
         self.clearSetting()
 
         key = list(self.items.keys())
-        item = self.items[key[index]]
-        if hasattr(item, "addSetting"):
+        try:
+            item = self.items[key[index]]
             item.addSetting(self.layout)
             self.layout.addItem(self.stretch)
-        else:
+        except AttributeError:
             print("%s: No setting." % (item.__class__.__name__))
 
 
-class GLVWidget(gl.GLViewWidget):
+class ViewWidget(gl.GLViewWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
         self.color = '#000000'
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
-        super(GLVWidget, self).__init__()
+        super(ViewWidget, self).__init__()
 
-    def on_followable_selection(self, index):
+    def onFollowableSelection(self, index):
         self.followed_name = self.followable_item_name[index]
 
     def update(self):
@@ -78,30 +73,31 @@ class GLVWidget(gl.GLViewWidget):
         super().update()
 
     def addSetting(self, layout):
-        label_color = QLabel("Set background color:")
-        layout.addWidget(label_color)
-        color_edit = QLineEdit()
-        color_edit.setToolTip("'using hex color, i.e. #FF4500")
-        color_edit.setText(self.color)
-        color_edit.textChanged.connect(self.setBKcolor)
-        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
-        validator = QRegularExpressionValidator(regex)
-        color_edit.setValidator(validator)
-        layout.addWidget(color_edit)
-        label_focus = QLabel("Set Focus:")
-        combo_focus = QComboBox()
+        label1 = QLabel("Set background color:")
+        label1.setToolTip("using '#xxxxxx', i.e. #FF4500")
+        box1 = QLineEdit()
+        box1.setToolTip("'using '#xxxxxx', i.e. #FF4500")
+        box1.setText(str(self.color))
+        box1.textChanged.connect(self.setBKColor)
+        layout.addWidget(label1)
+        layout.addWidget(box1)
+        label2 = QLabel("Set Focus:")
+        combo2 = QComboBox()
         for name in self.followable_item_name:
-            combo_focus.addItem(name)
-        combo_focus.currentIndexChanged.connect(self.on_followable_selection)
-        layout.addWidget(label_focus)
-        layout.addWidget(combo_focus)
+            combo2.addItem(name)
+        combo2.currentIndexChanged.connect(self.onFollowableSelection)
+        layout.addWidget(label2)
+        layout.addWidget(combo2)
 
-    def setBKcolor(self, color):
-        try:
-            self.setBackgroundColor(color)
-            self.color = color
-        except ValueError:
+    def setBKColor(self, color):
+        if (type(color) != str):
             return
+        if color.startswith("#"):
+            try:
+                self.setBackgroundColor(color)
+                self.color = color
+            except ValueError:
+                return
 
     def addItem(self, name, item):
         self.named_items.update({name: item})
