@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 from q3dviewer import *
 import rospy
