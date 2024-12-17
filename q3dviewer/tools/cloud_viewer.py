@@ -23,12 +23,8 @@ class CloudViewer(q3d.Viewer):
 
     def dropEvent(self, event):
         for i, url in enumerate(event.mimeData().urls()):
-            append = False
-            if i > 0:
-                append = True
-            print(url.toLocalFile(), append)
             file_path = url.toLocalFile()
-            self.openCloudFile(file_path, append)
+            self.openCloudFile(file_path, append=(i > 0))
 
     def openCloudFile(self, file, append=False):
         cloud_item = self['cloud']
@@ -36,9 +32,9 @@ class CloudViewer(q3d.Viewer):
             print("Can't find clouditem.")
             return
         cloud = cloud_item.load(file, append=append)
-        center = np.mean(cloud['xyz'], axis=0)
-        self.glv_widget.setCameraPosition(pos=QVector3D(center[0], center[1], center[2]))
-        # self.glv_widget.setCameraPosition(distance=200)
+        center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+        self.glv_widget.setCameraPosition(pos=QVector3D(center[0], center[1], 0))
+        self.glv_widget.setCameraPosition(distance=200)
 
 
 def main():

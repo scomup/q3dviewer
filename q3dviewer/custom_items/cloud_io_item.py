@@ -65,7 +65,6 @@ def save_as_pcd(cloud, save_path):
 
 def load_pcd(file):
     dtype = [('xyz', '<f4', (3,)), ('color', '<u4')]
-    fields = ['x', 'y', 'z']
     pc = PointCloud.from_path(file).pc_data
     if 'rgb' in pc.dtype.names:
         color = pc['rgb'].astype(np.uint32)
@@ -99,8 +98,6 @@ def save_as_e57(cloud, save_path):
 
 
 def load_e57(file_path):
-    pcd, _ = load_pcd('/home/liu/lab.pcd')
-
     e57 = E57(file_path, mode="r")
     scans = e57.read_scan(0, ignore_missing_fields=True,
                           intensity=True, colors=True)
@@ -134,7 +131,14 @@ def load_las(file):
         points = np.vstack((las.x, las.y, las.z)).transpose()
         dimensions = las.point_format.dimension_names
         if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
-            color = (las.red << 16) | (las.green << 8) | las.blue
+            red = las.red
+            green = las.green
+            blue = las.blue
+            if red.dtype == np.dtype('uint16'):
+                red = (red / 65535.0 * 255).astype(np.uint32)
+                green = (green / 65535.0 * 255).astype(np.uint32)
+                blue = (blue / 65535.0 * 255).astype(np.uint32)
+            color = (red << 16) | (green << 8) | blue
             color_mode = 'RGB'
         elif 'intensity' in dimensions:
             color = las.intensity
@@ -198,7 +202,7 @@ class CloudIOItem(CloudItem):
         elif self.save_path.endswith(".las"):
             func = save_as_las
         elif self.save_path.endswith(".tif") or self.save_path.endswith(".tiff"):
-            print("Do not support save as as tif type!")
+            print("Do not support save as tif type!")
         else:
             print("Unsupported cloud file type!")
         try:

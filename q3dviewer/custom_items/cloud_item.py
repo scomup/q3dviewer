@@ -11,12 +11,13 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import threading
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QComboBox
+    QComboBox, QCheckBox
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
 from q3dviewer.range_slider import RangeSlider
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
+from pyqtgraph.Qt import QtCore
 
 
 vertex_shader = """
@@ -142,6 +143,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
         self.need_update_setting = True
+        # Enable depth test when full opaque
+        self.depth_test_enabled = (alpha == 1)
 
     def addSetting(self, layout):
         label_ptype = QLabel("Set point display type:")
@@ -196,6 +199,12 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
 
         layout.addWidget(self.slider_v)
         self.combo_color.setCurrentIndex(self.color_mode)
+
+        # Add a checkbox for enabling/disabling depth test
+        self.checkbox_depth_test = QCheckBox("Show Front Points First (Enable Depth Test)")
+        self.checkbox_depth_test.setChecked(self.depth_test_enabled)
+        self.checkbox_depth_test.stateChanged.connect(self.setDepthTest)
+        layout.addWidget(self.checkbox_depth_test)
 
     def _onRangeV(self, lower, upper):
         self.vmin = lower
@@ -257,6 +266,9 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
     def setSize(self, size):
         self.size = size
         self.need_update_setting = True
+
+    def setDepthTest(self, state):
+        self.depth_test_enabled = (state == QtCore.Qt.Checked)
 
     def clear(self):
         data = np.empty((0), self.data_type)
@@ -346,6 +358,10 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
+        if self.depth_test_enabled:
+            glEnable(GL_DEPTH_TEST)
+        else:
+            glDisable(GL_DEPTH_TEST)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
@@ -377,3 +393,5 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glDisable(GL_POINT_SPRITE)
         glDisable(GL_PROGRAM_POINT_SIZE)
         glDisable(GL_BLEND)
+        if self.depth_test_enabled:
+            glDisable(GL_DEPTH_TEST)  # Disable depth testing if it was enabled
