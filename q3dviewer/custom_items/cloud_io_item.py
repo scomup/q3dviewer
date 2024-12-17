@@ -11,6 +11,7 @@ import numpy as np
 from pypcd4 import PointCloud, MetaData
 from plyfile import PlyData, PlyElement
 from pye57 import E57
+import laspy
 
 
 def save_as_ply(cloud, save_path):
@@ -127,6 +128,39 @@ def load_e57(file_path):
     return cloud, color_mode
 
 
+def load_las(file):
+    with laspy.open(file) as f:
+        las = f.read()
+        points = np.vstack((las.x, las.y, las.z)).transpose()
+        dimensions = las.point_format.dimension_names
+        if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
+            color = (las.red << 16) | (las.green << 8) | las.blue
+            color_mode = 'RGB'
+        elif 'intensity' in dimensions:
+            color = las.intensity
+            color_mode = 'I'
+        else:
+            color = las.z.astype(np.uint32)
+            color_mode = 'FLAT'
+        dtype = [('xyz', '<f4', (3,)), ('color', '<u4')]
+        cloud = np.rec.fromarrays([points, color], dtype=dtype)
+    return cloud, color_mode
+
+def save_as_las(cloud, save_path):
+    header = laspy.LasHeader(point_format=3, version="1.2")
+    las = laspy.LasData(header)
+    las.x = cloud['xyz'][:, 0]
+    las.y = cloud['xyz'][:, 1]
+    las.z = cloud['xyz'][:, 2]
+    if 'rgb' in cloud.dtype.names:
+        las.red = (cloud['color'] >> 16) & 0xFF
+        las.green = (cloud['color'] >> 8) & 0xFF
+        las.blue = cloud['color'] & 0xFF
+    elif 'intensity' in cloud.dtype.names:
+        las.intensity = cloud['color']
+    las.write(save_path)
+
+
 class CloudIOItem(CloudItem):
     """
     add save/load function to CloudItem
@@ -161,6 +195,10 @@ class CloudIOItem(CloudItem):
             func = save_as_ply
         elif self.save_path.endswith(".e57"):
             func = save_as_e57
+        elif self.save_path.endswith(".las"):
+            func = save_as_las
+        elif self.save_path.endswith(".tif") or self.save_path.endswith(".tiff"):
+            print("Do not support save as as tif type!")
         else:
             print("Unsupported cloud file type!")
         try:
@@ -172,7 +210,7 @@ class CloudIOItem(CloudItem):
             self.save_msg.exec()
         self.save_msg.exec()
 
-    def load(self, file):
+    def load(self, file, append=False):
         print("Try to load %s ..." % file)
         if file.endswith(".pcd"):
             cloud, color_mode = load_pcd(file)
@@ -180,11 +218,14 @@ class CloudIOItem(CloudItem):
             cloud, color_mode = load_ply(file)
         elif file.endswith(".e57"):
             cloud, color_mode = load_e57(file)
+        elif file.endswith(".las"):
+            cloud, color_mode = load_las(file)
         else:
             print("Not supported file type.")
             return
-        self.setData(data=cloud)
+        self.setData(data=cloud, append=append)
         self.setColorMode(color_mode)
+        return cloud
 
     def setPath(self, path):
         self.save_path = path

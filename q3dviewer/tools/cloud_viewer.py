@@ -8,7 +8,7 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 from pypcd4 import PointCloud
 import q3dviewer as q3d
-
+from PyQt5.QtGui import  QVector3D
 
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):
@@ -22,16 +22,23 @@ class CloudViewer(q3d.Viewer):
             event.ignore()
 
     def dropEvent(self, event):
-        for url in event.mimeData().urls():
+        for i, url in enumerate(event.mimeData().urls()):
+            append = False
+            if i > 0:
+                append = True
+            print(url.toLocalFile(), append)
             file_path = url.toLocalFile()
-            self.openCloudFile(file_path)
+            self.openCloudFile(file_path, append)
 
-    def openCloudFile(self, file):
+    def openCloudFile(self, file, append=False):
         cloud_item = self['cloud']
         if cloud_item is None:
             print("Can't find clouditem.")
             return
-        cloud_item.load(file)
+        cloud = cloud_item.load(file, append=append)
+        center = np.mean(cloud['xyz'], axis=0)
+        self.glv_widget.setCameraPosition(pos=QVector3D(center[0], center[1], center[2]))
+        # self.glv_widget.setCameraPosition(distance=200)
 
 
 def main():
