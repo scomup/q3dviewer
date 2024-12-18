@@ -3,7 +3,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
@@ -41,9 +41,9 @@ void main()
 """
 
 
-class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
+class ImageItem(BaseItem):
     def __init__(self, pos=np.array([0, 0]), size=np.array([1280/2, 720/2])):
-        gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
+        BaseItem.__init__(self)
         self.pos = pos  # bottom-left
         self.size = size
         self.image = np.zeros((self.size[0], self.size[1], 4), dtype=np.uint8)
@@ -51,8 +51,8 @@ class ImageItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def initializeGL(self):
         # Rectangle vertices and texture coordinates
-        width = self._GLGraphicsItem__view.deviceWidth()
-        height = self._GLGraphicsItem__view.deviceHeight()
+        width = self.view().deviceWidth()
+        height = self.view().deviceHeight()
         x0, y0 = self.pos
         x1, y1 = self.pos + self.size
         x0 = x0 / width * 2 - 1

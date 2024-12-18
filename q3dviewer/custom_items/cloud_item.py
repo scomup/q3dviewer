@@ -5,7 +5,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 
 import numpy as np
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -123,7 +123,7 @@ void main()
 
 
 # draw points with color (x, y, z, color)
-class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
+class CloudItem(BaseItem):
     def __init__(self, size, alpha, color_mode='I', color='#ffffff'):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
@@ -367,7 +367,6 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.vbo = glGenBuffers(1)
 
     def paint(self):
-        self.setupGLState()
         self.updateRenderBuffer()
         self.updateSetting()
         glEnable(GL_BLEND)
@@ -388,13 +387,12 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = self._GLGraphicsItem__view.viewMatrix().data()
+        view_matrix = self.view().viewMatrix().data()
         view_matrix = np.array(view_matrix, np.float32).reshape([4, 4]).T
         set_uniform(self.program, view_matrix, 'view_matrix')
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
-        ).data(), np.float32).reshape([4, 4]).T
+        project_matrix = self.view().projectionMatrix().T
         set_uniform(self.program, project_matrix, 'projection_matrix')
-        width = self._GLGraphicsItem__view.deviceWidth()
+        width = self.view().deviceWidth()
         focal = project_matrix[0, 0] * width / 2
         set_uniform(self.program, float(focal), 'focal')
 

@@ -4,16 +4,16 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 
 
-class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
+class GL2DTextItem(BaseItem):
     """Draws text over opengl 3D."""
 
     def __init__(self, **kwds):
         """All keyword arguments are passed to setData()"""
-        gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
+        BaseItem.__init__(self)
         glopts = kwds.pop('glOptions', 'additive')
         self.setGLOptions(glopts)
         self.pos = (100, 100)
@@ -46,7 +46,6 @@ class GL2DTextItem(gl.GLGraphicsItem.GLGraphicsItem):
     def paint(self):
         if len(self.text) < 1:
             return
-        self.setupGLState()
 
         text_pos = QtCore.QPointF(*self.pos)
         painter = QtGui.QPainter(self.view())

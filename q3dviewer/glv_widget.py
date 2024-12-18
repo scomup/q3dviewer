@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from pyqtgraph.Qt import QtCore
 from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QSpacerItem, QMainWindow
@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QLabel, QLineEdit, \
     QDoubleSpinBox, QSpinBox, QCheckBox
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
-
+from q3dviewer.GLViewWidget import GLViewWidget
 
 class SettingWindow(QWidget):
     def __init__(self):
@@ -59,7 +59,7 @@ class SettingWindow(QWidget):
             print("%s: No setting." % (item.__class__.__name__))
 
 
-class GLVWidget(gl.GLViewWidget):
+class GLVWidget(GLViewWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
@@ -98,7 +98,7 @@ class GLVWidget(gl.GLViewWidget):
 
     def setBKcolor(self, color):
         try:
-            self.setBackgroundColor(color)
+            self.set_color(color)
             self.color = color
         except ValueError:
             return

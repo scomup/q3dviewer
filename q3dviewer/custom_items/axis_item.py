@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -12,16 +12,15 @@ import numpy as np
 from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
 
 
-class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
-    def __init__(self, size=1., width=5, glOptions='translucent'):
-        gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
+class GLAxisItem(BaseItem):
+    def __init__(self, size=1., width=5):
+        BaseItem.__init__(self)
         self.size = size
         self.width = width
         self.org = np.array([0, 0, 0, 1])
         self.axis_x = np.array([self.size, 0, 0, 1])
         self.axis_y = np.array([0, self.size, 0, 1])
         self.axis_z = np.array([0, 0, self.size, 1])
-        self.setGLOptions(glOptions)
         self.T = np.eye(4)
         self.settings = []
 
@@ -61,7 +60,6 @@ class GLAxisItem(gl.GLGraphicsItem.GLGraphicsItem):
         axis_x = self.T.dot(self.axis_x)
         axis_y = self.T.dot(self.axis_y)
         axis_z = self.T.dot(self.axis_z)
-        self.setupGLState()
         glLineWidth(self.width)
         glBegin(GL_LINES)
         glColor4f(0, 0, 1, 1)  # z is blue

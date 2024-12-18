@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -19,7 +19,7 @@ def div_round_up(x, y):
     return int((x + y - 1) / y)
 
 
-class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
+class GaussianItem(BaseItem):
     def __init__(self, **kwds):
         super().__init__()
         self.need_updateGS = False
@@ -102,11 +102,11 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.ssbo_dp = glGenBuffers(1)
         self.ssbo_pp = glGenBuffers(1)
 
-        width = self._GLGraphicsItem__view.deviceWidth()
-        height = self._GLGraphicsItem__view.deviceHeight()
+        width = self.view().deviceWidth()
+        height = self.view().deviceHeight()
 
         # set constant parameter for gaussian shader
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
+        project_matrix = np.array(self.view().projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
@@ -171,7 +171,7 @@ class GaussianItem(gl.GLGraphicsItem.GLGraphicsItem):
 
     def paint(self):
         # get current view matrix
-        view_matrix_raw = self._GLGraphicsItem__view.viewMatrix().data()
+        view_matrix_raw = self.view().viewMatrix().data()
         self.view_matrix = np.array(
             view_matrix_raw, np.float32).reshape([4, 4]).T
 

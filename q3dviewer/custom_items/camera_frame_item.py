@@ -3,7 +3,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-import pyqtgraph.opengl as gl
+from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
@@ -41,9 +41,9 @@ void main()
 """
 
 
-class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
+class GLCameraFrameItem(BaseItem):
     def __init__(self, T=np.eye(4), size=1, width=3, path=None):
-        gl.GLGraphicsItem.GLGraphicsItem.__init__(self)
+        BaseItem.__init__(self)
         self.size = size
         self.width = width
         self.T = T
@@ -96,7 +96,7 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-        proj_m_raw = self._GLGraphicsItem__view.projectionMatrix().data()
+        proj_m_raw = self.view().projectionMatrix().data()
         project_matrix = np.array(proj_m_raw,
                                   np.float32).reshape([4, 4]).T
         # Compile shaders and create shader program
@@ -125,10 +125,10 @@ class GLCameraFrameItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.T = T
 
     def paint(self):
-        view_matrix_raw = self._GLGraphicsItem__view.viewMatrix().data()
+        view_matrix_raw = self.view().viewMatrix().data()
         self.view_matrix = np.array(
             view_matrix_raw, np.float32).reshape([4, 4]).T
-        project_matrix = np.array(self._GLGraphicsItem__view.projectionMatrix(
+        project_matrix = np.array(self.view().projectionMatrix(
         ).data(), np.float32).reshape([4, 4]).T
 
         glEnable(GL_DEPTH_TEST)
