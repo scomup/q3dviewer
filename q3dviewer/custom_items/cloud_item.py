@@ -201,7 +201,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
         self.combo_color.setCurrentIndex(self.color_mode)
 
         # Add a checkbox for enabling/disabling depth test
-        self.checkbox_depth_test = QCheckBox("Show Front Points First (Enable Depth Test)")
+        self.checkbox_depth_test = QCheckBox(
+            "Show Front Points First (Enable Depth Test)")
         self.checkbox_depth_test.setChecked(self.depth_test_enabled)
         self.checkbox_depth_test.stateChanged.connect(self.setDepthTest)
         layout.addWidget(self.checkbox_depth_test)
@@ -297,6 +298,18 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
                 self.wait_add_data = data
                 self.add_buff_loc = 0
 
+            while self.add_buff_loc + self.wait_add_data.shape[0] > self.max_cloud_size:
+                # Randomly select half of the points
+                print(
+                    "Warning: Buffer size exceeds the maximum cloud size. Randomly selecting half of the points.")
+                indices = np.random.choice(
+                    self.add_buff_loc, self.add_buff_loc // 2, replace=False)
+                self.buff[:self.add_buff_loc // 2] = self.buff[indices]
+                self.add_buff_loc //= 2
+                indices = np.random.choice(
+                    self.wait_add_data.shape[0], self.wait_add_data.shape[0] // 2, replace=False)
+                self.wait_add_data = self.wait_add_data[indices]
+
     def updateSetting(self):
         if (self.need_update_setting is False):
             return
@@ -348,6 +361,8 @@ class CloudItem(gl.GLGraphicsItem.GLGraphicsItem):
             shaders.compileShader(vertex_shader, GL_VERTEX_SHADER),
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
+        self.max_cloud_size = glGetIntegerv(
+            GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
         # Bind attribute locations
         self.vbo = glGenBuffers(1)
 

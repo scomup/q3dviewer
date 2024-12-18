@@ -12,7 +12,8 @@ setup(
         'pypcd4',
         'pillow',
         'plyfile',
-        'pye57'
+        'pye57',
+        'laspy'
         ],
     entry_points={
         'console_scripts': [
