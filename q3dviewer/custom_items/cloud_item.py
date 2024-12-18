@@ -387,10 +387,9 @@ class CloudItem(BaseItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = self.view().viewMatrix().data()
-        view_matrix = np.array(view_matrix, np.float32).reshape([4, 4]).T
+        view_matrix = self.view().viewMatrix()
         set_uniform(self.program, view_matrix, 'view_matrix')
-        project_matrix = self.view().projectionMatrix().T
+        project_matrix = self.view().projectionMatrix()
         set_uniform(self.program, project_matrix, 'projection_matrix')
         width = self.view().deviceWidth()
         focal = project_matrix[0, 0] * width / 2

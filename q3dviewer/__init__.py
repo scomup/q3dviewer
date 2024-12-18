@@ -4,5 +4,5 @@ from q3dviewer.custom_items import *
 from q3dviewer.glv_widget import *
 from q3dviewer.base_viewer import *
 from q3dviewer.base_item import *
-from q3dviewer.GLViewWidget import *
+from q3dviewer.base_glwidget import *
 from q3dviewer.range_slider import *

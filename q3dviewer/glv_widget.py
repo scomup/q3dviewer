@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QLabel, QLineEdit, \
     QDoubleSpinBox, QSpinBox, QCheckBox
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
-from q3dviewer.GLViewWidget import GLViewWidget
+from q3dviewer.base_glwidget import BaseGLWidget
 
 class SettingWindow(QWidget):
     def __init__(self):
@@ -59,7 +59,7 @@ class SettingWindow(QWidget):
             print("%s: No setting." % (item.__class__.__name__))
 
 
-class GLVWidget(GLViewWidget):
+class GLVWidget(BaseGLWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
@@ -67,6 +67,12 @@ class GLVWidget(GLViewWidget):
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
         super(GLVWidget, self).__init__()
+
+    def keyPressEvent(self, ev: QKeyEvent):
+        if ev.key() == QtCore.Qt.Key_M:  # setting meun
+            print("Open setting windows")
+            self.openSettingWindow()
+        super().keyPressEvent(ev)
 
     def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]
@@ -109,75 +115,6 @@ class GLVWidget(GLViewWidget):
             self.followable_item_name.append(name)
         self.setting_window.addSetting(name, item)
         super().addItem(item)
-
-    def mouseReleaseEvent(self, ev):
-        if hasattr(self, 'mousePos'):
-            delattr(self, 'mousePos')
-
-    def mouseMoveEvent(self, ev):
-        lpos = ev.localPos()
-        if not hasattr(self, 'mousePos'):
-            self.mousePos = lpos
-        diff = lpos - self.mousePos
-        self.mousePos = lpos
-        if ev.buttons() == QtCore.Qt.MouseButton.RightButton:
-            self.orbit(-diff.x(), diff.y())
-        elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
-            pitch_abs = np.abs(self.opts['elevation'])
-            camera_mode = 'view-upright'
-            if (pitch_abs <= 45.0 or pitch_abs == 90):
-                camera_mode = 'view'
-            self.pan(diff.x(), diff.y(), 0, relative=camera_mode)
-
-    def keyPressEvent(self, ev: QKeyEvent):
-        step = 10
-        zoom_delta = 20
-        speed = 2
-        self.projectionMatrix().data()
-
-        pitch_abs = np.abs(self.opts['elevation'])
-        camera_mode = 'view-upright'
-        if (pitch_abs <= 45.0 or pitch_abs == 90):
-            camera_mode = 'view'
-
-        if ev.key() == QtCore.Qt.Key_M:  # setting meun
-            print("Open setting windows")
-            self.openSettingWindow()
-        elif ev.key() == QtCore.Qt.Key_R:
-            print("Clear viewer")
-            for item in self.named_items.values():
-                try:
-                    item.clear()
-                except AttributeError:
-                    pass
-        elif ev.key() == QtCore.Qt.Key_Up:
-            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
-                self.pan(0, +step, 0, relative=camera_mode)
-            else:
-                self.orbit(azim=0, elev=-speed)
-        elif ev.key() == QtCore.Qt.Key_Down:
-            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
-                self.pan(0, -step, 0, relative=camera_mode)
-            else:
-                self.orbit(azim=0, elev=speed)
-        elif ev.key() == QtCore.Qt.Key_Left:
-            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
-                self.pan(+step, 0, 0, relative=camera_mode)
-            else:
-                self.orbit(azim=speed, elev=0)
-
-        elif ev.key() == QtCore.Qt.Key_Right:
-            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
-                self.pan(-step, 0, 0, relative=camera_mode)
-            else:
-                self.orbit(azim=-speed, elev=0)
-
-        elif ev.key() == QtCore.Qt.Key_Z:
-            self.opts['distance'] *= 0.999**(+zoom_delta)
-        elif ev.key() == QtCore.Qt.Key_X:
-            self.opts['distance'] *= 0.999**(-zoom_delta)
-        else:
-            super().keyPressEvent(ev)
 
     def openSettingWindow(self):
         if self.setting_window.isVisible():

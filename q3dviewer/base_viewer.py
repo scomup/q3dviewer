@@ -32,7 +32,6 @@ class Viewer(QMainWindow):
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.glv_widget.setCameraPosition(distance=40)
         timer.start()
 
     def addItems(self, named_items: dict):

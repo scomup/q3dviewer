@@ -171,9 +171,7 @@ class GaussianItem(BaseItem):
 
     def paint(self):
         # get current view matrix
-        view_matrix_raw = self.view().viewMatrix().data()
-        self.view_matrix = np.array(
-            view_matrix_raw, np.float32).reshape([4, 4]).T
+        self.view_matrix = self.view().viewMatrix()
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.updateGS()

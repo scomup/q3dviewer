@@ -125,11 +125,8 @@ class GLCameraFrameItem(BaseItem):
         self.T = T
 
     def paint(self):
-        view_matrix_raw = self.view().viewMatrix().data()
-        self.view_matrix = np.array(
-            view_matrix_raw, np.float32).reshape([4, 4]).T
-        project_matrix = np.array(self.view().projectionMatrix(
-        ).data(), np.float32).reshape([4, 4]).T
+        self.view_matrix = self.view().viewMatrix()
+        project_matrix = self.view().projectionMatrix()
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

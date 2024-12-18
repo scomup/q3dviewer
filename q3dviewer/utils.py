@@ -6,6 +6,29 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 
 
+def frustum(left, right, bottom, top, near, far):
+    # see https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glFrustum.xml
+    if near <= 0 or far <= 0 or near >= far or left == right or bottom == top:
+        print("Invalid frustum parameters.")
+        return None
+    matrix = np.zeros((4, 4), dtype=np.float32)
+    matrix[0, 0] = 2.0 * near / (right - left)
+    matrix[0, 2] = (right + left) / (right - left)
+    matrix[1, 1] = 2.0 * near / (top - bottom)
+    matrix[1, 2] = (top + bottom) / (top - bottom)
+    matrix[2, 2] = -(far + near) / (far - near)
+    matrix[2, 3] = -2.0 * far * near / (far - near)
+    matrix[3, 2] = -1.0
+    return matrix
+
+
+def m_get_roll(R):
+    r_32 = R[2, 1]
+    r_33 = R[2, 2]
+    roll = np.arctan2(r_32, r_33)
+    return roll
+
+
 def rainbow(scalars, scalar_min=0, scalar_max=255):
     range = scalar_max - scalar_min
     values = 1.0 - (scalars - scalar_min) / range
@@ -129,6 +152,11 @@ def make_transform(pose, rotation):
     transform[0:3, 3] = pose
     return transform
 
+def makeT(R, t):
+    T = np.eye(4)
+    T[0:3, 0:3] = R
+    T[0:3, 3] = t
+    return T
 
 # euler = np.array([1, 0.1, 0.1])
 # euler_angles = matrix_to_euler(euler_to_matrix(euler))
