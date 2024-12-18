@@ -1,6 +1,5 @@
 from PyQt5 import QtCore
-from pyqtgraph import Transform3D
-
+import numpy as np
 
 class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
     _nextId = 0
@@ -11,7 +10,7 @@ class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
         BaseItem._nextId += 1
         self.__view = None
         self.__children: set[BaseItem] = set()
-        self.__transform = Transform3D()
+        self.__transform = np.eye(4)
         self.__visible = True
         self.__initialized = False
    

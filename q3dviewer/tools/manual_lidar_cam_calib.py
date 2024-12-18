@@ -144,7 +144,7 @@ class ViewerWithPanel(Viewer):
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.viewerWidget.setCameraPosition(distance=5)
+        self.viewerWidget.set_cam_position(distance=5)
         self.viewerWidget.setBKColor('#ffffff')
         timer.start()
 

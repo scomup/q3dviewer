@@ -6,7 +6,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'numpy',
-        'pyqtgraph',
         'pyqt5',
         'PyOpenGL',
         'pypcd4',

@@ -13,7 +13,7 @@ import open3d as o3d
 import q3dviewer as q3d
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from pyqtgraph.Qt import QtCore
+from PyQt5 import QtCore
 from pypcd4 import PointCloud
 
 
@@ -139,7 +139,7 @@ class ViewerWithPanel(q3d.Viewer):
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.glv_widget.setCameraPosition(distance=5)
+        self.glv_widget.set_cam_position(distance=5)
         self.glv_widget.setBKcolor('#ffffff')
         timer.start()
 

@@ -33,8 +33,7 @@ class CloudViewer(q3d.Viewer):
             return
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-        self.glv_widget.setCameraPosition(pos=QVector3D(center[0], center[1], 0))
-        self.glv_widget.setCameraPosition(distance=200)
+        self.glv_widget.set_cam_position(pos=center)
 
 
 def main():

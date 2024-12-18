@@ -5,7 +5,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 from q3dviewer.base_item import BaseItem
-from pyqtgraph.Qt import QtCore
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QSpacerItem, QMainWindow
 from OpenGL.GL import *

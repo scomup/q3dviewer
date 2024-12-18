@@ -17,7 +17,7 @@ from q3dviewer.gl_utils import *
 from q3dviewer.range_slider import RangeSlider
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
-from pyqtgraph.Qt import QtCore
+from PyQt5 import QtCore
 
 
 vertex_shader = """

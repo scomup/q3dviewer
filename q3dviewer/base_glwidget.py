@@ -4,9 +4,6 @@ from math import cos, radians, sin, tan
 
 import numpy as np
 
-from pyqtgraph import Vector
-from pyqtgraph import functions as fn
-from pyqtgraph import getConfigOption
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from q3dviewer.utils import frustum, euler_to_matrix, make_transform, makeT, m_get_roll  # Import euler_to_matrix function
@@ -113,7 +110,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
 
     def projectionMatrix(self, region=None):
         w, h = self.deviceWidth(), self.deviceHeight()
-        dist = np.abs(self.Twb[2, 3])
+        dist = self.get_z()
         near = dist * 0.001
         far = dist * 10000.
         r = near * tan(0.5 * radians(self._fov))
@@ -132,6 +129,36 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         if hasattr(self, 'mousePos'):
             delattr(self, 'mousePos')
 
+    def screen_to_world(self, x, y):
+        width = self.deviceWidth()
+        height = self.deviceHeight()
+        projection_matrix = self.projectionMatrix()
+        view_matrix = self.viewMatrix()
+        inv_proj_view = np.linalg.inv(projection_matrix @ view_matrix)
+        
+        # Normalize screen coordinates to [-1, 1]
+        norm_x = (2.0 * x) / width - 1.0
+        norm_y = 1.0 - (2.0 * y) / height
+        norm_z = -1.0  # Near plane
+
+        screen_point_near = np.array([norm_x, norm_y, norm_z, 1.0])
+        world_point_near = inv_proj_view @ screen_point_near
+        world_point_near /= world_point_near[3]  # Normalize by w
+
+        norm_z = 1.0  # Far plane
+        screen_point_far = np.array([norm_x, norm_y, norm_z, 1.0])
+        world_point_far = inv_proj_view @ screen_point_far
+        world_point_far /= world_point_far[3]  # Normalize by w
+
+        # Vector from camera to mouse event point
+        direction = world_point_far[:3] - world_point_near[:3]
+
+        # Find intersection with z=0 plane
+        t = -world_point_near[2] / direction[2]
+        intersection_point = world_point_near[:3] + t * direction
+
+        return intersection_point
+
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
         if not hasattr(self, 'mousePos'):
@@ -142,28 +169,27 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             dR = euler_to_matrix([-diff.y() * 0.005, 0, 0])
             self.Tbc[:3, :3] = self.Tbc[:3, :3] @ dR
             dR = euler_to_matrix([0, 0, -diff.x() * 0.005])
-            self.Twb[:3, :3] = self.Twb [:3, :3] @ dR
+            self.Twb[:3, :3] = self.Twb[:3, :3] @ dR
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
-            width = self.deviceWidth()
-            project_matrix = self.projectionMatrix()
-            focal = project_matrix[0, 0] * width / 2
-            z = np.abs(self.Twb[2, 3])
+            fx, fy = self.get_focal()
+            z = self.get_z()
             roll = np.abs(m_get_roll(self.Tbc))
-            print(roll)
             if (roll < 1.3):
-                dtrans = np.array([-diff.x() * z / focal, diff.y()* z / focal, 0])
+                dtrans = np.array([-diff.x() * z / fx, diff.y() * z / fy, 0])
                 self.Twb[:3, 3] += self.Twb[:3, :3] @ dtrans
+                print(f"Translating by {dtrans}")
             else:
-                dtrans = np.array([-diff.x() / focal * 50, 0, diff.y() / focal * 50])
+                dtrans = np.array([-diff.x() * 100 / fx, 0, diff.y() * 100 / fy])
                 self.Twb[:3, 3] += self.Twb[:3, :3] @ dtrans
-
+                print(f"2 Translating by {dtrans}")
+        self.update()
 
     def updateMovement(self):
         if self.active_keys == {}:
             return
         rotation_speed = 0.01
         trans_speed = 1
-        z = np.abs(self.Twb[2, 3])
+        z = self.get_z()
         if z < 20:
             trans_speed = z * 0.05
         if QtCore.Qt.Key_Up in self.active_keys:
@@ -191,14 +217,16 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         if QtCore.Qt.Key_S in self.active_keys:
             self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([0, -trans_speed, 0])
 
+    def get_z(self):
+        return np.abs(self.Twb[2, 3])
+
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
-        delta = delta * 0.03
+        delta = self.get_z() * delta * 0.003
         self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -delta])
         self.update()
-
 
     def setModelview(self):
         m = self.viewMatrix()
@@ -209,29 +237,15 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         # Create a 4x4 identity matrix
         return np.linalg.inv(self.Twb @ self.Tbc)
 
-    def itemsAt(self, region=None):
-        """
-        Return a list of the items displayed in the region (x, y, w, h)
-        relative to the widget.        
-        """
-        region = (region[0], self.deviceHeight()-(region[1]+region[3]), region[2], region[3])
-        
-        #buf = np.zeros(100000, dtype=np.uint)
-        buf = glSelectBuffer(100000)
-        try:
-            glRenderMode(GL_SELECT)
-            glInitNames()
-            glPushName(0)
-            self._itemNames = {}
-            self.paintGL(region=region, useItemNames=True)
-            
-        finally:
-            hits = glRenderMode(GL_RENDER)
-            
-        items = [(h.near, h.names[0]) for h in hits]
-        items.sort(key=lambda i: i[0])
-        return [self._itemNames[i[1]] for i in items]
-    
+    def set_cam_position(self, **kwargs):
+        pos = kwargs.get('pos', None)
+        distance = kwargs.get('distance', None)
+        if pos is not None:
+            self.Twb[:3, 3] = pos
+        if distance is not None:
+            self.Twb[2, 3] = distance
+
+
     def paintGL(self, region=None, viewport=None, useItemNames=False):
         """
         viewport specifies the arguments to glViewport. If None, then we use self.opts['viewport']
@@ -273,8 +287,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
                 glMatrixMode(GL_MODELVIEW)
                 glPushMatrix()
                 try:
-                    tr = i.transform()
-                    glMultMatrixf(np.array(tr.data(), dtype=np.float32))
                     self.drawItemTree(i, useItemNames=useItemNames)
                 finally:
                     glMatrixMode(GL_MODELVIEW)
