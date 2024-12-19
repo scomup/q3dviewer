@@ -1,7 +1,12 @@
+"""
+Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
+Distributed under MIT license. See LICENSE for more information.
+"""
+
 from PyQt5 import QtCore
 import numpy as np
 
-class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
+class BaseItem(QtCore.QObject):
     _next_id = 0
     
     def __init__(self):
@@ -12,14 +17,8 @@ class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
         self.__transform = np.eye(4)
         self.__visible = True
         self.__initialized = False
-       
-    def parent_item(self):
-        return None
         
-    def child_items(self):
-        return list()
-        
-    def _set_view(self, v):
+    def set_glwidget(self, v):
         self.__view = v
         
     def view(self):
@@ -34,23 +33,28 @@ class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
     def show(self):
         self.__visible = True
     
-    def setVisible(self, vis):
+    def set_visible(self, vis):
         self.__visible = vis
         
     def visible(self):
         return self.__visible
     
     def initialize(self):
-        self.initializeGL()
-        self.__initialized = True
-
-    def isInitialized(self):
-        return self.__initialized
+        if not self.__initialized:
+            self.initialize_gl()
     
-    def initializeGL(self):
+    def initialize_gl(self):
+        """
+        Initialize OpenGL resources for the item.
+        This method should be overridden by subclasses to set up any necessary OpenGL resources.
+        """
         pass
 
     def paint(self):
+        """
+        Render the item using OpenGL.
+        This method should be overridden by subclasses to perform the actual rendering.
+        """
         pass
 
 

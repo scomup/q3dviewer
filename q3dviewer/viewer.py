@@ -4,9 +4,9 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from q3dviewer.glv_widget import *
+from q3dviewer.glwidget import *
 import signal
-import sys
+from PyQt5.QtWidgets import QMainWindow, QApplication
 
 
 def handler(signal, frame):
@@ -27,8 +27,8 @@ class Viewer(QMainWindow):
         self.setCentralWidget(center_widget)
         layout = QVBoxLayout()
         center_widget.setLayout(layout)
-        self.glv_widget = GLVWidget()
-        layout.addWidget(self.glv_widget, 1)
+        self.glwidget = GLVWidget()
+        layout.addWidget(self.glwidget, 1)
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
@@ -36,23 +36,23 @@ class Viewer(QMainWindow):
 
     def add_items(self, named_items: dict):
         for name, item in named_items.items():
-            self.glv_widget.add_item_with_name(name, item)
+            self.glwidget.add_item_with_name(name, item)
 
     def __getitem__(self, name: str):
-        if name in self.glv_widget.named_items:
-            return self.glv_widget.named_items[name]
+        if name in self.glwidget.named_items:
+            return self.glwidget.named_items[name]
         else:
             return None
 
     def update(self):
         # force update by timer
-        self.glv_widget.update()
+        self.glwidget.update()
 
     def closeEvent(self, event):
         event.accept()
         QApplication.quit()
 
     def show(self):
-        self.glv_widget.setting_window.add_setting(
-            "main win", self.glv_widget)
+        self.glwidget.setting_window.add_setting(
+            "main win", self.glwidget)
         super().show()

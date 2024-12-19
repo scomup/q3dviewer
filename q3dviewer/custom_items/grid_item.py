@@ -24,7 +24,7 @@ class GridItem(BaseItem):
         spinbox_size.setSingleStep(1.0)
         layout.addWidget(spinbox_size)
         spinbox_size.setValue(self.size)
-        spinbox_size.valueChanged.connect(self.setSize)
+        spinbox_size.valueChanged.connect(self.set_size)
         spinbox_size.setRange(0, 100000)
 
         label_spacing = QLabel("Set spacing:")
@@ -43,7 +43,7 @@ class GridItem(BaseItem):
         self.edit_offset.textChanged.connect(self._onOffset)
         layout.addWidget(self.edit_offset)
 
-    def setSize(self, size):
+    def set_size(self, size):
         self.size = size
 
     def setSpacing(self, spacing):

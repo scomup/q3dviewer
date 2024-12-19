@@ -12,7 +12,7 @@ class GL2DTextItem(BaseItem):
     """Draws text over opengl 3D."""
 
     def __init__(self, **kwds):
-        """All keyword arguments are passed to setData()"""
+        """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
         glopts = kwds.pop('glOptions', 'additive')
         self.setGLOptions(glopts)
@@ -20,9 +20,9 @@ class GL2DTextItem(BaseItem):
         self.color = QtCore.Qt.GlobalColor.white
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
-        self.setData(**kwds)
+        self.set_data(**kwds)
 
-    def setData(self, **kwds):
+    def set_data(self, **kwds):
         args = ['pos', 'color', 'text', 'size', 'font']
         for k in kwds.keys():
             if k not in args:

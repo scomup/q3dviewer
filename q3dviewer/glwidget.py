@@ -3,17 +3,13 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-import numpy as np
-from q3dviewer.base_item import BaseItem
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, \
-    QSizePolicy, QSpacerItem, QMainWindow
+    QSizePolicy, QSpacerItem
 from OpenGL.GL import *
 from PyQt5.QtGui import QKeyEvent, QVector3D
-from PyQt5.QtWidgets import QApplication, QWidget
 import numpy as np
-from PyQt5.QtWidgets import QLabel, QLineEdit, \
-    QDoubleSpinBox, QSpinBox, QCheckBox
+from PyQt5.QtWidgets import QLabel, QLineEdit
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
 from q3dviewer.base_glwidget import BaseGLWidget
@@ -22,7 +18,7 @@ class SettingWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.combo_items = QComboBox()
-        self.combo_items.currentIndexChanged.connect(self.onComboSelection)
+        self.combo_items.currentIndexChanged.connect(self.on_combo_selection)
         main_layout = QVBoxLayout()
         self.stretch = QSpacerItem(
             10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -45,7 +41,7 @@ class SettingWindow(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
-    def onComboSelection(self, index):
+    def on_combo_selection(self, index):
         self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
         self.clear_setting()
@@ -63,7 +59,7 @@ class GLVWidget(BaseGLWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
-        self.color = '#000000'
+        self.color_str = '#000000'
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
         super(GLVWidget, self).__init__()
@@ -88,7 +84,7 @@ class GLVWidget(BaseGLWidget):
         layout.addWidget(label_color)
         color_edit = QLineEdit()
         color_edit.setToolTip("'using hex color, i.e. #FF4500")
-        color_edit.setText(self.color)
+        color_edit.setText(self.color_str)
         color_edit.textChanged.connect(self.set_backgroud_color)
         regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
         validator = QRegularExpressionValidator(regex)
@@ -102,16 +98,20 @@ class GLVWidget(BaseGLWidget):
         layout.addWidget(label_focus)
         layout.addWidget(combo_focus)
 
-    def set_backgroud_color(self, color):
+    def set_backgroud_color(self, color_str):
         try:
-            self.set_color(color)
-            self.color = color
+            color_flat = int(color_str[1:], 16)
+            red = (color_flat >> 16) & 0xFF
+            green = (color_flat >> 8) & 0xFF
+            blue = color_flat & 0xFF
+            self.color_str = color_str
+            self.set_color([red, green, blue, 0])
         except ValueError:
             return
 
     def add_item_with_name(self, name, item):
         self.named_items.update({name: item})
-        if (item.__class__.__name__ == 'GLAxisItem'):
+        if (item.__class__.__name__ == 'AxisItem'):
             self.followable_item_name.append(name)
         self.setting_window.add_setting(name, item)
         super().add_item(item)

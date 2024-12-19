@@ -49,10 +49,10 @@ class ImageItem(BaseItem):
         self.image = np.zeros((self.size[0], self.size[1], 4), dtype=np.uint8)
         self.alpha = 255
 
-    def initializeGL(self):
+    def initialize_gl(self):
         # Rectangle vertices and texture coordinates
-        width = self.view().get_width()
-        height = self.view().get_height()
+        width = self.view().current_width()
+        height = self.view().current_height()
         x0, y0 = self.pos
         x1, y1 = self.pos + self.size
         x0 = x0 / width * 2 - 1
@@ -107,7 +107,7 @@ class ImageItem(BaseItem):
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glBindVertexArray(0)
 
-    def setData(self, data):
+    def set_data(self, data):
         if isinstance(data, np.ndarray):
             pass
         elif isinstance(data, PIL_Image.Image):
@@ -160,16 +160,13 @@ class ImageItem(BaseItem):
         spinbox_alpha.setSingleStep(1)
         spinbox_alpha.setRange(0, 255)
         spinbox_alpha.setValue(self.alpha)
-        spinbox_alpha.valueChanged.connect(self.setAlpha)
+        spinbox_alpha.valueChanged.connect(self.set_alpha)
         layout.addWidget(spinbox_alpha)
         
         checkbox_show = QCheckBox("Show Image")
         checkbox_show.setChecked(True)
-        checkbox_show.stateChanged.connect(self.setVisible)
+        checkbox_show.stateChanged.connect(self.set_visible)
         layout.addWidget(checkbox_show)
 
-    def setAlpha(self, alpha):
+    def set_alpha(self, alpha):
         self.alpha = alpha
-
-    def setShow(self, state):
-        self.setVisible(state)

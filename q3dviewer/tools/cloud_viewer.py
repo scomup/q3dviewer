@@ -6,9 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-from pypcd4 import PointCloud
 import q3dviewer as q3d
-from PyQt5.QtGui import  QVector3D
 
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):
@@ -33,7 +31,7 @@ class CloudViewer(q3d.Viewer):
             return
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-        self.glv_widget.set_cam_position(pos=center)
+        self.glwidget.set_cam_position(pos=center)
 
 
 def main():
@@ -44,7 +42,7 @@ def main():
     app = q3d.QApplication(['Cloud Viewer'])
     viewer = CloudViewer(name='Cloud Viewer')
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
-    axis_item = q3d.GLAxisItem(size=0.5, width=5)
+    axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
 
     viewer.add_items(

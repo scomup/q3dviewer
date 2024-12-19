@@ -49,7 +49,7 @@ class GLCameraFrameItem(BaseItem):
         self.T = T
         self.path = path
 
-    def initializeGL(self):
+    def initialize_gl(self):
         # Rectangle vertices and texture coordinates
         hsize = self.size / 2
         self.vertices = np.array([
@@ -121,7 +121,7 @@ class GLCameraFrameItem(BaseItem):
         glBindTexture(GL_TEXTURE_2D, 0)
         glBindVertexArray(0)
 
-    def setTransform(self, T):
+    def set_transform(self, T):
         self.T = T
 
     def paint(self):

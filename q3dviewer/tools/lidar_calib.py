@@ -132,15 +132,15 @@ class ViewerWithPanel(q3d.Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = q3d.GLVWidget()
+        self.glwidget = q3d.GLVWidget()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.glv_widget, 1)
+        main_layout.addWidget(self.glwidget, 1)
 
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.glv_widget.set_cam_position(distance=5)
-        self.glv_widget.setBKcolor('#ffffff')
+        self.glwidget.set_cam_position(distance=5)
+        self.glwidget.setBKcolor('#ffffff')
         timer.start()
 
     def update_radius(self):
@@ -244,7 +244,7 @@ def scan0_cb(data):
         clouds0.pop(0)
     clouds0.append(cloud)
     cloud0_accum = np.concatenate(clouds0)
-    viewer['scan0'].setData(data=cloud0_accum)
+    viewer['scan0'].set_data(data=cloud0_accum)
 
 
 def scan1_cb(data):
@@ -258,7 +258,7 @@ def scan1_cb(data):
     cloud0_accum_new['xyz'] = (
         viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
 
-    viewer['scan1'].setData(data=cloud0_accum_new)
+    viewer['scan1'].set_data(data=cloud0_accum_new)
 
 
 def main():

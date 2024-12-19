@@ -23,7 +23,7 @@ class TrajectoryItem(BaseItem):
     def add_setting(self, layout):
         pass
 
-    def setData(self, data, append=True):
+    def set_data(self, data, append=True):
         self.mutex.acquire()
         data = data.astype(np.float32).reshape(-1, 3)
         if (append is False):
@@ -37,7 +37,7 @@ class TrajectoryItem(BaseItem):
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
 
-    def updateRenderBuffer(self):
+    def update_render_buffer(self):
         if (self.wait_add_data is None):
             return
         self.mutex.acquire()
@@ -63,11 +63,11 @@ class TrajectoryItem(BaseItem):
         self.wait_add_data = None
         self.mutex.release()
 
-    def initializeGL(self):
+    def initialize_gl(self):
         self.vbo = glGenBuffers(1)
 
     def paint(self):
-        self.updateRenderBuffer()
+        self.update_render_buffer()
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)

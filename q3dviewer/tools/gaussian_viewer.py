@@ -40,7 +40,7 @@ class GuassianViewer(q3d.Viewer):
                         [1, 0, 0]]).T
         gs = rotate_gaussian(Rcb, gs)
         gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
-        gau_item.setData(gs_data=gs_data)
+        gau_item.set_data(gs_data=gs_data)
 
 
 def main():

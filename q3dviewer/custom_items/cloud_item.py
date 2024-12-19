@@ -53,7 +53,7 @@ class CloudItem(BaseItem):
         combo_ptype.addItem("pixels")
         combo_ptype.addItem("flat squares")
         combo_ptype.addItem("spheres")
-        combo_ptype.currentIndexChanged.connect(self._onPTypeSelection)
+        combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
         self.label_size = QLabel("Set size: (pixel)")
         layout.addWidget(self.label_size)
@@ -62,7 +62,7 @@ class CloudItem(BaseItem):
         self.box_size.setDecimals(0)
         layout.addWidget(self.box_size)
         self.box_size.setValue(self.size)
-        self.box_size.valueChanged.connect(self.setSize)
+        self.box_size.valueChanged.connect(self.set_size)
         self.box_size.setRange(0, 100)
 
         label_alpha = QLabel("Set Alpha:")
@@ -71,7 +71,7 @@ class CloudItem(BaseItem):
         layout.addWidget(box_alpha)
         box_alpha.setSingleStep(0.01)
         box_alpha.setValue(self.alpha)
-        box_alpha.valueChanged.connect(self.setAlpha)
+        box_alpha.valueChanged.connect(self.set_alpha)
         box_alpha.setRange(0, 1)
 
         label_color = QLabel("Set ColorMode:")
@@ -87,7 +87,7 @@ class CloudItem(BaseItem):
         self.edit_rgb = QLineEdit()
         self.edit_rgb.setToolTip("Hex number, i.e. #FF4500")
         self.edit_rgb.setText(f"#{self.flat_rgb:06x}")
-        self.edit_rgb.textChanged.connect(self._onColor)
+        self.edit_rgb.textChanged.connect(self._on_color)
         regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
         validator = QRegularExpressionValidator(regex)
         self.edit_rgb.setValidator(validator)
@@ -95,19 +95,19 @@ class CloudItem(BaseItem):
 
         self.slider_v = RangeSlider()
         self.slider_v.setRange(0, 255)
-        self.slider_v.rangeChanged.connect(self._onRangeV)
+        self.slider_v.rangeChanged.connect(self._on_range)
 
         layout.addWidget(self.slider_v)
         self.combo_color.setCurrentIndex(self.color_mode)
 
         # Add a checkbox for enabling/disabling depth test
         self.checkbox_depth_test = QCheckBox(
-            "Show Front Points First (Enable Depth Test)")
+            "Show front points first (Depth Test)")
         self.checkbox_depth_test.setChecked(self.depth_test_enabled)
-        self.checkbox_depth_test.stateChanged.connect(self.setDepthTest)
+        self.checkbox_depth_test.stateChanged.connect(self.set_depthtest)
         layout.addWidget(self.checkbox_depth_test)
 
-    def _onRangeV(self, lower, upper):
+    def _on_range(self, lower, upper):
         self.vmin = lower
         self.vmax = upper
         self.need_update_setting = True
@@ -124,13 +124,13 @@ class CloudItem(BaseItem):
             self.slider_v.show()
         self.need_update_setting = True
 
-    def setColorMode(self, color_mode):
+    def set_color_mode(self, color_mode):
         if color_mode in {'FLAT', 'RGB', 'IRGB', 'I'}:
             self.combo_color.setCurrentIndex(self.mode_table[color_mode])
         else:
             print(f"Invalid color mode: {color_mode}")
 
-    def _onPTypeSelection(self, index):
+    def _on_point_type_selection(self, index):
         self.point_type = index
         if (index == 0):
             self.label_size.setText("Set size: (pixel)")
@@ -146,17 +146,17 @@ class CloudItem(BaseItem):
             self.size = 0.01
         self.need_update_setting = True
 
-    def setAlpha(self, alpha):
+    def set_alpha(self, alpha):
         self.alpha = alpha
         self.need_update_setting = True
 
-    def setFlatRGB(self, color):
+    def set_flat_rgb(self, color):
         try:
             self.edit_rgb.setText(color)
         except ValueError:
             pass
 
-    def _onColor(self, color):
+    def _on_color(self, color):
         try:
             flat_rgb = int(color[1:], 16)
             self.flat_rgb = flat_rgb
@@ -164,18 +164,18 @@ class CloudItem(BaseItem):
         except ValueError:
             pass
 
-    def setSize(self, size):
+    def set_size(self, size):
         self.size = size
         self.need_update_setting = True
 
-    def setDepthTest(self, state):
+    def set_depthtest(self, state):
         self.depth_test_enabled = (state == QtCore.Qt.Checked)
 
     def clear(self):
         data = np.empty((0), self.data_type)
-        self.setData(data)
+        self.set_data(data)
 
-    def setData(self, data, append=False):
+    def set_data(self, data, append=False):
         if not isinstance(data, np.ndarray):
             raise ValueError("Input data must be a numpy array.")
 
@@ -210,7 +210,7 @@ class CloudItem(BaseItem):
                     self.wait_add_data.shape[0], self.wait_add_data.shape[0] // 2, replace=False)
                 self.wait_add_data = self.wait_add_data[indices]
 
-    def updateSetting(self):
+    def update_setting(self):
         if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
@@ -224,7 +224,7 @@ class CloudItem(BaseItem):
         glUseProgram(0)
         self.need_update_setting = False
 
-    def updateRenderBuffer(self):
+    def update_render_buffer(self):
         # Ensure there is data waiting to be added to the buffer
         if (self.wait_add_data is None):
             return
@@ -256,7 +256,7 @@ class CloudItem(BaseItem):
         self.wait_add_data = None
         self.mutex.release()
 
-    def initializeGL(self):
+    def initialize_gl(self):
         vertex_shader = open(self.path + '/../shaders/cloud_vert.glsl', 'r').read()
         fragment_shader = open(self.path + '/../shaders/cloud_frag.glsl', 'r').read()
         self.program = shaders.compileProgram(
@@ -269,8 +269,8 @@ class CloudItem(BaseItem):
         self.vbo = glGenBuffers(1)
 
     def paint(self):
-        self.updateRenderBuffer()
-        self.updateSetting()
+        self.update_render_buffer()
+        self.update_setting()
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
@@ -293,7 +293,7 @@ class CloudItem(BaseItem):
         set_uniform(self.program, view_matrix, 'view_matrix')
         project_matrix = self.view().get_projection_matrix()
         set_uniform(self.program, project_matrix, 'projection_matrix')
-        width = self.view().get_width()
+        width = self.view().current_width()
         focal = project_matrix[0, 0] * width / 2
         set_uniform(self.program, float(focal), 'focal')
 

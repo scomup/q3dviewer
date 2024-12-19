@@ -3,72 +3,106 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-import numpy as np
 from q3dviewer.base_item import BaseItem
+from q3dviewer.gl_utils import set_uniform
 from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
 import numpy as np
-from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
+from OpenGL.GL import shaders
 
 
-class GLAxisItem(BaseItem):
-    def __init__(self, size=1., width=5):
-        BaseItem.__init__(self)
+# Vertex and Fragment shader source code
+vertex_shader_source = """
+#version 330 core
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 color;
+
+out vec3 ourColor;
+
+uniform mat4 view_matrix;
+uniform mat4 project_matrix;
+uniform mat4 model_matrix;
+
+void main()
+{
+    gl_Position = project_matrix * view_matrix * model_matrix * vec4(position, 1.0);
+    ourColor = color;
+}
+"""
+
+fragment_shader_source = """
+#version 330 core
+in vec3 ourColor;
+out vec4 color;
+
+void main()
+{
+    color = vec4(ourColor, 1.0);
+}
+"""
+
+
+class AxisItem(BaseItem):
+    def __init__(self, size=1.0, width=2):
+        super().__init__()
         self.size = size
         self.width = width
-        self.org = np.array([0, 0, 0, 1])
-        self.axis_x = np.array([self.size, 0, 0, 1])
-        self.axis_y = np.array([0, self.size, 0, 1])
-        self.axis_z = np.array([0, 0, self.size, 1])
-        self.T = np.eye(4)
-        self.settings = []
+        self.model_matrix = np.eye(4, dtype=np.float32)
 
-    def add_setting(self, layout):
-        label1 = QLabel("Set size:")
-        layout.addWidget(label1)
-        box1 = QDoubleSpinBox()
-        box1.setSingleStep(0.1)
-        layout.addWidget(box1)
-        box1.setValue(self.size)
-        box1.valueChanged.connect(self.setSize)
-        box1.setRange(0.0, 100)
+    def initialize_gl(self):
+        # Axis vertices and colors
+        self.vertices = np.array([
+            # positions         # colors
+            [0.0, 0.0, 0.0,    1.0, 0.0, 0.0],  # X axis (red)
+            [self.size, 0.0, 0.0,  1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0,    0.0, 1.0, 0.0],  # Y axis (green)
+            [0.0, self.size, 0.0,  0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0,    0.0, 0.0, 1.0],  # Z axis (blue)
+            [0.0, 0.0, self.size,  0.0, 0.0, 1.0],
+        ], dtype=np.float32)
 
-        label2 = QLabel("Set Width:")
-        layout.addWidget(label2)
-        box2 = QDoubleSpinBox()
-        layout.addWidget(box2)
-        box2.setSingleStep(0.1)
-        box2.setValue(self.width)
-        box2.valueChanged.connect(self.setWidth)
-        box2.setRange(0, 1000)
+        self.vao = glGenVertexArrays(1)
+        vbo = glGenBuffers(1)
 
-    def setSize(self, size):
-        self.size = size
-        self.axis_x = np.array([self.size, 0, 0, 1])
-        self.axis_y = np.array([0, self.size, 0, 1])
-        self.axis_z = np.array([0, 0, self.size, 1])
+        glBindVertexArray(self.vao)
 
-    def setWidth(self, width):
-        self.width = width
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
 
-    def setTransform(self, T):
-        self.T = T
+        # Vertex positions
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        # Vertex colors
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(12))
+        glEnableVertexAttribArray(1)
+
+        # Compile shaders and create shader program
+        self.program = shaders.compileProgram(
+            shaders.compileShader(vertex_shader_source, GL_VERTEX_SHADER),
+            shaders.compileShader(fragment_shader_source, GL_FRAGMENT_SHADER),
+        )
+
+        glBindVertexArray(0)
+
+    def set_transform(self, transform):
+        """
+        Set the transformation matrix for the axis item.
+        """
+        self.model_matrix = transform
 
     def paint(self):
-        org = self.T.dot(self.org)
-        axis_x = self.T.dot(self.axis_x)
-        axis_y = self.T.dot(self.axis_y)
-        axis_z = self.T.dot(self.axis_z)
         glLineWidth(self.width)
-        glBegin(GL_LINES)
-        glColor4f(0, 0, 1, 1)  # z is blue
-        glVertex3f(org[0], org[1], org[2])
-        glVertex3f(axis_z[0], axis_z[1], axis_z[2])
-        glColor4f(0, 1, 0, 1)  # y is green
-        glVertex3f(org[0], org[1], org[2])
-        glVertex3f(axis_y[0], axis_y[1], axis_y[2])
-        glColor4f(1, 0, 0, 1)  # x is red
-        glVertex3f(org[0], org[1], org[2])
-        glVertex3f(axis_x[0], axis_x[1], axis_x[2])
-        glEnd()
+        glUseProgram(self.program)
+        glBindVertexArray(self.vao)
+
+        view_matrix = self.view().get_view_matrix()
+        project_matrix = self.view().get_projection_matrix()
+        set_uniform(self.program, view_matrix, 'view_matrix')
+        set_uniform(self.program, project_matrix, 'project_matrix')
+        set_uniform(self.program, self.model_matrix, 'model_matrix')
+
+        glDrawArrays(GL_LINES, 0, 6)
+
+        glBindVertexArray(0)
+        glUseProgram(0)
+        glLineWidth(1)

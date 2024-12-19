@@ -11,13 +11,13 @@ def update(viewer):
     while True:
         i += 0.05
         time.sleep(0.1)
-        viewer['traj'].setData(np.array([np.sin(i) * i, np.cos(i) * i, i]))
+        viewer['traj'].set_data(np.array([np.sin(i) * i, np.cos(i) * i, i]))
 
 
 def main():
     app = q3d.QApplication([])
 
-    axis_item = q3d.GLAxisItem(size=0.5, width=5)
+    axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=10, spacing=1)
     traj_item = q3d.TrajectoryItem(width=2)
 

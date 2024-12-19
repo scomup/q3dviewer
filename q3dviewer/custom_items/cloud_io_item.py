@@ -227,8 +227,8 @@ class CloudIOItem(CloudItem):
         else:
             print("Not supported file type.")
             return
-        self.setData(data=cloud, append=append)
-        self.setColorMode(color_mode)
+        self.set_data(data=cloud, append=append)
+        self.set_color_mode(color_mode)
         return cloud
 
     def setPath(self, path):

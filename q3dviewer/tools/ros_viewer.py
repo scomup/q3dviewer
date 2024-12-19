@@ -32,7 +32,7 @@ def odom_cb(data):
         data.pose.pose.orientation.z,
         data.pose.pose.orientation.w])
     transform = make_transform(pose, rotation)
-    viewer['odom'].setTransform(transform)
+    viewer['odom'].set_transform(transform)
 
 
 def scan_cb(data):
@@ -51,7 +51,7 @@ def scan_cb(data):
             color_mode = 'RGB'
         else:
             color_mode = 'I'
-        viewer['map'].setColorMode(color_mode)
+        viewer['map'].set_color_mode(color_mode)
 
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
@@ -59,8 +59,8 @@ def scan_cb(data):
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    viewer['map'].setData(data=cloud, append=True)
-    viewer['scan'].setData(data=cloud)
+    viewer['map'].set_data(data=cloud, append=True)
+    viewer['scan'].set_data(data=cloud)
 
 
 def image_cb(data):
@@ -68,7 +68,7 @@ def image_cb(data):
         data.height, data.width, -1)
     if (data.encoding == 'bgr8'):
         image = image[:, :, ::-1]  # convert bgr to rgb
-    viewer['img'].setData(data=image)
+    viewer['img'].set_data(data=image)
 
 
 def main():
@@ -80,7 +80,7 @@ def main():
     map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
     scan_item = q3d.CloudItem(
         size=2, alpha=1, color_mode='FLAT', color='#ffffff')
-    odom_item = q3d.GLAxisItem(size=0.5, width=5)
+    odom_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
 

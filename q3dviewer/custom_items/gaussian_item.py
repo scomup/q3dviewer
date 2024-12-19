@@ -51,7 +51,7 @@ class GaussianItem(BaseItem):
         set_uniform(self.program, index, 'render_mod')
         glUseProgram(0)
 
-    def initializeGL(self):
+    def initialize_gl(self):
         fragment_shader = open(
             self.path + '/../shaders/gau_frag.glsl', 'r').read()
         vertex_shader = open(
@@ -102,8 +102,8 @@ class GaussianItem(BaseItem):
         self.ssbo_dp = glGenBuffers(1)
         self.ssbo_pp = glGenBuffers(1)
 
-        width = self.view().get_width()
-        height = self.view().get_height()
+        width = self.view().current_width()
+        height = self.view().current_height()
 
         # set constant parameter for gaussian shader
         project_matrix = np.array(self.view().get_projection_matrix(
@@ -246,7 +246,7 @@ class GaussianItem(BaseItem):
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
         glUseProgram(0)
 
-    def setData(self, **kwds):
+    def set_data(self, **kwds):
         if 'gs_data' in kwds:
             gs_data = kwds.pop('gs_data')
             self.gs_data = np.ascontiguousarray(gs_data, dtype=np.float32)

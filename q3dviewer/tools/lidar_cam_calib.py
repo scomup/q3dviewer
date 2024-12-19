@@ -151,15 +151,15 @@ class ViewerWithPanel(q3d.Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glv_widget = q3d.GLVWidget()
+        self.glwidget = q3d.GLVWidget()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.glv_widget, 1)
+        main_layout.addWidget(self.glwidget, 1)
 
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
-        self.glv_widget.set_cam_position(distance=5)
-        self.glv_widget.setBKcolor('#ffffff')
+        self.glwidget.set_cam_position(distance=5)
+        self.glwidget.setBKcolor('#ffffff')
         timer.start()
 
     def update_point_size(self):
@@ -221,11 +221,11 @@ def scan_cb(data):
     cloud_accum = np.concatenate(clouds)
 
     if cloud_accum_color is not None and viewer.en_rgb:
-        viewer['scan'].setData(data=cloud_accum_color)
-        viewer['scan'].setColorMode('RGB')
+        viewer['scan'].set_data(data=cloud_accum_color)
+        viewer['scan'].set_color_mode('RGB')
     else:
-        viewer['scan'].setData(data=cloud_accum)
-        viewer['scan'].setColorMode('I')
+        viewer['scan'].set_data(data=cloud_accum)
+        viewer['scan'].set_color_mode('I')
 
 
 def draw_larger_points(image, points, colors, radius):
@@ -284,7 +284,7 @@ def image_cb(data):
         cloud_accum_color = np.rec.fromarrays(
             [xyz, color],
             dtype=viewer['scan'].data_type)
-        viewer['img'].setData(data=draw_image)
+        viewer['img'].set_data(data=draw_image)
 
 
 def main():

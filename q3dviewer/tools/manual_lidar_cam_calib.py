@@ -204,11 +204,11 @@ def scan_cb(data):
     cloud_accum = np.concatenate(clouds)
 
     if cloud_accum_color is not None and viewer.en_rgb:
-        viewer['scan'].setData(data=cloud_accum_color)
-        viewer['scan'].setColorMode('RGB')
+        viewer['scan'].set_data(data=cloud_accum_color)
+        viewer['scan'].set_color_mode('RGB')
     else:
-        viewer['scan'].setData(data=cloud_accum)
-        viewer['scan'].setColorMode('I')
+        viewer['scan'].set_data(data=cloud_accum)
+        viewer['scan'].set_color_mode('I')
 
 
 def draw_larger_points(image, points, colors, radius):
@@ -266,7 +266,7 @@ def image_cb(data):
         cloud_accum_color = np.rec.fromarrays(
             [xyz, color],
             dtype=viewer['scan'].data_type)
-        viewer['img'].setData(data=draw_image)
+        viewer['img'].set_data(data=draw_image)
 
 
 def main():
