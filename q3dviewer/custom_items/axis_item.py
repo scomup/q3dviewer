@@ -24,7 +24,7 @@ class GLAxisItem(BaseItem):
         self.T = np.eye(4)
         self.settings = []
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("Set size:")
         layout.addWidget(label1)
         box1 = QDoubleSpinBox()

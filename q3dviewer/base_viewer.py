@@ -19,10 +19,10 @@ class Viewer(QMainWindow):
         signal.signal(signal.SIGINT, handler)
         super(Viewer, self).__init__()
         self.setGeometry(0, 0, win_size[0], win_size[1])
-        self.initUI()
+        self.init_ui()
         self.setWindowTitle(name)
 
-    def initUI(self):
+    def init_ui(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
         layout = QVBoxLayout()
@@ -34,9 +34,9 @@ class Viewer(QMainWindow):
         timer.timeout.connect(self.update)
         timer.start()
 
-    def addItems(self, named_items: dict):
+    def add_items(self, named_items: dict):
         for name, item in named_items.items():
-            self.glv_widget.addItem(name, item)
+            self.glv_widget.add_item_with_name(name, item)
 
     def __getitem__(self, name: str):
         if name in self.glv_widget.named_items:
@@ -53,6 +53,6 @@ class Viewer(QMainWindow):
         QApplication.quit()
 
     def show(self):
-        self.glv_widget.setting_window.addSetting(
+        self.glv_widget.setting_window.add_setting(
             "main win", self.glv_widget)
         super().show()

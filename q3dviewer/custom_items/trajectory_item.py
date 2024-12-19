@@ -20,7 +20,7 @@ class TrajectoryItem(BaseItem):
         self.valid_buff_top = 0
         self.color = color
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         pass
 
     def setData(self, data, append=True):

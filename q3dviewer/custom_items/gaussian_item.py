@@ -36,7 +36,7 @@ class GaussianItem(BaseItem):
         except ImportError:
             self.sort = self.openglSort
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label1 = QLabel("set render mode:")
         layout.addWidget(label1)
         combo = QComboBox()
@@ -102,11 +102,11 @@ class GaussianItem(BaseItem):
         self.ssbo_dp = glGenBuffers(1)
         self.ssbo_pp = glGenBuffers(1)
 
-        width = self.view().deviceWidth()
-        height = self.view().deviceHeight()
+        width = self.view().get_width()
+        height = self.view().get_height()
 
         # set constant parameter for gaussian shader
-        project_matrix = np.array(self.view().projectionMatrix(
+        project_matrix = np.array(self.view().get_projection_matrix(
         ).data(), np.float32).reshape([4, 4]).T
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
@@ -171,7 +171,7 @@ class GaussianItem(BaseItem):
 
     def paint(self):
         # get current view matrix
-        self.view_matrix = self.view().viewMatrix()
+        self.view_matrix = self.view().get_view_matrix()
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.updateGS()

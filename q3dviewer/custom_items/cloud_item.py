@@ -46,7 +46,7 @@ class CloudItem(BaseItem):
         self.depth_test_enabled = (alpha == 1)
         self.path = os.path.dirname(__file__)
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label_ptype = QLabel("Set point display type:")
         layout.addWidget(label_ptype)
         combo_ptype = QComboBox()
@@ -289,11 +289,11 @@ class CloudItem(BaseItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = self.view().viewMatrix()
+        view_matrix = self.view().get_view_matrix()
         set_uniform(self.program, view_matrix, 'view_matrix')
-        project_matrix = self.view().projectionMatrix()
+        project_matrix = self.view().get_projection_matrix()
         set_uniform(self.program, project_matrix, 'projection_matrix')
-        width = self.view().deviceWidth()
+        width = self.view().get_width()
         focal = project_matrix[0, 0] * width / 2
         set_uniform(self.program, float(focal), 'focal')
 

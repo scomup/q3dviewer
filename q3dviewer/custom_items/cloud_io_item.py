@@ -173,8 +173,8 @@ class CloudIOItem(CloudItem):
         super().__init__(**kwargs)
         self.save_path = str(Path(os.path.expanduser("~"), "data.pcd"))
 
-    def addSetting(self, layout):
-        super().addSetting(layout)
+    def add_setting(self, layout):
+        super().add_setting(layout)
 
         label4 = QLabel("Save Path:")
         layout.addWidget(label4)

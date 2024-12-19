@@ -54,7 +54,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def initUI(self):
+    def init_ui(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
         main_layout = QHBoxLayout()
@@ -68,7 +68,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.checkbox_rgb.setChecked(False)
         setting_layout.addWidget(self.checkbox_rgb)
         self.checkbox_rgb.stateChanged.connect(
-            self.checkboxChanged)
+            self.checkbox_changed)
 
         # Add XYZ spin boxes
         label_xyz = QLabel("Set XYZ:")
@@ -114,7 +114,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.box_psize = QSpinBox()
         self.box_psize.setValue(self.psize)
         self.box_psize.setRange(0, 5)
-        self.box_psize.valueChanged.connect(self.updatePsize)
+        self.box_psize.valueChanged.connect(self.update_point_size)
         setting_layout.addWidget(self.box_psize)
 
         label_cloud_num = QLabel("Set cloud frame number:")
@@ -122,7 +122,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.box_cloud_num = QSpinBox()
         self.box_cloud_num.setValue(self.cloud_num)
         self.box_cloud_num.setRange(1, 100)
-        self.box_cloud_num.valueChanged.connect(self.updateCloudNum)
+        self.box_cloud_num.valueChanged.connect(self.update_cloud_num)
         setting_layout.addWidget(self.box_cloud_num)
 
         label_res = QLabel("The cam-lidar quat and translation:")
@@ -141,12 +141,12 @@ class ViewerWithPanel(q3d.Viewer):
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
-        self.box_x.valueChanged.connect(self.updateXYZ)
-        self.box_y.valueChanged.connect(self.updateXYZ)
-        self.box_z.valueChanged.connect(self.updateXYZ)
-        self.box_roll.valueChanged.connect(self.updateRPY)
-        self.box_pitch.valueChanged.connect(self.updateRPY)
-        self.box_yaw.valueChanged.connect(self.updateRPY)
+        self.box_x.valueChanged.connect(self.update_xyz)
+        self.box_y.valueChanged.connect(self.update_xyz)
+        self.box_z.valueChanged.connect(self.update_xyz)
+        self.box_roll.valueChanged.connect(self.update_rpy)
+        self.box_pitch.valueChanged.connect(self.update_rpy)
+        self.box_yaw.valueChanged.connect(self.update_rpy)
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
@@ -162,13 +162,13 @@ class ViewerWithPanel(q3d.Viewer):
         self.glv_widget.setBKcolor('#ffffff')
         timer.start()
 
-    def updatePsize(self):
+    def update_point_size(self):
         self.psize = self.box_psize.value()
 
-    def updateCloudNum(self):
+    def update_cloud_num(self):
         self.cloud_num = self.box_cloud_num.value()
 
-    def updateXYZ(self):
+    def update_xyz(self):
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
@@ -177,7 +177,7 @@ class ViewerWithPanel(q3d.Viewer):
         x, y, z = self.tcl
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {x:.6f}]")
 
-    def updateRPY(self):
+    def update_rpy(self):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
@@ -187,7 +187,7 @@ class ViewerWithPanel(q3d.Viewer):
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
-    def checkboxChanged(self, state):
+    def checkbox_changed(self, state):
         if state == QtCore.Qt.Checked:
             self.en_rgb = True
         else:
@@ -305,7 +305,7 @@ def main():
     grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
-    viewer.addItems({'scan': scan_item, 'grid': grid_item, 'img': img_item})
+    viewer.add_items({'scan': scan_item, 'grid': grid_item, 'img': img_item})
 
     rospy.init_node('lidar_cam_calib', anonymous=True)
 

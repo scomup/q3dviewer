@@ -15,18 +15,18 @@ class GuassianViewer(q3d.Viewer):
         super(GuassianViewer, self).__init__(**kwds)
         self.setAcceptDrops(True)
 
-    def dragEnterEvent(self, event):
+    def drag_enter_event(self, event):
         if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def drop_event(self, event):
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
-            self.openGSFile(file_path)
+            self.open_gs_file(file_path)
 
-    def openGSFile(self, file):
+    def open_gs_file(self, file):
         gau_item = self['gaussian']
         if gau_item is None:
             print("Can't find gaussianitem")
@@ -50,7 +50,7 @@ def main():
     grid_item = q3d.GridItem(size=1000, spacing=20)
     gau_item = q3d.GaussianItem()
 
-    viewer.addItems({'grid': grid_item, 'gaussian': gau_item})
+    viewer.add_items({'grid': grid_item, 'gaussian': gau_item})
 
     viewer.show()
     app.exec_()

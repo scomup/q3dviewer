@@ -2,28 +2,24 @@ from PyQt5 import QtCore
 import numpy as np
 
 class BaseItem(QtCore.QObject):  # Renamed BaseGLItem to BaseItem
-    _nextId = 0
+    _next_id = 0
     
     def __init__(self):
         super().__init__()
-        self._id = BaseItem._nextId
-        BaseItem._nextId += 1
+        self._id = BaseItem._next_id
+        BaseItem._next_id += 1
         self.__view = None
-        self.__children: set[BaseItem] = set()
         self.__transform = np.eye(4)
         self.__visible = True
         self.__initialized = False
-   
-    def depthValue(self):
-        return 0
-    
-    def parentItem(self):
+       
+    def parent_item(self):
         return None
         
-    def childItems(self):
+    def child_items(self):
         return list()
         
-    def _setView(self, v):
+    def _set_view(self, v):
         self.__view = v
         
     def view(self):

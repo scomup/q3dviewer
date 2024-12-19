@@ -25,7 +25,7 @@ def main():
     th = threading.Thread(target=update, args=(viewer, ))
     th.start()
 
-    viewer.addItems({
+    viewer.add_items({
         'grid': grid_item,
         'axis': axis_item,
         'traj': traj_item})

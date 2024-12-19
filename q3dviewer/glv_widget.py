@@ -35,11 +35,11 @@ class SettingWindow(QWidget):
         self.setGeometry(200, 200, 300, 200)
         self.items = {}
 
-    def addSetting(self, name, item):
+    def add_setting(self, name, item):
         self.items.update({name: item})
         self.combo_items.addItem("%s(%s)" % (name, item.__class__.__name__))
 
-    def clearSetting(self):
+    def clear_setting(self):
         while self.layout.count():
             child = self.layout.takeAt(0)
             if child.widget():
@@ -48,12 +48,12 @@ class SettingWindow(QWidget):
     def onComboSelection(self, index):
         self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
-        self.clearSetting()
+        self.clear_setting()
 
         key = list(self.items.keys())
         item = self.items[key[index]]
-        if hasattr(item, "addSetting"):
-            item.addSetting(self.layout)
+        if hasattr(item, "add_setting"):
+            item.add_setting(self.layout)
             self.layout.addItem(self.stretch)
         else:
             print("%s: No setting." % (item.__class__.__name__))
@@ -71,7 +71,7 @@ class GLVWidget(BaseGLWidget):
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.key() == QtCore.Qt.Key_M:  # setting meun
             print("Open setting windows")
-            self.openSettingWindow()
+            self.open_setting_window()
         super().keyPressEvent(ev)
 
     def on_followable_selection(self, index):
@@ -83,13 +83,13 @@ class GLVWidget(BaseGLWidget):
             self.opts['center'] = QVector3D(pos[0], pos[1], pos[2])
         super().update()
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         label_color = QLabel("Set background color:")
         layout.addWidget(label_color)
         color_edit = QLineEdit()
         color_edit.setToolTip("'using hex color, i.e. #FF4500")
         color_edit.setText(self.color)
-        color_edit.textChanged.connect(self.setBKcolor)
+        color_edit.textChanged.connect(self.set_backgroud_color)
         regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
         validator = QRegularExpressionValidator(regex)
         color_edit.setValidator(validator)
@@ -102,21 +102,21 @@ class GLVWidget(BaseGLWidget):
         layout.addWidget(label_focus)
         layout.addWidget(combo_focus)
 
-    def setBKcolor(self, color):
+    def set_backgroud_color(self, color):
         try:
             self.set_color(color)
             self.color = color
         except ValueError:
             return
 
-    def addItem(self, name, item):
+    def add_item_with_name(self, name, item):
         self.named_items.update({name: item})
         if (item.__class__.__name__ == 'GLAxisItem'):
             self.followable_item_name.append(name)
-        self.setting_window.addSetting(name, item)
-        super().addItem(item)
+        self.setting_window.add_setting(name, item)
+        super().add_item(item)
 
-    def openSettingWindow(self):
+    def open_setting_window(self):
         if self.setting_window.isVisible():
             self.setting_window.raise_()
 

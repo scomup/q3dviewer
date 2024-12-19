@@ -51,8 +51,8 @@ class ImageItem(BaseItem):
 
     def initializeGL(self):
         # Rectangle vertices and texture coordinates
-        width = self.view().deviceWidth()
-        height = self.view().deviceHeight()
+        width = self.view().get_width()
+        height = self.view().get_height()
         x0, y0 = self.pos
         x1, y1 = self.pos + self.size
         x0 = x0 / width * 2 - 1
@@ -153,7 +153,7 @@ class ImageItem(BaseItem):
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
 
-    def addSetting(self, layout):
+    def add_setting(self, layout):
         alpha_label = QLabel("Set Alpha:")
         layout.addWidget(alpha_label)
         spinbox_alpha = QSpinBox()

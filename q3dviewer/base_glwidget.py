@@ -42,11 +42,11 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
     def keyReleaseEvent(self, ev: QKeyEvent):
         self.active_keys.discard(ev.key())
 
-    def deviceWidth(self):
+    def get_width(self):
         dpr = self.devicePixelRatioF()
         return int(self.width() * dpr)
 
-    def deviceHeight(self):
+    def get_height(self):
         dpr = self.devicePixelRatioF()
         return int(self.height() * dpr)
 
@@ -64,21 +64,21 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         # self.opts['viewport'] = None         ## glViewport params; None == whole widget
         # self.set_color(np.array([0, 0, 0, 0]))
 
-    def addItem(self, item):
+    def add_item(self, item):
         self.items.append(item)
 
         if self.isValid():
             item.initialize()
                 
-        item._setView(self)
+        item._set_view(self)
         self.update()
         
-    def removeItem(self, item):
+    def remove_item(self, item):
         """
         Remove the item from the scene.
         """
         self.items.remove(item)
-        item._setView(None)
+        item._set_view(None)
         self.update()
 
     def clear(self):
@@ -86,7 +86,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         Remove all items from the scene.
         """
         for item in self.items:
-            item._setView(None)
+            item._set_view(None)
         self.items = []
         self.update()        
         
@@ -100,16 +100,16 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.update()
 
     def update(self):
-        self.updateMovement()
+        self.update_movement()
         super().update()
 
-    def setProjection(self, region=None):
-        m = self.projectionMatrix(region)
+    def set_model_projection(self, region=None):
+        m = self.get_projection_matrix(region)
         glMatrixMode(GL_PROJECTION)
         glLoadMatrixf(m.T)
 
-    def projectionMatrix(self, region=None):
-        w, h = self.deviceWidth(), self.deviceHeight()
+    def get_projection_matrix(self, region=None):
+        w, h = self.get_width(), self.get_height()
         dist = self.get_z()
         near = dist * 0.001
         far = dist * 10000.
@@ -119,8 +119,8 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         return matrix
 
     def get_focal(self):
-        width = self.deviceWidth()
-        height = self.deviceHeight()
+        width = self.get_width()
+        height = self.get_height()
         fx = 0.5 * width / tan(radians(self._fov) / 2)
         fy = 0.5 * height / tan(radians(self._fov) / 2)
         return np.array([fx, fy])
@@ -130,10 +130,10 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             delattr(self, 'mousePos')
 
     def screen_to_world(self, x, y):
-        width = self.deviceWidth()
-        height = self.deviceHeight()
-        projection_matrix = self.projectionMatrix()
-        view_matrix = self.viewMatrix()
+        width = self.get_width()
+        height = self.get_height()
+        projection_matrix = self.get_projection_matrix()
+        view_matrix = self.get_view_matrix()
         inv_proj_view = np.linalg.inv(projection_matrix @ view_matrix)
         
         # Normalize screen coordinates to [-1, 1]
@@ -184,7 +184,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
                 print(f"2 Translating by {dtrans}")
         self.update()
 
-    def updateMovement(self):
+    def update_movement(self):
         if self.active_keys == {}:
             return
         rotation_speed = 0.01
@@ -228,12 +228,12 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -delta])
         self.update()
 
-    def setModelview(self):
-        m = self.viewMatrix()
+    def set_model_view(self):
+        m = self.get_view_matrix()
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(m.T)
         
-    def viewMatrix(self):
+    def get_view_matrix(self):
         # Create a 4x4 identity matrix
         return np.linalg.inv(self.Twb @ self.Tbc)
 
@@ -252,20 +252,19 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         region specifies the sub-region of self.opts['viewport'] that should be rendered.
         Note that we may use viewport != self.opts['viewport'] when exporting.
         """
-        self.setProjection(region=region)
-        self.setModelview()
+        self.set_model_projection(region=region)
+        self.set_model_view()
         bgcolor = self.color
         glClearColor(*bgcolor)
         glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT )
-        self.drawItemTree(useItemNames=useItemNames)
+        self.draw_items(useItemNames=useItemNames)
         
-    def drawItemTree(self, item=None, useItemNames=False):
+    def draw_items(self, item=None, useItemNames=False):
         if item is None:
-            items = [x for x in self.items if x.parentItem() is None]
+            items = [x for x in self.items if x.parent_item() is None]
         else:
-            items = item.childItems()
+            items = item.child_items()
             items.append(item)
-        items.sort(key=lambda a: a.depthValue())
         for i in items:
             if not i.visible():
                 continue
@@ -287,7 +286,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
                 glMatrixMode(GL_MODELVIEW)
                 glPushMatrix()
                 try:
-                    self.drawItemTree(i, useItemNames=useItemNames)
+                    self.draw_items(i, useItemNames=useItemNames)
                 finally:
                     glMatrixMode(GL_MODELVIEW)
                     glPopMatrix()

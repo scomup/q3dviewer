@@ -87,7 +87,7 @@ def main():
     app = q3d.QApplication(['ROS Viewer'])
     viewer = q3d.Viewer(name='ROS Viewer')
 
-    viewer.addItems({'map': map_item, 'scan': scan_item,
+    viewer.add_items({'map': map_item, 'scan': scan_item,
                      'odom': odom_item, 'grid': grid_item,
                      'img': img_item})
 
