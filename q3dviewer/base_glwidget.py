@@ -2,7 +2,7 @@ from OpenGL.GL import *  # noqa
 from math import radians, tan
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
-from q3dviewer.utils import frustum, euler_to_matrix, makeT, m_get_roll
+from q3dviewer.utils import frustum, euler_to_matrix, makeT, m_get_roll, makeRt
 
 
 class BaseGLWidget(QtWidgets.QOpenGLWidget):
@@ -14,8 +14,11 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.items = []
         self.keyTimer = QtCore.QTimer()
         self.color = np.array([0, 0, 0, 0])
-        self.Twb = makeT(euler_to_matrix([0, 0, 0]), np.array([-0, -50, 20]))
-        self.Tbc = makeT(euler_to_matrix([np.pi/3, 0, 0]), np.array([0, 0, 0]))
+        self.dist = 100
+        # self.Twb = makeT(euler_to_matrix([0, 0, 0]), np.array([-0, -50, 20]))
+        # self.Tbc = makeT(euler_to_matrix([np.pi/3, 0, 0]), np.array([0, 0, 0]))
+        self.euler = np.array([0, 0, 0.])
+        self.center = np.array([0, 0, 0.])
         self.active_keys = set()
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
@@ -91,8 +94,8 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
-        delta = self.get_z() * delta * 0.003
-        self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -delta])
+        self.dist -= delta * 0.1
+        # self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -delta])
         self.update()
 
     def mouseMoveEvent(self, ev):
@@ -102,22 +105,18 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         diff = lpos - self.mousePos
         self.mousePos = lpos
         if ev.buttons() == QtCore.Qt.MouseButton.RightButton:
-            dR = euler_to_matrix([-diff.y() * 0.005, 0, 0])
-            self.Tbc[:3, :3] = self.Tbc[:3, :3] @ dR
-            dR = euler_to_matrix([0, 0, -diff.x() * 0.005])
-            self.Twb[:3, :3] = self.Twb[:3, :3] @ dR
+            dyaw = -diff.x() * 0.005
+            droll = -diff.y() * 0.005
+            if lpos.y() / self.current_height() < 0.5:
+                dyaw = -dyaw
+            self.rotate(droll, 0, dyaw)
+            
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
+            Rwc = euler_to_matrix(self.euler)
+            d = self.dist
             fx, fy = self.get_focal()
-            z = self.get_z()
-            roll = np.abs(m_get_roll(self.Tbc))
-            if (roll < 1.3):
-                dtrans = np.array([-diff.x() * z / fx, diff.y() * z / fy, 0])
-                self.Twb[:3, 3] += self.Twb[:3, :3] @ dtrans
-                print(f"Translating by {dtrans}")
-            else:
-                dtrans = np.array([-diff.x() * 100 / fx, 0, diff.y() * 100 / fy])
-                self.Twb[:3, 3] += self.Twb[:3, :3] @ dtrans
-                print(f"2 Translating by {dtrans}")
+            print(self.current_height())
+            self.center += Rwc @ np.array([0, diff.y() * self.current_height()/d/fy, 0])
         self.update()
 
     def paintGL(self):
@@ -140,7 +139,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             return
         rotation_speed = 0.01
         trans_speed = 1
-        z = self.get_z()
+        z = self.dist
         trans_speed = z * 0.02
         if trans_speed < 0.1:
             trans_speed = 0.1
@@ -169,24 +168,25 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         if QtCore.Qt.Key_S in self.active_keys:
             self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([0, -trans_speed, 0])
 
-    def get_z(self):
-        return np.abs(self.Twb[2, 3])
-
     def set_model_view(self):
         m = self.get_view_matrix()
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(m.T)
         
     def get_view_matrix(self):
-        return np.linalg.inv(self.Twb @ self.Tbc)
+        tcw = np.array([0, 0, self.dist])
+        Rwc = euler_to_matrix(self.euler)
+        twc = self.center + Rwc @ tcw
+        Twc = makeT(Rwc, twc)
+        return np.linalg.inv(Twc)
 
     def set_cam_position(self, **kwargs):
         pos = kwargs.get('pos', None)
         distance = kwargs.get('distance', None)
         if pos is not None:
-            self.Twb[:3, 3] = pos
+            self.center = pos
         if distance is not None:
-            self.Twb[2, 3] = distance
+            self.dist = distance
 
     def set_color(self, color):
         self.color = color
@@ -203,7 +203,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
 
     def get_projection_matrix(self):
         w, h = self.current_width(), self.current_height()
-        dist = self.get_z()
+        dist = self.dist
         near = dist * 0.001
         far = dist * 10000.
         r = near * tan(0.5 * radians(self._fov))
@@ -220,6 +220,8 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             
     def rotate(self, rx=0, ry=0, rz=0):
         # update the euler angles
-        self.euler += np.radians(np.array([rx, ry, rz]).astype(np.float32))
-        self.euler = (self.euler + np.pi) % (2 * np.pi) - np.pi
+        self.euler += np.array([rx, ry, rz])
+        self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
+        self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
+        self.euler[0] = np.clip(self.euler[0], 0, np.pi)
         self.update()

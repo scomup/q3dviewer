@@ -158,6 +158,11 @@ def makeT(R, t):
     T[0:3, 3] = t
     return T
 
+def makeRt(T):
+    R = T[0:3, 0:3]
+    t = T[0:3, 3]
+    return R, t
+
 # euler = np.array([1, 0.1, 0.1])
 # euler_angles = matrix_to_euler(euler_to_matrix(euler))
 # print("Euler Angles:", euler_angles)
