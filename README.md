@@ -1,10 +1,10 @@
 ## q3dviewer
 
-`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on PyQt5 and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or to set up an efficient viewer application. It is inspired by PyQtGraph, but we focus more on efficient 3D rendering.
+`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on PyQt5 and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph, but it focuses more on efficient 3D rendering.
 
 ## Installation
 
-To install `q3dviewer`, simply execute the following command in your terminal on either Linux or Windows:
+To install `q3dviewer`, execute the following command in your terminal on either Linux or Windows:
 
 ```bash
 pip install q3dviewer
@@ -26,17 +26,17 @@ A tool for visualizing point cloud files. Launch it by executing the following c
 
 ```sh
 cloud_viewer  # The viewer will be displayed
-python3 -m q3dviewer.tools.cloud_viewer # Use this if the path is not set, though it's not recommended
+# Use the command below if the path is not set, though it's not recommended
+python3 -m q3dviewer.tools.cloud_viewer
 ```
 
 After the viewer launches, you can drag and drop files onto the window to display the point clouds. Multiple files can be dropped simultaneously to view them together. Supported formats include LAS, PCD, PLY, and E57.
 
 For example, you can download and check point clouds of Tokyo in LAS format from the following link:
 
-https://www.geospatial.jp/ckan/dataset/tokyopc-23ku-2024/resource/7807d6d1-29f3-4b36-b0c8-f7aa0ea2cff3
+[Tokyo Point Clouds](https://www.geospatial.jp/ckan/dataset/tokyopc-23ku-2024/resource/7807d6d1-29f3-4b36-b0c8-f7aa0ea2cff3)
 
 ![Screenshot](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/03c981c6-1aec-e5b9-4536-e07e1e56ff29.png)
-
 
 Press `M` on your keyboard to display a menu on the screen, where you can modify visualization settings for each item. You can adjust various settings such as shape, size, color, and transparency of the point clouds.
 
@@ -83,7 +83,7 @@ lidar_cam_calib --lidar=/YOUR_LIDAR_TOPIC --camera=/YOUR_CAMERA_TOPIC --camera_i
 
 ## Using as a Library
 
-Using the examples above, you can easily customize and develop your own 3D viewer with "q3dviewer". Below is a coding example.
+Using the examples above, you can easily customize and develop your own 3D viewer with `q3dviewer`. Below is a coding example.
 
 ### Custom 3D Viewer
 
@@ -134,9 +134,7 @@ In addition to the standard 3D items provided, you can visualize custom 3D items
 ```python
 from OpenGL.GL import *
 import numpy as np
-import threading
 import q3dviewer as q3d
-
 from PyQt5.QtWidgets import QLabel, QSpinBox
 
 class YourItem(q3d.BaseItem):
@@ -146,7 +144,7 @@ class YourItem(q3d.BaseItem):
 
     def add_setting(self, layout):
         # Initialize the settings screen
-        label = QLabel("add your setting:")
+        label = QLabel("Add your setting:")
         layout.addWidget(label)
         box = QSpinBox()
         layout.addWidget(box)
@@ -161,4 +159,4 @@ class YourItem(q3d.BaseItem):
         pass  # Visualize 3D objects using OpenGL
 ```
 
-Enjoy it!
+Enjoy using `q3dviewer`!
