@@ -141,8 +141,9 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         rotation_speed = 0.01
         trans_speed = 1
         z = self.get_z()
-        if z < 20:
-            trans_speed = z * 0.05
+        trans_speed = z * 0.02
+        if trans_speed < 0.1:
+            trans_speed = 0.1
         if QtCore.Qt.Key_Up in self.active_keys:
             dR = euler_to_matrix([rotation_speed, 0, 0])
             self.Tbc[:3, :3] = self.Tbc[:3, :3] @ dR

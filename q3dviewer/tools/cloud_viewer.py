@@ -13,18 +13,21 @@ class CloudViewer(q3d.Viewer):
         super(CloudViewer, self).__init__(**kwargs)
         self.setAcceptDrops(True)
 
-    def drag_enter_event(self, event):
+    def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
-    def drop_event(self, event):
+    def dropEvent(self, event):
+        """
+        Overwrite the drop event to open the cloud file.
+        """
         for i, url in enumerate(event.mimeData().urls()):
             file_path = url.toLocalFile()
-            self.open_Cloud_file(file_path, append=(i > 0))
+            self.open_cloud_file(file_path, append=(i > 0))
 
-    def open_Cloud_file(self, file, append=False):
+    def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
         if cloud_item is None:
             print("Can't find clouditem.")
@@ -50,7 +53,7 @@ def main():
 
     if args.path:
         pcd_fn = args.path
-        viewer.open_Cloud_file(pcd_fn)
+        viewer.open_cloud_file(pcd_fn)
 
     viewer.show()
     app.exec_()
