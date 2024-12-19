@@ -12,7 +12,7 @@ setup(
         'pillow',
         'plyfile',
         'pye57',
-        'laspy'
+        'laspy',
         ],
     entry_points={
         'console_scripts': [
@@ -20,8 +20,8 @@ setup(
             'ros_viewer = q3dviewer.tools.ros_viewer:main',
             'mesh_viewer = q3dviewer.tools.mesh_viewer:main',
             'gaussian_viewer = q3dviewer.tools.gaussian_viewer:main',
-            'lidar_cam_calib= q3dviewer.tools.lidar_cam_calib:main',
-            'lidar_calib= q3dviewer.tools.lidar_calib:main',
+            'lidar_cam_calib = q3dviewer.tools.lidar_cam_calib:main',
+            'lidar_calib = q3dviewer.tools.lidar_calib:main',
         ],
     },
 )
