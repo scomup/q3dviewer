@@ -21,7 +21,8 @@ import argparse
 clouds = []
 remap_info = None
 K = None
-
+cloud_accum_color = None
+cloud_accum = None
 
 class CustomDoubleSpinBox(QDoubleSpinBox):
     def __init__(self, decimals=4, *args, **kwargs):

@@ -214,8 +214,7 @@ class ViewerWithPanel(q3d.Viewer):
             self.line_trans.setText(
                 f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
             self.line_quat.setText(
-                f"[{quat[0]: .6f}, {quat[1]: .6f},\
-                   {quat[2]: .6f}, {quat[3]: .6f}]")
+                f"[{quat[0]: .6f}, {quat[1]: .6f}, {quat[2]: .6f}, {quat[3]: .6f}]")
             self.t01 = t01
             self.R01 = R01
             print("Matching results")
@@ -223,8 +222,7 @@ class ViewerWithPanel(q3d.Viewer):
             print(
                 f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
             print(
-                f"Quaternion: [{quat[0]: .6f}, {quat[1]: .6f},\
-                               {quat[2]: .6f}, {quat[3]: .6f}]")
+                f"Quaternion: [{quat[0]: .6f}, {quat[1]: .6f}, {quat[2]: .6f}, {quat[3]: .6f}]")
 
 
 def msg_cloud(data):
