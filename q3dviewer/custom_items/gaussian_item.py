@@ -32,9 +32,9 @@ class GaussianItem(BaseItem):
             if not torch.cuda.is_available():
                 raise ImportError
             self.cuda_pw = None
-            self.sort = self.torchSort
+            self.sort = self.torch_sort
         except ImportError:
-            self.sort = self.openglSort
+            self.sort = self.openg_sort
 
     def add_setting(self, layout):
         label1 = QLabel("set render mode:")
@@ -210,7 +210,7 @@ class GaussianItem(BaseItem):
             # time_diff = end - start
             # print(time_diff)
 
-    def openglSort(self):
+    def openg_sort(self):
         glUseProgram(self.sort_program)
         # can we move this loop to gpu?
         # level = level*2
@@ -224,7 +224,7 @@ class GaussianItem(BaseItem):
         # glFinish()
         glUseProgram(0)
 
-    def torchSort(self):
+    def torch_sort(self):
         import torch
         if self.cuda_pw is None:
             self.cuda_pw = torch.tensor(self.gs_data[:, :3]).cuda()
@@ -250,4 +250,7 @@ class GaussianItem(BaseItem):
             gs_data = kwds.pop('gs_data')
             self.gs_data = np.ascontiguousarray(gs_data, dtype=np.float32)
             self.sh_dim = self.gs_data.shape[-1] - (3 + 4 + 3 + 1)
+            self.need_updateGS = True
+            self.prev_Rz = np.array([np.inf, np.inf, np.inf])
+            self.cuda_pw = None
         self.need_updateGS = True
