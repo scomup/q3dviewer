@@ -96,7 +96,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
-        self.update_dist(-delta * 0.1)
+        self.update_dist(-delta * self.dist * 0.001)
         self.show_center = True
 
     def mouseMoveEvent(self, ev):
@@ -147,7 +147,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             return
         Rwc = euler_to_matrix([0, 0, self.euler[2]])
         rot_speed = 0.5
-        trans_speed = max(self.dist * 0.01, 0.5)
+        trans_speed = max(self.dist * 0.005, 0.1)
         if QtCore.Qt.Key_Up in self.active_keys:
             self.rotate(radians(rot_speed), 0, 0)
         if QtCore.Qt.Key_Down in self.active_keys:
