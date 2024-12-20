@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QLabel, QLineEdit
 from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
 from q3dviewer.base_glwidget import BaseGLWidget
+from PyQt5.QtWidgets import QCheckBox
 
 class SettingWindow(QWidget):
     def __init__(self):
@@ -62,6 +63,7 @@ class GLWidget(BaseGLWidget):
         self.color_str = '#000000'
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
+        self.enable_show_center = True
         super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
@@ -90,6 +92,7 @@ class GLWidget(BaseGLWidget):
         validator = QRegularExpressionValidator(regex)
         color_edit.setValidator(validator)
         layout.addWidget(color_edit)
+        
         label_focus = QLabel("Set Focus:")
         combo_focus = QComboBox()
         for name in self.followable_item_name:
@@ -97,6 +100,11 @@ class GLWidget(BaseGLWidget):
         combo_focus.currentIndexChanged.connect(self.on_followable_selection)
         layout.addWidget(label_focus)
         layout.addWidget(combo_focus)
+
+        checkbox_show_center = QCheckBox("Show Center Point")
+        checkbox_show_center.setChecked(self.enable_show_center)
+        checkbox_show_center.stateChanged.connect(self.change_show_center)
+        layout.addWidget(checkbox_show_center)
 
     def set_backgroud_color(self, color_str):
         try:
@@ -122,3 +130,6 @@ class GLWidget(BaseGLWidget):
 
         else:
             self.setting_window.show()
+
+    def change_show_center(self, state):
+        self.enable_show_center = state == QtCore.Qt.Checked

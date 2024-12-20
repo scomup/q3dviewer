@@ -19,6 +19,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.center = np.array([0, 0, 0.])
         self.active_keys = set()
         self.show_center = False
+        self.enable_show_center = True
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
         if ev.key() == QtCore.Qt.Key_Up or  \
@@ -134,7 +135,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             glPopMatrix()
         
         # Show center as a point if updated by mouse move event
-        if self.show_center:
+        if self.enable_show_center and self.show_center:
             point_size = np.clip((self.get_K()[0, 0] / self.dist), 10, 100)
             glPointSize(point_size)
             glBegin(GL_POINTS)
@@ -233,3 +234,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
         self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
         self.euler[0] = np.clip(self.euler[0], 0, np.pi)
+
+    def change_show_center(self, state):
+        self.enable_show_center = state
