@@ -132,7 +132,7 @@ class ViewerWithPanel(q3d.Viewer):
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
 
-        self.glwidget = q3d.GLVWidget()
+        self.glwidget = q3d.GLWidget()
         main_layout.addLayout(setting_layout)
         main_layout.addWidget(self.glwidget, 1)
 

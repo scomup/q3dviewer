@@ -55,14 +55,14 @@ class SettingWindow(QWidget):
             print("%s: No setting." % (item.__class__.__name__))
 
 
-class GLVWidget(BaseGLWidget):
+class GLWidget(BaseGLWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
         self.color_str = '#000000'
         self.followable_item_name = ['none']
         self.setting_window = SettingWindow()
-        super(GLVWidget, self).__init__()
+        super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.key() == QtCore.Qt.Key_M:  # setting meun

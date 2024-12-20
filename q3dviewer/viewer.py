@@ -27,7 +27,7 @@ class Viewer(QMainWindow):
         self.setCentralWidget(center_widget)
         layout = QVBoxLayout()
         center_widget.setLayout(layout)
-        self.glwidget = GLVWidget()
+        self.glwidget = GLWidget()
         layout.addWidget(self.glwidget, 1)
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds

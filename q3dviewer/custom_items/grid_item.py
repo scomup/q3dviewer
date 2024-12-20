@@ -6,6 +6,8 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from PyQt5.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
+from PyQt5.QtCore import QRegularExpression
+from PyQt5.QtGui import QRegularExpressionValidator
 import numpy as np
 
 
@@ -39,6 +41,9 @@ class GridItem(BaseItem):
         label_offset = QLabel("Set offset (x;y;z):")
         layout.addWidget(label_offset)
         self.edit_offset = QLineEdit()
+        regex = QRegularExpression(r"^-?\d+(\.\d+)?;-?\d+(\.\d+)?;-?\d+(\.\d+)?$")
+        validator = QRegularExpressionValidator(regex)
+        self.edit_offset.setValidator(validator)
         self.edit_offset.setText(f"{self.offset[0]};{self.offset[1]};{self.offset[2]}")
         self.edit_offset.textChanged.connect(self._onOffset)
         layout.addWidget(self.edit_offset)
