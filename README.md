@@ -53,7 +53,9 @@ ros_viewer
 
 ### 3. Gaussian Viewer
 
-A simple viewer for 3D Gaussian, as introduced in a previous article.
+A simple viewer for 3D Gaussian.
+see: https://github.com/scomup/EasyGaussianSplatting
+
 
 ```sh
 gaussian_viewer  # Drag and drop your Gaussian file onto the window
