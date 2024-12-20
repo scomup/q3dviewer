@@ -42,6 +42,7 @@ class CloudItem(BaseItem):
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
         self.need_update_setting = True
+        self.max_cloud_size = 300000000
         # Enable depth test when full opaque
         self.depth_test_enabled = (alpha == 1)
         self.path = os.path.dirname(__file__)

@@ -140,7 +140,7 @@ class ViewerWithPanel(q3d.Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.glwidget.set_cam_position(distance=5)
-        self.glwidget.setBKcolor('#ffffff')
+        self.glwidget.set_backgroud_color('#ffffff')
         timer.start()
 
     def update_radius(self):
