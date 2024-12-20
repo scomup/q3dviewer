@@ -9,12 +9,18 @@ from sensor_msgs.msg import PointCloud2
 import rospy
 import numpy as np
 import argparse
-import open3d as o3d
 import q3dviewer as q3d
 from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PyQt5 import QtCore
 from pypcd4 import PointCloud
+
+try:
+    import open3d as o3d
+except ImportError:
+    print("\033[91mWarning: open3d is not installed. Please install it to use this tool.\033[0m")
+    print("\033[93mYou can install it using: pip install open3d\033[0m")
+    exit(1)
 
 
 viewer = None
@@ -167,6 +173,10 @@ class ViewerWithPanel(q3d.Viewer):
 
     def perform_matching(self):
         global cloud0_accum, cloud1_accum
+
+        if o3d is None:
+            print("Error: open3d is not available. Cannot perform matching.")
+            return
 
         if cloud0_accum is not None and cloud1_accum is not None:
             # Convert to Open3D point clouds
