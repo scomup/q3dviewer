@@ -52,7 +52,8 @@ class GridItem(BaseItem):
         self.size = size
 
     def setSpacing(self, spacing):
-        self.spacing = spacing
+        if spacing > 0:
+            self.spacing = spacing
 
     def _onOffset(self, text):
         try:

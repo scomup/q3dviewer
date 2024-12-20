@@ -14,8 +14,8 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.items = []
         self.keyTimer = QtCore.QTimer()
         self.color = np.array([0, 0, 0, 0])
-        self.dist = 100
-        self.euler = np.array([0, 0, 0.])
+        self.dist = 40
+        self.euler = np.array([np.pi/3, 0, np.pi/4])
         self.center = np.array([0, 0, 0.])
         self.active_keys = set()
         self.show_center = False
@@ -109,8 +109,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             rot_speed = 0.2
             dyaw = radians(-diff.x() * rot_speed)
             droll = radians(-diff.y() * rot_speed)
-            if lpos.y() / self.current_height() < 0.5:
-                dyaw = -dyaw
             self.rotate(droll, 0, dyaw)
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
             Rwc = euler_to_matrix(self.euler)
