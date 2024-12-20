@@ -7,6 +7,9 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 import threading
+from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
+from PyQt5.QtCore import QRegularExpression
+from PyQt5.QtGui import QRegularExpressionValidator
 
 
 class TrajectoryItem(BaseItem):
@@ -19,9 +22,42 @@ class TrajectoryItem(BaseItem):
         self.capacity = 100000
         self.valid_buff_top = 0
         self.color = color
+        self.color_str = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
 
     def add_setting(self, layout):
-        pass
+        label_color = QLabel("Set trajectory color:")
+        layout.addWidget(label_color)
+        color_edit = QLineEdit()
+        color_edit.setToolTip("Hex number, i.e. #FF4500")
+        color_edit.setText(self.color_str)
+        color_edit.textChanged.connect(self.set_color)
+        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
+        validator = QRegularExpressionValidator(regex)
+        color_edit.setValidator(validator)
+        layout.addWidget(color_edit)
+
+        label_width = QLabel("Set width:")
+        layout.addWidget(label_width)
+        spinbox_width = QDoubleSpinBox()
+        spinbox_width.setSingleStep(0.1)
+        layout.addWidget(spinbox_width)
+        spinbox_width.setValue(self.width)
+        spinbox_width.valueChanged.connect(self.set_width)
+        spinbox_width.setRange(0.1, 10.0)
+
+    def set_color(self, color_str):
+        try:
+            color_flat = int(color_str[1:], 16)
+            red = (color_flat >> 16) & 0xFF
+            green = (color_flat >> 8) & 0xFF
+            blue = color_flat & 0xFF
+            self.color = (red / 255.0, green / 255.0, blue / 255.0, self.color[3])
+            self.color_str = color_str
+        except ValueError:
+            pass
+
+    def set_width(self, width):
+        self.width = width
 
     def set_data(self, data, append=True):
         self.mutex.acquire()
