@@ -180,7 +180,7 @@ class GaussianItem(BaseItem):
 
         # preprocess and sort gaussian by compute shader.
         self.preprocessGS()
-        self.trySort()
+        self.try_sort()
         glEnable(GL_BLEND)
         # draw by vert shader
         glUseProgram(self.program)
@@ -196,7 +196,7 @@ class GaussianItem(BaseItem):
         glUseProgram(0)
         glDisable(GL_BLEND)
 
-    def trySort(self):
+    def try_sort(self):
         # don't sort if the depths are not change.
         Rz = self.view_matrix[2, :3]
         if (np.linalg.norm(self.prev_Rz - Rz) > 0.1):
@@ -228,7 +228,7 @@ class GaussianItem(BaseItem):
         import torch
         if self.cuda_pw is None:
             self.cuda_pw = torch.tensor(self.gs_data[:, :3]).cuda()
-        Rz = torch.tensor(self.view_matrix[2, :3]).cuda()
+        Rz = torch.tensor(self.view_matrix[2, :3].astype(np.float32)).cuda()
         depth = Rz @ self.cuda_pw.T
         index = torch.argsort(depth).type(torch.int32).cpu().numpy()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.ssbo_gi)

@@ -15,13 +15,13 @@ class GuassianViewer(q3d.Viewer):
         super(GuassianViewer, self).__init__(**kwds)
         self.setAcceptDrops(True)
 
-    def drag_enter_event(self, event):
+    def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.accept()
         else:
             event.ignore()
 
-    def drop_event(self, event):
+    def dropEvent(self, event):
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
             self.open_gs_file(file_path)
