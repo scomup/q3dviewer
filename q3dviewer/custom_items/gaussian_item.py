@@ -106,8 +106,7 @@ class GaussianItem(BaseItem):
         height = self.view().current_height()
 
         # set constant parameter for gaussian shader
-        project_matrix = np.array(self.view().get_projection_matrix(
-        ).data(), np.float32).reshape([4, 4]).T
+        project_matrix = self.view().get_projection_matrix()
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
         glUseProgram(self.prep_program)

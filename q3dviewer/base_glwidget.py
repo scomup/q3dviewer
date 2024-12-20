@@ -15,11 +15,10 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.keyTimer = QtCore.QTimer()
         self.color = np.array([0, 0, 0, 0])
         self.dist = 100
-        # self.Twb = makeT(euler_to_matrix([0, 0, 0]), np.array([-0, -50, 20]))
-        # self.Tbc = makeT(euler_to_matrix([np.pi/3, 0, 0]), np.array([0, 0, 0]))
         self.euler = np.array([0, 0, 0.])
         self.center = np.array([0, 0, 0.])
         self.active_keys = set()
+        self.show_center = False
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
         if ev.key() == QtCore.Qt.Key_Up or  \
@@ -59,7 +58,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         """
         self.items.append(item)
         item.set_glwidget(self)
-        self.update()
         
     def remove_item(self, item):
         """
@@ -67,7 +65,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         """
         self.items.remove(item)
         item.set_glwidget(None)
-        self.update()
 
     def clear(self):
         """
@@ -76,7 +73,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         for item in self.items:
             item.set_glwidget(None)
         self.items = []
-        self.update()        
         
     def initializeGL(self):
         """
@@ -90,13 +86,17 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         if hasattr(self, 'mousePos'):
             delattr(self, 'mousePos')
 
+    def update_dist(self, delta):
+        self.dist += delta
+        if self.dist < 0.1:
+            self.dist = 0.1
+
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
-        self.dist -= delta * 0.1
-        # self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -delta])
-        self.update()
+        self.update_dist(-delta * 0.1)
+        self.show_center = True
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -105,26 +105,25 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         diff = lpos - self.mousePos
         self.mousePos = lpos
         if ev.buttons() == QtCore.Qt.MouseButton.RightButton:
-            dyaw = -diff.x() * 0.005
-            droll = -diff.y() * 0.005
+            rot_speed = 0.2
+            dyaw = radians(-diff.x() * rot_speed)
+            droll = radians(-diff.y() * rot_speed)
             if lpos.y() / self.current_height() < 0.5:
                 dyaw = -dyaw
             self.rotate(droll, 0, dyaw)
-            
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
             Rwc = euler_to_matrix(self.euler)
-            d = self.dist
-            fx, fy = self.get_focal()
-            print(self.current_height())
-            self.center += Rwc @ np.array([0, diff.y() * self.current_height()/d/fy, 0])
-        self.update()
+            Kinv = np.linalg.inv(self.get_K())
+            dist = max(self.dist, 0.5)
+            self.center += Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist
+        self.show_center = True
 
     def paintGL(self):
         self.set_model_projection()
         self.set_model_view()
         bgcolor = self.color
         glClearColor(*bgcolor)
-        glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT )
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
         for item in self.items:
             glMatrixMode(GL_MODELVIEW)
             glPushMatrix()
@@ -133,40 +132,43 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             glPopAttrib()
             glMatrixMode(GL_MODELVIEW)
             glPopMatrix()
+        
+        # Show center as a point if updated by mouse move event
+        if self.show_center:
+            point_size = np.clip((self.get_K()[0, 0] / self.dist), 10, 100)
+            glPointSize(point_size)
+            glBegin(GL_POINTS)
+            glColor3f(1.0, 0.0, 0.0)  # Red color for the center point
+            glVertex3f(*self.center)
+            glEnd()
+            self.show_center = False
     
     def update_movement(self):
         if self.active_keys == {}:
             return
-        rotation_speed = 0.01
-        trans_speed = 1
-        z = self.dist
-        trans_speed = z * 0.02
-        if trans_speed < 0.1:
-            trans_speed = 0.1
+        Rwc = euler_to_matrix([0, 0, self.euler[2]])
+        rot_speed = 0.5
+        trans_speed = max(self.dist * 0.01, 0.5)
         if QtCore.Qt.Key_Up in self.active_keys:
-            dR = euler_to_matrix([rotation_speed, 0, 0])
-            self.Tbc[:3, :3] = self.Tbc[:3, :3] @ dR
+            self.rotate(radians(rot_speed), 0, 0)
         if QtCore.Qt.Key_Down in self.active_keys:
-            dR = euler_to_matrix([-rotation_speed, 0, 0])
-            self.Tbc[:3, :3] = self.Tbc[:3, :3] @ dR
+            self.rotate(radians(-rot_speed), 0, 0)
         if QtCore.Qt.Key_Left in self.active_keys:
-            dR = euler_to_matrix([0, 0, rotation_speed])
-            self.Twb[:3, :3] = self.Twb [:3, :3]@ dR
+            self.rotate(0, 0, radians(rot_speed))
         if QtCore.Qt.Key_Right in self.active_keys:
-            dR = euler_to_matrix([0, 0, -rotation_speed])
-            self.Twb[:3, :3] = self.Twb[:3, :3] @ dR
+            self.rotate(0, 0, radians(-rot_speed))
         if QtCore.Qt.Key_Z in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, +trans_speed])
+            self.update_dist(trans_speed)
         if QtCore.Qt.Key_X in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ self.Tbc[:3, :3] @ np.array([0, 0, -trans_speed])
-        if QtCore.Qt.Key_A in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([-trans_speed, 0, 0])
-        if QtCore.Qt.Key_D in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([trans_speed, 0, 0])
+            self.update_dist(-trans_speed)
         if QtCore.Qt.Key_W in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([0, trans_speed, 0])
+            self.center += Rwc @ np.array([0, trans_speed, 0])
         if QtCore.Qt.Key_S in self.active_keys:
-            self.Twb[:3, 3] += self.Twb[:3, :3] @ np.array([0, -trans_speed, 0])
+            self.center += Rwc @ np.array([0, -trans_speed, 0])
+        if QtCore.Qt.Key_A in self.active_keys:
+            self.center += Rwc @  np.array([-trans_speed, 0, 0])
+        if QtCore.Qt.Key_D in self.active_keys:
+            self.center += Rwc @  np.array([trans_speed, 0, 0])
 
     def set_model_view(self):
         m = self.get_view_matrix()
@@ -190,7 +192,6 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
 
     def set_color(self, color):
         self.color = color
-        self.update()
 
     def update(self):
         self.update_movement()
@@ -211,12 +212,20 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         matrix = frustum(-r, r, -t, t, near, far)
         return matrix
 
-    def get_focal(self):
+    def get_K(self):
+        project_matrix = self.get_projection_matrix()
         width = self.current_width()
         height = self.current_height()
-        fx = 0.5 * width / tan(radians(self._fov) / 2)
-        fy = 0.5 * height / tan(radians(self._fov) / 2)
-        return np.array([fx, fy])
+        fx = project_matrix[0, 0] * width / 2
+        fy = project_matrix[1, 1] * height / 2
+        cx = width / 2
+        cy = height / 2
+        K = np.array([
+            [fx, 0, cx],
+            [0, fy, cy],
+            [0, 0, 1]
+        ])
+        return K
             
     def rotate(self, rx=0, ry=0, rz=0):
         # update the euler angles
@@ -224,4 +233,3 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
         self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
         self.euler[0] = np.clip(self.euler[0], 0, np.pi)
-        self.update()
