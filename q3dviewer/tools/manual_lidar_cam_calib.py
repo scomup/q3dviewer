@@ -145,7 +145,7 @@ class ViewerWithPanel(Viewer):
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
         self.viewerWidget.set_cam_position(distance=5)
-        self.viewerWidget.set_backgroud_color('#ffffff')
+        self.viewerWidget.set_bg_color('#ffffff')
         timer.start()
 
     def update_psize(self):

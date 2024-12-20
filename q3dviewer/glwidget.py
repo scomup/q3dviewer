@@ -87,7 +87,7 @@ class GLWidget(BaseGLWidget):
         color_edit = QLineEdit()
         color_edit.setToolTip("'using hex color, i.e. #FF4500")
         color_edit.setText(self.color_str)
-        color_edit.textChanged.connect(self.set_backgroud_color)
+        color_edit.textChanged.connect(self.set_bg_color)
         regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
         validator = QRegularExpressionValidator(regex)
         color_edit.setValidator(validator)
@@ -106,7 +106,7 @@ class GLWidget(BaseGLWidget):
         checkbox_show_center.stateChanged.connect(self.change_show_center)
         layout.addWidget(checkbox_show_center)
 
-    def set_backgroud_color(self, color_str):
+    def set_bg_color(self, color_str):
         try:
             color_flat = int(color_str[1:], 16)
             red = (color_flat >> 16) & 0xFF
