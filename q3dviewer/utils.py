@@ -22,13 +22,6 @@ def frustum(left, right, bottom, top, near, far):
     return matrix
 
 
-def m_get_roll(R):
-    r_32 = R[2, 1]
-    r_33 = R[2, 2]
-    roll = np.arctan2(r_32, r_33)
-    return roll
-
-
 def rainbow(scalars, scalar_min=0, scalar_max=255):
     range = scalar_max - scalar_min
     values = 1.0 - (scalars - scalar_min) / range

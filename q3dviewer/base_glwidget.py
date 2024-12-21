@@ -1,8 +1,8 @@
-from OpenGL.GL import *  # noqa
+from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
-from q3dviewer.utils import frustum, euler_to_matrix, makeT, m_get_roll, makeRt
+from q3dviewer.utils import frustum, euler_to_matrix, makeT
 
 
 class BaseGLWidget(QtWidgets.QOpenGLWidget):
@@ -118,8 +118,8 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.show_center = True
 
     def paintGL(self):
-        self.set_model_projection()
-        self.set_model_view()
+        self.update_model_projection()
+        self.update_model_view()
         bgcolor = self.color
         glClearColor(*bgcolor)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
@@ -143,11 +143,14 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             self.show_center = False
     
     def update_movement(self):
-        if self.active_keys == {}:
+        """
+        Update the movement of the camera based on the active keys.
+        """
+        if not self.active_keys:
             return
-        Rwc = euler_to_matrix([0, 0, self.euler[2]])
         rot_speed = 0.5
         trans_speed = max(self.dist * 0.005, 0.1)
+        # Handle rotation keys
         if QtCore.Qt.Key_Up in self.active_keys:
             self.rotate(radians(rot_speed), 0, 0)
         if QtCore.Qt.Key_Down in self.active_keys:
@@ -156,28 +159,37 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
             self.rotate(0, 0, radians(rot_speed))
         if QtCore.Qt.Key_Right in self.active_keys:
             self.rotate(0, 0, radians(-rot_speed))
-        if QtCore.Qt.Key_Z in self.active_keys:
-            self.update_dist(trans_speed)
-        if QtCore.Qt.Key_X in self.active_keys:
-            self.update_dist(-trans_speed)
-        if QtCore.Qt.Key_W in self.active_keys:
-            self.center += Rwc @ np.array([0, trans_speed, 0])
-        if QtCore.Qt.Key_S in self.active_keys:
-            self.center += Rwc @ np.array([0, -trans_speed, 0])
-        if QtCore.Qt.Key_A in self.active_keys:
-            self.center += Rwc @  np.array([-trans_speed, 0, 0])
-        if QtCore.Qt.Key_D in self.active_keys:
-            self.center += Rwc @  np.array([trans_speed, 0, 0])
+        # Handle zoom keys
+        xz_keys = {QtCore.Qt.Key_Z, QtCore.Qt.Key_X}
+        if self.active_keys & xz_keys:
+            Rwc = euler_to_matrix(self.euler)
+            if QtCore.Qt.Key_Z in self.active_keys:
+                self.center += Rwc @ np.array([0, 0, -trans_speed])
+            if QtCore.Qt.Key_X in self.active_keys:
+                self.center += Rwc @ np.array([0, 0, trans_speed])
+        # Handle translation keys on the z plane
+        dir_keys = {QtCore.Qt.Key_W, QtCore.Qt.Key_S, QtCore.Qt.Key_A, QtCore.Qt.Key_D}
+        if self.active_keys & dir_keys:
+            Rz = euler_to_matrix([0, 0, self.euler[2]])
+            if QtCore.Qt.Key_W in self.active_keys:
+                self.center += Rz @ np.array([0, trans_speed, 0])
+            if QtCore.Qt.Key_S in self.active_keys:
+                self.center += Rz @ np.array([0, -trans_speed, 0])
+            if QtCore.Qt.Key_A in self.active_keys:
+                self.center += Rz @ np.array([-trans_speed, 0, 0])
+            if QtCore.Qt.Key_D in self.active_keys:
+                self.center += Rz @ np.array([trans_speed, 0, 0])
 
-    def set_model_view(self):
+    def update_model_view(self):
         m = self.get_view_matrix()
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(m.T)
         
     def get_view_matrix(self):
+        twc = self.center
         tcw = np.array([0, 0, self.dist])
         Rwc = euler_to_matrix(self.euler)
-        twc = self.center + Rwc @ tcw
+        twc = twc + Rwc @ tcw
         Twc = makeT(Rwc, twc)
         return np.linalg.inv(Twc)
 
@@ -196,7 +208,7 @@ class BaseGLWidget(QtWidgets.QOpenGLWidget):
         self.update_movement()
         super().update()
 
-    def set_model_projection(self):
+    def update_model_projection(self):
         m = self.get_projection_matrix()
         glMatrixMode(GL_PROJECTION)
         glLoadMatrixf(m.T)
