@@ -12,9 +12,9 @@ from PyQt5.QtCore import QRegularExpression
 from PyQt5.QtGui import QRegularExpressionValidator
 
 
-class TrajectoryItem(BaseItem):
-    def __init__(self, width=1, color=(0, 1, 0, 1)):
-        super(TrajectoryItem, self).__init__()
+class LineItem(BaseItem):
+    def __init__(self, width=1, color=(0, 1, 0, 1), line_type='LINE_STRIP'):
+        super(LineItem, self).__init__()
         self.width = width
         self.buff = np.empty((0, 3), np.float32)
         self.wait_add_data = None
@@ -23,6 +23,7 @@ class TrajectoryItem(BaseItem):
         self.valid_buff_top = 0
         self.color = color
         self.color_str = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        self.line_type = GL_LINE_STRIP if line_type == 'LINE_STRIP' else GL_LINES
 
     def add_setting(self, layout):
         label_color = QLabel("Set trajectory color:")
@@ -59,7 +60,7 @@ class TrajectoryItem(BaseItem):
     def set_width(self, width):
         self.width = width
 
-    def set_data(self, data, append=True):
+    def set_data(self, data, append=False):
         self.mutex.acquire()
         data = data.astype(np.float32).reshape(-1, 3)
         if (append is False):
@@ -110,9 +111,9 @@ class TrajectoryItem(BaseItem):
         glEnableClientState(GL_VERTEX_ARRAY)
         glVertexPointer(3, GL_FLOAT, 0, None)
         glLineWidth(self.width)
-        glColor4f(*self.color)  # z is blue
+        glColor4f(*self.color)
 
-        glDrawArrays(GL_LINE_STRIP, 0, self.valid_buff_top)
+        glDrawArrays(self.line_type, 0, self.valid_buff_top)
         glDisableClientState(GL_VERTEX_ARRAY)
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)

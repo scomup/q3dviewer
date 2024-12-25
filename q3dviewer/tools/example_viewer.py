@@ -11,7 +11,7 @@ def update(viewer):
     while True:
         i += 0.05
         time.sleep(0.1)
-        viewer['traj'].set_data(np.array([np.sin(i) * i, np.cos(i) * i, i]))
+        viewer['traj'].set_data(np.array([np.sin(i) * i, np.cos(i) * i, i]), append=True)
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
 
     axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=10, spacing=1)
-    traj_item = q3d.TrajectoryItem(width=2)
+    traj_item = q3d.LineItem(width=2)
 
     viewer = q3d.Viewer(name='example')
     th = threading.Thread(target=update, args=(viewer, ))

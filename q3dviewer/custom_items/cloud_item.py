@@ -23,22 +23,23 @@ from PyQt5 import QtCore
 
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
-    def __init__(self, size, alpha, color_mode='I', color='#ffffff'):
+    def __init__(self, size, alpha, color_mode='I', color='#ffffff', point_type='PIXEL'):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
         self.add_buff_loc = 0
         self.alpha = alpha
         self.size = size
+        self.point_type = point_type
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
         self.flat_rgb = int(color[1:], 16)
         self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2,  'IRGB': 3}
+        self.point_type_table = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
         self.color_mode = self.mode_table[color_mode]
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
         self.vmin = 0
         self.vmax = 255
-        self.point_type = 0
         self.buff = np.empty((0), self.data_type)
         self.wait_add_data = None
         self.need_update_setting = True
@@ -54,6 +55,7 @@ class CloudItem(BaseItem):
         combo_ptype.addItem("pixels")
         combo_ptype.addItem("flat squares")
         combo_ptype.addItem("spheres")
+        combo_ptype.setCurrentIndex(self.point_type_table[self.point_type])
         combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
         self.label_size = QLabel("Set size: (pixel)")
@@ -82,6 +84,7 @@ class CloudItem(BaseItem):
         self.combo_color.addItem("intensity")
         self.combo_color.addItem("RGB")
         self.combo_color.addItem("intensity for RGB data")
+        self.combo_color.setCurrentIndex(self.color_mode)
         self.combo_color.currentIndexChanged.connect(self._onColorMode)
         layout.addWidget(self.combo_color)
 
@@ -132,8 +135,8 @@ class CloudItem(BaseItem):
             print(f"Invalid color mode: {color_mode}")
 
     def _on_point_type_selection(self, index):
-        self.point_type = index
-        if (index == 0):
+        self.point_type = list(self.point_type_table.keys())[index]
+        if self.point_type == 'PIXEL':
             self.label_size.setText("Set size: (pixel)")
             self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
@@ -221,7 +224,7 @@ class CloudItem(BaseItem):
         set_uniform(self.program, float(self.vmin), 'vmin')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, float(self.size), 'point_size')
-        set_uniform(self.program, int(self.point_type), 'point_type')
+        set_uniform(self.program, int(self.point_type_table[self.point_type]), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
 

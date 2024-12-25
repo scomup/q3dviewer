@@ -25,10 +25,10 @@ class Viewer(QMainWindow):
     def init_ui(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
-        layout = QVBoxLayout()
-        center_widget.setLayout(layout)
+        self.layout = QHBoxLayout()
+        center_widget.setLayout(self.layout)
         self.glwidget = GLWidget()
-        layout.addWidget(self.glwidget, 1)
+        self.layout.addWidget(self.glwidget, 1)
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)

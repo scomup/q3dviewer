@@ -8,14 +8,12 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 
 
-class GL2DTextItem(BaseItem):
+class Text2DItem(BaseItem):
     """Draws text over opengl 3D."""
 
     def __init__(self, **kwds):
         """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
-        glopts = kwds.pop('glOptions', 'additive')
-        self.setGLOptions(glopts)
         self.pos = (100, 100)
         self.color = QtCore.Qt.GlobalColor.white
         self.text = ''
@@ -41,7 +39,6 @@ class GL2DTextItem(BaseItem):
                 elif arg == 'size':
                     self.font.setPointSize(value)
                 setattr(self, arg, value)
-        self.update()
 
     def paint(self):
         if len(self.text) < 1:
