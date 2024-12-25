@@ -13,7 +13,7 @@ from PyQt5.QtGui import QRegularExpressionValidator
 
 
 class LineItem(BaseItem):
-    def __init__(self, width=1, color=(0, 1, 0, 1), line_type='LINE_STRIP'):
+    def __init__(self, width=1, color='#00ff00', line_type='LINE_STRIP'):
         super(LineItem, self).__init__()
         self.width = width
         self.buff = np.empty((0, 3), np.float32)
@@ -22,20 +22,20 @@ class LineItem(BaseItem):
         self.capacity = 100000
         self.valid_buff_top = 0
         self.color = color
-        self.color_str = '#%02x%02x%02x' % (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        self.rgb = self._hex_to_rgba(color)
         self.line_type = GL_LINE_STRIP if line_type == 'LINE_STRIP' else GL_LINES
 
     def add_setting(self, layout):
         label_color = QLabel("Set trajectory color:")
         layout.addWidget(label_color)
-        color_edit = QLineEdit()
-        color_edit.setToolTip("Hex number, i.e. #FF4500")
-        color_edit.setText(self.color_str)
-        color_edit.textChanged.connect(self.set_color)
+        self.color_edit = QLineEdit()
+        self.color_edit.setToolTip("Hex number, i.e. #FF4500")
+        self.color_edit.setText(self.color)
+        self.color_edit.textChanged.connect(self._on_color)
         regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
         validator = QRegularExpressionValidator(regex)
-        color_edit.setValidator(validator)
-        layout.addWidget(color_edit)
+        self.color_edit.setValidator(validator)
+        layout.addWidget(self.color_edit)
 
         label_width = QLabel("Set width:")
         layout.addWidget(label_width)
@@ -46,16 +46,22 @@ class LineItem(BaseItem):
         spinbox_width.valueChanged.connect(self.set_width)
         spinbox_width.setRange(0.1, 10.0)
 
-    def set_color(self, color_str):
+    def _hex_to_rgba(self, hex_color):
+        color_flat = int(hex_color[1:], 16)
+        red = (color_flat >> 16) & 0xFF
+        green = (color_flat >> 8) & 0xFF
+        blue = color_flat & 0xFF
+        return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
+
+    def _on_color(self, color):
         try:
-            color_flat = int(color_str[1:], 16)
-            red = (color_flat >> 16) & 0xFF
-            green = (color_flat >> 8) & 0xFF
-            blue = color_flat & 0xFF
-            self.color = (red / 255.0, green / 255.0, blue / 255.0, self.color[3])
-            self.color_str = color_str
+            self.rgb = self._hex_to_rgba(color)
+            self.color = color
         except ValueError:
             pass
+
+    def set_color(self, color):
+        self.color_edit.setText(color)
 
     def set_width(self, width):
         self.width = width
@@ -111,7 +117,7 @@ class LineItem(BaseItem):
         glEnableClientState(GL_VERTEX_ARRAY)
         glVertexPointer(3, GL_FLOAT, 0, None)
         glLineWidth(self.width)
-        glColor4f(*self.color)
+        glColor4f(*self.rgb)
 
         glDrawArrays(self.line_type, 0, self.valid_buff_top)
         glDisableClientState(GL_VERTEX_ARRAY)
