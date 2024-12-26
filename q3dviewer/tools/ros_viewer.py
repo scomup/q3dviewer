@@ -101,7 +101,7 @@ def main():
     rospy.Subscriber('/image', Image, image_cb)
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == "__main__":

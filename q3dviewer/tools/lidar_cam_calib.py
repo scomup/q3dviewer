@@ -317,7 +317,7 @@ def main():
                      camera_info_cb, queue_size=1)
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ def main():
         'traj': traj_item})
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':

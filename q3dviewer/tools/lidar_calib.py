@@ -297,7 +297,7 @@ def main():
     rospy.Subscriber(args.lidar1, PointCloud2, scan1_cb, queue_size=1)
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':

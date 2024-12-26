@@ -59,7 +59,7 @@ def main():
         viewer.open_cloud_file(pcd_fn)
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':

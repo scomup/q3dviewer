@@ -112,7 +112,7 @@ def main():
 
     # Show the viewer & run the Qt application
     viewer.show()
-    app.exec_()
+    app.exec()
 
 if __name__ == '__main__':
     main()

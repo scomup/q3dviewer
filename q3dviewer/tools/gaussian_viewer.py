@@ -53,7 +53,7 @@ def main():
     viewer.add_items({'grid': grid_item, 'gaussian': gau_item})
 
     viewer.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':
