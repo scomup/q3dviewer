@@ -3,14 +3,14 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QPainter, QColor
-from PyQt5.QtWidgets import QSlider
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPainter, QColor
+from PySide6.QtWidgets import QSlider
 
 
 class RangeSlider(QSlider):
     # Signal emitted when the range changes
-    rangeChanged = pyqtSignal(int, int)
+    rangeChanged = Signal(int, int)
 
     def __init__(self, orientation=Qt.Horizontal,
                  parent=None, vmin=0, vmax=255):

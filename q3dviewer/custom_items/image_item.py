@@ -8,7 +8,7 @@ from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image as PIL_Image
-from PyQt5.QtWidgets import QLabel, QSpinBox, QCheckBox
+from PySide6.QtWidgets import QLabel, QSpinBox, QCheckBox
 
 
 # Vertex and Fragment shader source code

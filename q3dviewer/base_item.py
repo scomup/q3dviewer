@@ -3,7 +3,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PyQt5 import QtCore
+from PySide6 import QtCore
 import numpy as np
 
 class BaseItem(QtCore.QObject):

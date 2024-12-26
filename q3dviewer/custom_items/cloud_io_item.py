@@ -6,7 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.custom_items.cloud_item import CloudItem
 from pathlib import Path
 import os
-from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
+from PySide6.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
 import numpy as np
 from pypcd4 import PointCloud, MetaData
 from plyfile import PlyData, PlyElement

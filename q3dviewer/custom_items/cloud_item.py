@@ -11,14 +11,14 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import threading
 import os
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QComboBox, QCheckBox
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
 from q3dviewer.range_slider import RangeSlider
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
-from PyQt5 import QtCore
+from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QRegularExpressionValidator
+from PySide6 import QtCore
 
 
 # draw points with color (x, y, z, color)

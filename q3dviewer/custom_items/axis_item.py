@@ -8,7 +8,7 @@ from q3dviewer.gl_utils import set_uniform
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
-from PyQt5.QtWidgets import QLabel, QDoubleSpinBox
+from PySide6.QtWidgets import QLabel, QDoubleSpinBox
 
 
 # Vertex and Fragment shader source code

@@ -6,7 +6,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'numpy',
-        'pyqt5',
+        'libxcb-cursor0',
+        'pyside6',
         'PyOpenGL',
         'pillow',
         'plyfile',

@@ -10,9 +10,9 @@ import rospy
 import numpy as np
 import argparse
 import q3dviewer as q3d
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from PyQt5 import QtCore
+from PySide6 import QtCore
 from pypcd4 import PointCloud
 
 try:

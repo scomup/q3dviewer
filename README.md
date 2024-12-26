@@ -1,6 +1,6 @@
 ## q3dviewer
 
-`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on PyQt5 and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph, but it focuses more on efficient 3D rendering.
+`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on Qt (pyside6) and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph, but it focuses more on efficient 3D rendering.
 
 ## Installation
 
@@ -137,7 +137,7 @@ In addition to the standard 3D items provided, you can visualize custom 3D items
 from OpenGL.GL import *
 import numpy as np
 import q3dviewer as q3d
-from PyQt5.QtWidgets import QLabel, QSpinBox
+from PySide6.QtWidgets import QLabel, QSpinBox
 
 class YourItem(q3d.BaseItem):
     def __init__(self):

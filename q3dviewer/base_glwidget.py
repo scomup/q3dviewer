@@ -1,13 +1,13 @@
 from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtOpenGLWidgets
 from q3dviewer.utils import frustum, euler_to_matrix, makeT
 
 
-class BaseGLWidget(QtWidgets.QOpenGLWidget):
+class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
     def __init__(self, parent=None):
-        QtWidgets.QOpenGLWidget.__init__(self, parent)
+        QtOpenGLWidgets.QOpenGLWidget.__init__(self, parent)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
         self.reset()
         self._fov = 60

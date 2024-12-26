@@ -9,6 +9,7 @@ import numpy as np
 from OpenGL.GL import shaders
 from PIL import Image as PIL_Image
 from q3dviewer.gl_utils import *
+from PySide6.QtWidgets import QLabel, QDoubleSpinBox
 
 
 # Vertex and Fragment shader source code

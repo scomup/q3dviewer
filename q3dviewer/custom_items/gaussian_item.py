@@ -10,7 +10,7 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
 import os
-from PyQt5.QtWidgets import QComboBox, QLabel
+from PySide6.QtWidgets import QComboBox, QLabel
 from OpenGL.GL import shaders
 from q3dviewer.gl_utils import *
 

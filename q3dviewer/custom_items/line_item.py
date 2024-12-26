@@ -7,9 +7,9 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 import threading
-from PyQt5.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
+from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
+from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QRegularExpressionValidator
 
 
 class LineItem(BaseItem):

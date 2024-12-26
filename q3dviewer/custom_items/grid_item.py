@@ -5,9 +5,9 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
-from PyQt5.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
+from PySide6.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
+from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QRegularExpressionValidator
 import numpy as np
 
 

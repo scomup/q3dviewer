@@ -3,7 +3,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PyQt5 import QtCore, QtGui
+from PySide6 import QtCore, QtGui
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 

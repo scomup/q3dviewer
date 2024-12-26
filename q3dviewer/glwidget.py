@@ -3,17 +3,13 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, \
-    QSizePolicy, QSpacerItem
+from PySide6 import QtCore
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QSpacerItem, QLabel, QLineEdit, QCheckBox
+from PySide6.QtGui import QKeyEvent, QVector3D, QRegularExpressionValidator
+from PySide6.QtCore import QRegularExpression
 from OpenGL.GL import *
-from PyQt5.QtGui import QKeyEvent, QVector3D
 import numpy as np
-from PyQt5.QtWidgets import QLabel, QLineEdit
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
 from q3dviewer.base_glwidget import BaseGLWidget
-from PyQt5.QtWidgets import QCheckBox
 
 class SettingWindow(QWidget):
     def __init__(self):

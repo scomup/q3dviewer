@@ -6,7 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.glwidget import *
 import signal
-from PyQt5.QtWidgets import QMainWindow, QApplication
+from PySide6.QtWidgets import QMainWindow, QApplication
 
 
 def handler(signal, frame):
