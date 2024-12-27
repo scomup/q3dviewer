@@ -10,6 +10,7 @@ import threading
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
+from q3dviewer.utils import hex_to_rgba
 
 
 class LineItem(BaseItem):
@@ -22,7 +23,7 @@ class LineItem(BaseItem):
         self.capacity = 100000
         self.valid_buff_top = 0
         self.color = color
-        self.rgb = self._hex_to_rgba(color)
+        self.rgb = hex_to_rgba(color)
         self.line_type = GL_LINE_STRIP if line_type == 'LINE_STRIP' else GL_LINES
 
     def add_setting(self, layout):
@@ -46,16 +47,9 @@ class LineItem(BaseItem):
         spinbox_width.valueChanged.connect(self.set_width)
         spinbox_width.setRange(0.1, 10.0)
 
-    def _hex_to_rgba(self, hex_color):
-        color_flat = int(hex_color[1:], 16)
-        red = (color_flat >> 16) & 0xFF
-        green = (color_flat >> 8) & 0xFF
-        blue = color_flat & 0xFF
-        return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
-
     def _on_color(self, color):
         try:
-            self.rgb = self._hex_to_rgba(color)
+            self.rgb = hex_to_rgba(color)
             self.color = color
         except ValueError:
             pass

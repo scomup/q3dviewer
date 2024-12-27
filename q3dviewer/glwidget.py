@@ -128,4 +128,4 @@ class GLWidget(BaseGLWidget):
             self.setting_window.show()
 
     def change_show_center(self, state):
-        self.enable_show_center = state == QtCore.Qt.Checked
+        self.enable_show_center = state

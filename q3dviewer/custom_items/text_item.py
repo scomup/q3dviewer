@@ -6,6 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 from PySide6 import QtCore, QtGui
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
+from q3dviewer.utils import hex_to_rgba
 
 
 class Text2DItem(BaseItem):
@@ -15,7 +16,8 @@ class Text2DItem(BaseItem):
         """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
         self.pos = (100, 100)
-        self.color = QtCore.Qt.GlobalColor.white
+        self.color = '#ffffff'
+        self.rgb = hex_to_rgba(self.color)
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
         self.set_data(**kwds)
@@ -32,7 +34,7 @@ class Text2DItem(BaseItem):
                 if arg == 'pos':
                     self.pos = value
                 elif arg == 'color':
-                    value = value
+                    self.set_color(value)
                 elif arg == 'font':
                     if isinstance(value, QtGui.QFont) is False:
                         raise TypeError('"font" must be QFont.')
@@ -40,13 +42,20 @@ class Text2DItem(BaseItem):
                     self.font.setPointSize(value)
                 setattr(self, arg, value)
 
+    def set_color(self, color):
+        try:
+            self.rgb = hex_to_rgba(color)
+            self.color = color
+        except ValueError:
+            pass
+
     def paint(self):
         if len(self.text) < 1:
             return
 
         text_pos = QtCore.QPointF(*self.pos)
         painter = QtGui.QPainter(self.view())
-        painter.setPen(self.color)
+        painter.setPen(QtGui.QColor(*[int(c * 255) for c in self.rgb[:3]]))
         painter.setFont(self.font)
         painter.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing |
                                QtGui.QPainter.RenderHint.TextAntialiasing)

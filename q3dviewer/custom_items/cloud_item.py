@@ -173,7 +173,7 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
 
     def set_depthtest(self, state):
-        self.depth_test_enabled = (state == QtCore.Qt.Checked)
+        self.depth_test_enabled = state
 
     def clear(self):
         data = np.empty((0), self.data_type)

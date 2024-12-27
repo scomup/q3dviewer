@@ -6,7 +6,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'numpy',
-        'libxcb-cursor0',
         'pyside6',
         'PyOpenGL',
         'pillow',
