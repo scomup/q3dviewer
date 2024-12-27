@@ -156,6 +156,13 @@ def makeRt(T):
     t = T[0:3, 3]
     return R, t
 
+def hex_to_rgba(hex_color):
+    color_flat = int(hex_color[1:], 16)
+    red = (color_flat >> 16) & 0xFF
+    green = (color_flat >> 8) & 0xFF
+    blue = color_flat & 0xFF
+    return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
+
 # euler = np.array([1, 0.1, 0.1])
 # euler_angles = matrix_to_euler(euler_to_matrix(euler))
 # print("Euler Angles:", euler_angles)

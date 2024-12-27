@@ -15,7 +15,7 @@ class Text2DItem(BaseItem):
     def __init__(self, **kwds):
         """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
-        self.pos = (100, 100)
+        self.pos = (20, 50)
         self.color = '#ffffff'
         self.rgb = hex_to_rgba(self.color)
         self.text = ''
