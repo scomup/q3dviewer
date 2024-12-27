@@ -184,11 +184,16 @@ class CloudItem(BaseItem):
             raise ValueError("Input data must be a numpy array.")
 
         if data.dtype in {np.dtype('float32'), np.dtype('float64')}:
-            xyz = data[:, :3]
-            color = data[:, 3].view(np.uint32) if data.shape[1] == 4 else \
-                np.zeros(data.shape[0], dtype=np.uint32)
-            data = np.rec.fromarrays(
-                [xyz, color[:data.shape[0]]], dtype=self.data_type)
+            if data.size == 0:
+                data = np.empty((0), self.data_type)
+            elif data.ndim == 2 and data.shape[1] >= 3:
+                xyz = data[:, :3]
+                if data.shape[1] >= 4:
+                    color = data[:, 3].view(np.uint32)
+                else:
+                    color = np.zeros(data.shape[0], dtype=np.uint32)
+                data = np.rec.fromarrays(
+                    [xyz, color[:data.shape[0]]], dtype=self.data_type)
 
         with self.mutex:
             if append:

@@ -124,6 +124,8 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         glClearColor(*bgcolor)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
         for item in self.items:
+            if not item.visible():
+                continue
             glMatrixMode(GL_MODELVIEW)
             glPushMatrix()
             glPushAttrib(GL_ALL_ATTRIB_BITS)
