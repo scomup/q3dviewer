@@ -7,9 +7,6 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
-from PySide6 import QtCore
 
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):

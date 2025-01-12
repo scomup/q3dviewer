@@ -97,7 +97,7 @@ class GLCameraFrameItem(BaseItem):
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
-        project_matrix = self.view().get_projection_matrix()
+        project_matrix = self.glwidget().get_projection_matrix()
         # Compile shaders and create shader program
         self.program = shaders.compileProgram(
             shaders.compileShader(vertex_shader_source, GL_VERTEX_SHADER),
@@ -124,8 +124,8 @@ class GLCameraFrameItem(BaseItem):
         self.T = T
 
     def paint(self):
-        self.view_matrix = self.view().get_view_matrix()
-        project_matrix = self.view().get_projection_matrix()
+        self.view_matrix = self.glwidget().get_view_matrix()
+        project_matrix = self.glwidget().get_projection_matrix()
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

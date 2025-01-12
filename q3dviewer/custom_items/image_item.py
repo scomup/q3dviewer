@@ -51,8 +51,8 @@ class ImageItem(BaseItem):
 
     def initialize_gl(self):
         # Rectangle vertices and texture coordinates
-        width = self.view().current_width()
-        height = self.view().current_height()
+        width = self.glwidget().current_width()
+        height = self.glwidget().current_height()
         x0, y0 = self.pos
         x1, y1 = self.pos + self.size
         x0 = x0 / width * 2 - 1

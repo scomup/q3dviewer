@@ -102,11 +102,11 @@ class GaussianItem(BaseItem):
         self.ssbo_dp = glGenBuffers(1)
         self.ssbo_pp = glGenBuffers(1)
 
-        width = self.view().current_width()
-        height = self.view().current_height()
+        width = self.glwidget().current_width()
+        height = self.glwidget().current_height()
 
         # set constant parameter for gaussian shader
-        project_matrix = self.view().get_projection_matrix()
+        project_matrix = self.glwidget().get_projection_matrix()
         focal_x = project_matrix[0, 0] * width / 2
         focal_y = project_matrix[1, 1] * height / 2
         glUseProgram(self.prep_program)
@@ -170,7 +170,7 @@ class GaussianItem(BaseItem):
 
     def paint(self):
         # get current view matrix
-        self.view_matrix = self.view().get_view_matrix()
+        self.view_matrix = self.glwidget().get_view_matrix()
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.updateGS()

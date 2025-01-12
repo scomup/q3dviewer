@@ -13,34 +13,30 @@ class BaseItem(QtCore.QObject):
         super().__init__()
         self._id = BaseItem._next_id
         BaseItem._next_id += 1
-        self.__view = None
-        self.__transform = np.eye(4)
-        self.__visible = True
-        self.__initialized = False
+        self._glwidget = None
+        self._visible = True
+        self._initialized = False
         
     def set_glwidget(self, v):
-        self.__view = v
+        self._glwidget = v
         
-    def view(self):
-        return self.__view
-
-    def transform(self):
-        return self.__transform
+    def glwidget(self):
+        return self._glwidget
     
     def hide(self):
-        self.__visible = False
+        self._visible = False
         
     def show(self):
-        self.__visible = True
+        self._visible = True
     
     def set_visible(self, vis):
-        self.__visible = vis
+        self._visible = vis
         
     def visible(self):
-        return self.__visible
+        return self._visible
     
     def initialize(self):
-        if not self.__initialized:
+        if not self._initialized:
             self.initialize_gl()
     
     def initialize_gl(self):

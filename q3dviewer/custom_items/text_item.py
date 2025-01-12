@@ -54,7 +54,7 @@ class Text2DItem(BaseItem):
             return
 
         text_pos = QtCore.QPointF(*self.pos)
-        painter = QtGui.QPainter(self.view())
+        painter = QtGui.QPainter(self.glwidget())
         painter.setPen(QtGui.QColor(*[int(c * 255) for c in self.rgb[:3]]))
         painter.setFont(self.font)
         painter.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing |
