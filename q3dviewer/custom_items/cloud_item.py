@@ -7,8 +7,6 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
 import threading
 import os
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
