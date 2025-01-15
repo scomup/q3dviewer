@@ -180,7 +180,7 @@ class CloudIOItem(CloudItem):
         layout.addWidget(label4)
         box4 = QLineEdit()
         box4.setText(self.save_path)
-        box4.textChanged.connect(self.setPath)
+        box4.textChanged.connect(self.set_path)
         layout.addWidget(box4)
         save_button = QPushButton("Save Cloud")
         save_button.clicked.connect(self.save)
@@ -215,7 +215,7 @@ class CloudIOItem(CloudItem):
         self.save_msg.exec()
 
     def load(self, file, append=False):
-        print("Try to load %s ..." % file)
+        # print("Try to load %s ..." % file)
         if file.endswith(".pcd"):
             cloud, color_mode = load_pcd(file)
         elif file.endswith(".ply"):
@@ -231,5 +231,5 @@ class CloudIOItem(CloudItem):
         self.set_color_mode(color_mode)
         return cloud
 
-    def setPath(self, path):
+    def set_path(self, path):
         self.save_path = path

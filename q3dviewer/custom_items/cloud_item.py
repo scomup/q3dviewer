@@ -16,7 +16,6 @@ from q3dviewer.gl_utils import *
 from q3dviewer.range_slider import RangeSlider
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
-from PySide6 import QtCore
 
 
 # draw points with color (x, y, z, color)
@@ -244,7 +243,7 @@ class CloudItem(BaseItem):
             buff_capacity = self.buff.shape[0]
             while (new_buff_top > buff_capacity):
                 buff_capacity += self.CAPACITY
-            print("Update capacity to %d" % buff_capacity)
+            print("[Cloud Item] Update capacity to %d" % buff_capacity)
             new_buff = np.empty((buff_capacity), self.data_type)
             new_buff[:self.add_buff_loc] = self.buff[:self.add_buff_loc]
             new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
