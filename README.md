@@ -99,7 +99,7 @@ def main():
     app = q3d.QApplication([])
 
     # Create various 3D items
-    axis_item = q3d.GLAxisItem(size=0.5, width=5)
+    axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=10, spacing=1)
 
     # Create a viewer
@@ -120,14 +120,14 @@ if __name__ == '__main__':
 
 `q3dviewer` provides the following 3D items:
 
-- **axis_item**: An item for displaying coordinate axes or self-position
-- **cloud_item**: An item for displaying point clouds
-- **cloud_io_item**: An item for displaying point clouds with I/O capabilities
-- **gaussian_item**: An item for displaying 3D Gaussians
-- **grid_item**: An item for displaying grids
-- **image_item**: An item for displaying 2D images
-- **text_item**: An item for displaying 2D text
-- **trajectory_item**: An item for displaying robot trajectories
+- **AxisItem**: Displaying coordinate axes or self-position
+- **CloudItem**: Displaying point clouds
+- **CloudIOItem**: Displaying point clouds with I/O capabilities
+- **GaussianItem**: Displaying 3D Gaussians
+- **GridItem**: Displaying grids
+- **ImageItem**: Displaying 2D images
+- **Text2DItem**: Displaying 2D text
+- **LineItem**: Displaying lines or trajectories
 
 ### Developing Custom Items
 
