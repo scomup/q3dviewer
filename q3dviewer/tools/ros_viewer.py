@@ -12,8 +12,8 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 import numpy as np
 import random
-from pypcd4 import PointCloud
 from sensor_msgs.msg import Image
+from q3dviewer.convert_ros_msg import convert_pointcloud2_msg, convert_odometry_msg, convert_image_msg
 
 viewer = None
 point_num_per_scan = None
@@ -22,50 +22,29 @@ color_mode = None
 
 def odom_cb(data):
     global viewer
-    pose = np.array(
-        [data.pose.pose.position.x,
-         data.pose.pose.position.y,
-         data.pose.pose.position.z])
-    rotation = np.array([
-        data.pose.pose.orientation.x,
-        data.pose.pose.orientation.y,
-        data.pose.pose.orientation.z,
-        data.pose.pose.orientation.w])
-    transform = make_transform(pose, rotation)
+    transform, _ = convert_odometry_msg(data)
     viewer['odom'].set_transform(transform)
 
 
 def scan_cb(data):
     global viewer
     global point_num_per_scan
-    global color_mode
-    pc = PointCloud.from_msg(data).pc_data
-    data_type = viewer['scan'].data_type
-    rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
-    intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
-    color_mode = 'FLAT'
-    if 'intensity' in pc.dtype.names:
-        intensity = pc['intensity'].view(np.uint32)
-        color_mode = 'I'
-    if 'rgb' in pc.dtype.names:
-        rgb = pc['rgb'].view(np.uint32)
-        color_mode = 'RGB'
-    irgb = (intensity << 24) | rgb
-    xyz = np.stack([pc['x'], pc['y'], pc['z']], axis=1)
-    cloud = np.rec.fromarrays([xyz, irgb], dtype=data_type)
+    cloud, fields, _ = convert_pointcloud2_msg(data)
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
+    color_mode = 'FLAT'
+    if 'intensity' in fields:
+        color_mode = 'I'
+    if 'rgb' in fields:
+        color_mode = 'RGB'
     viewer['map'].set_color_mode(color_mode)
     viewer['map'].set_data(data=cloud, append=True)
     viewer['scan'].set_data(data=cloud)
 
 
 def image_cb(data):
-    image = np.frombuffer(data.data, dtype=np.uint8).reshape(
-        data.height, data.width, -1)
-    if (data.encoding == 'bgr8'):
-        image = image[:, :, ::-1]  # convert bgr to rgb
+    image, _ = convert_image_msg(data)
     viewer['img'].set_data(data=image)
 
 
