@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-from plyfile import PlyData
+import meshio
 
 
 def gsdata_type(sh_dim):
@@ -62,43 +62,39 @@ def matrix_to_quaternion_wxyz(matrices):
 
 
 def load_ply(path, T=None):
-    plydata = PlyData.read(path)
-    pws = np.stack((np.asarray(plydata.elements[0]["x"]),
-                    np.asarray(plydata.elements[0]["y"]),
-                    np.asarray(plydata.elements[0]["z"])),  axis=1)
+    mesh = meshio.read(path)
+    vertices = mesh.points
+    pws = vertices[:, :3]
 
-    alphas = np.asarray(plydata.elements[0]["opacity"])
-    alphas = 1/(1 + np.exp(-alphas))
+    alphas = mesh.point_data['opacity']
+    alphas = 1 / (1 + np.exp(-alphas))
 
-    scales = np.stack((np.asarray(plydata.elements[0]["scale_0"]),
-                       np.asarray(plydata.elements[0]["scale_1"]),
-                       np.asarray(plydata.elements[0]["scale_2"])),  axis=1)
+    scales = np.vstack((mesh.point_data['scale_0'],
+                        mesh.point_data['scale_1'],
+                        mesh.point_data['scale_2'])).T
 
-    rots = np.stack((np.asarray(plydata.elements[0]["rot_0"]),
-                     np.asarray(plydata.elements[0]["rot_1"]),
-                     np.asarray(plydata.elements[0]["rot_2"]),
-                     np.asarray(plydata.elements[0]["rot_3"])),  axis=1)
-
+    rots = np.vstack((mesh.point_data['rot_0'],
+                      mesh.point_data['rot_1'],
+                      mesh.point_data['rot_2'],
+                      mesh.point_data['rot_3'])).T
     rots /= np.linalg.norm(rots, axis=1)[:, np.newaxis]
 
-    sh_dim = len(plydata.elements[0][0])-14
+    sh_dim = len(mesh.point_data) - 11
     shs = np.zeros([pws.shape[0], sh_dim])
-    shs[:, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
-    shs[:, 1] = np.asarray(plydata.elements[0]["f_dc_1"])
-    shs[:, 2] = np.asarray(plydata.elements[0]["f_dc_2"])
+    shs[:, 0] = mesh.point_data['f_dc_0']
+    shs[:, 1] = mesh.point_data['f_dc_1']
+    shs[:, 2] = mesh.point_data['f_dc_2']
 
     sh_rest_dim = sh_dim - 3
     for i in range(sh_rest_dim):
-        name = "f_rest_%d" % i
-        shs[:, 3 + i] = np.asarray(plydata.elements[0][name])
+        name = f"f_rest_{i}"
+        shs[:, 3 + i] = mesh.point_data[name]
 
-    shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim//3)\
-        .transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
+    shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim // 3).transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
 
     pws = pws.astype(np.float32)
     rots = rots.astype(np.float32)
-    scales = np.exp(scales)
-    scales = scales.astype(np.float32)
+    scales = np.exp(scales).astype(np.float32)
     alphas = alphas.astype(np.float32)
     shs = shs.astype(np.float32)
 
@@ -171,5 +167,5 @@ def get_example_gs():
 
 
 if __name__ == "__main__":
-    gs = load_gs("/home/liu/workspace/EasyGaussianSplatting/data/final.npy")
+    gs = load_gs("/home/liu/workspace/gaussian-splatting/output/e1af782f-8/point_cloud/iteration_7000/point_cloud.ply")
     print(gs.shape)

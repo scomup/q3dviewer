@@ -9,7 +9,7 @@ setup(
         'pyside6',
         'PyOpenGL',
         'pillow',
-        'plyfile',
+        'meshio',
         'pypcd4',
         'pye57',
         'laspy',

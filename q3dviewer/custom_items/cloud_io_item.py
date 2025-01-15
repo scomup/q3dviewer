@@ -9,33 +9,30 @@ import os
 from PySide6.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
 import numpy as np
 from pypcd4 import PointCloud, MetaData
-from plyfile import PlyData, PlyElement
 from pye57 import E57
 import laspy
+import meshio
 
 
 def save_as_ply(cloud, save_path):
-    if (np.max((cloud['color']) >> 16 & 0xff)):
-        dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('rgb', 'u4')]
+    vertices = cloud['xyz']
+    if 'color' in cloud.dtype.names:
+        color = cloud['color']
+        mesh = meshio.Mesh(points=vertices, cells=[], point_data={"rgb": color})
     else:
-        dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('intensity', 'u4')]
-    ply_element = PlyElement.describe(cloud.view(dtype), 'vertex')
-    PlyData([ply_element], byte_order='>').write(save_path)
+        mesh = meshio.Mesh(points=vertices, cells=[])
+    mesh.write(save_path, file_format="ply")
 
 
 def load_ply(file):
-    ply_data = PlyData.read(file)
-    vertices = ply_data['vertex']
-    names = [x.name for x in vertices.properties]
-    x = np.array(vertices['x'], dtype=np.float32)
-    y = np.array(vertices['y'], dtype=np.float32)
-    z = np.array(vertices['z'], dtype=np.float32)
-    if 'rgb' in names:
-        color = np.array(vertices['rgb'], dtype=np.uint32)
+    mesh = meshio.read(file)
+    vertices = mesh.points
+    x = vertices[:, 0]
+    y = vertices[:, 1]
+    z = vertices[:, 2]
+    if "rgb" in mesh.point_data:
+        color = mesh.point_data["rgb"]
         color_mode = 'RGB'
-    elif 'intensity' in names:
-        color = np.array(vertices['intensity'], dtype=np.uint32)
-        color_mode = 'I'
     else:
         color = z.astype(np.uint32)
         color_mode = 'FLAT'

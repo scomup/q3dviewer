@@ -76,6 +76,7 @@ class CloudViewer(q3d.Viewer):
         self.progress_dialog.show()
         files = event.mimeData().urls()
         self.progress_thread = FileLoaderThread(self, files)
+        self['cloud'].load(files[0].toLocalFile(), append=False)
         self.progress_thread.progress.connect(self.file_loading_progress)
         self.progress_thread.finished.connect(self.file_loading_finished)
         self.progress_thread.start()
