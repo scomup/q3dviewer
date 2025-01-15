@@ -29,9 +29,9 @@ class CloudItem(BaseItem):
         self.size = size
         self.point_type = point_type
         self.mutex = threading.Lock()
-        self.data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
+        self.data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
         self.flat_rgb = int(color[1:], 16)
-        self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2,  'IRGB': 3}
+        self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2}
         self.point_type_table = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
         self.color_mode = self.mode_table[color_mode]
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
@@ -80,9 +80,8 @@ class CloudItem(BaseItem):
         self.combo_color.addItem("flat color")
         self.combo_color.addItem("intensity")
         self.combo_color.addItem("RGB")
-        self.combo_color.addItem("intensity for RGB data")
         self.combo_color.setCurrentIndex(self.color_mode)
-        self.combo_color.currentIndexChanged.connect(self._onColorMode)
+        self.combo_color.currentIndexChanged.connect(self._on_color_mode)
         layout.addWidget(self.combo_color)
 
         self.edit_rgb = QLineEdit()
@@ -113,20 +112,18 @@ class CloudItem(BaseItem):
         self.vmax = upper
         self.need_update_setting = True
 
-    def _onColorMode(self, index):
+    def _on_color_mode(self, index):
         self.color_mode = index
         self.edit_rgb.hide()
         self.slider_v.hide()
         if (index == self.mode_table['FLAT']):  # flat color
             self.edit_rgb.show()
-        elif (index == self.mode_table['IRGB']):  # flat color
-            self.slider_v.show()
         elif (index == self.mode_table['I']):  # flat color
             self.slider_v.show()
         self.need_update_setting = True
 
     def set_color_mode(self, color_mode):
-        if color_mode in {'FLAT', 'RGB', 'IRGB', 'I'}:
+        if color_mode in {'FLAT', 'RGB', 'I'}:
             self.combo_color.setCurrentIndex(self.mode_table[color_mode])
         else:
             print(f"Invalid color mode: {color_mode}")

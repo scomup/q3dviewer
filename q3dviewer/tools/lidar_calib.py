@@ -237,7 +237,7 @@ class ViewerWithPanel(q3d.Viewer):
 
 def msg_cloud(data):
     pc = PointCloud.from_msg(data).pc_data
-    data_type = [('xyz', '<f4', (3,)), ('color', '<u4')]
+    data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     color = pc['intensity'].astype(np.uint32)
     cloud = np.rec.fromarrays(
         [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],

@@ -48,18 +48,14 @@ void main()
     vec3 c = vec3(1.0, 1.0, 1.0);
     if (color_mode == 1)
     {
-        c = getRainbowColor(value);
+        uint intensity = value >> 24;
+        c = getRainbowColor(intensity);
     }
     else if(color_mode == 2)
     {
         c.z = float(value & uint(0x000000FF))/255.;
         c.y = float((value & uint(0x0000FF00)) >> 8)/255.;
         c.x = float((value & uint(0x00FF0000)) >> 16)/255.;
-    }
-    else if(color_mode == 3)
-    {
-        uint intensity = value >> 24;
-        c = getRainbowColor(intensity);
     }
     else
     {

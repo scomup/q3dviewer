@@ -270,7 +270,7 @@ def image_cb(data):
         valid_points = valid_x & valid_y
         u = u[valid_points]
 
-        intensity = cloud_local['color'][u_mask][valid_points]
+        intensity = cloud_local['irgb'][u_mask][valid_points] >> 24
         vmin = viewer['scan'].vmin
         vmax = viewer['scan'].vmax
         intensity_color = q3d.rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)

@@ -15,66 +15,67 @@ import meshio
 
 
 def save_as_ply(cloud, save_path):
-    vertices = cloud['xyz']
-    if 'color' in cloud.dtype.names:
-        color = cloud['color']
-        mesh = meshio.Mesh(points=vertices, cells=[], point_data={"rgb": color})
-    else:
-        mesh = meshio.Mesh(points=vertices, cells=[])
+    xyz = cloud['xyz']
+    i = (cloud['irgb'] & 0xFF000000) >> 24
+    rgb = cloud['irgb'] & 0x00FFFFFF
+    mesh = meshio.Mesh(points=xyz, cells=[], point_data={
+                       "rgb": rgb, "intensity": i})
     mesh.write(save_path, file_format="ply")
 
 
 def load_ply(file):
     mesh = meshio.read(file)
-    vertices = mesh.points
-    x = vertices[:, 0]
-    y = vertices[:, 1]
-    z = vertices[:, 2]
+    xyz = mesh.points
+    rgb = np.zeros([xyz.shape[0]], dtype=np.uint32)
+    intensity = np.zeros([xyz.shape[0]], dtype=np.uint32)
+    color_mode = 'FLAT'
+    if "intensity" in mesh.point_data:
+        intensity = mesh.point_data["intensity"]
+        color_mode = 'I'
     if "rgb" in mesh.point_data:
-        color = mesh.point_data["rgb"]
+        rgb = mesh.point_data["rgb"]
         color_mode = 'RGB'
-    else:
-        color = z.astype(np.uint32)
-        color_mode = 'FLAT'
-    dtype = [('xyz', '<f4', (3,)), ('color', '<u4')]
-    cloud = np.rec.fromarrays(
-        [np.stack([x, y, z], axis=1), color],
-        dtype=dtype)
+    irgb = (intensity << 24) | rgb
+    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
+    cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
     return cloud, color_mode
 
 
 def save_as_pcd(cloud, save_path):
-    if (np.max((cloud['color']) >> 16 & 0xff)):
-        fields = ('x', 'y', 'z', 'rgb')
-    else:
-        fields = ('x', 'y', 'z', 'intensity')
+    fields = ('x', 'y', 'z', 'intensity', 'rgb')
     metadata = MetaData.model_validate(
         {
             "fields": fields,
-            "size": [4, 4, 4, 4],
-            "type": ['F', 'F', 'F', 'U'],
-            "count": [1, 1, 1, 1],
+            "size": [4, 4, 4, 4, 4],
+            "type": ['F', 'F', 'F', 'U', 'U'],
+            "count": [1, 1, 1, 1, 1],
             "width": cloud.shape[0],
             "points": cloud.shape[0],
         })
-    PointCloud(metadata, cloud).save(save_path)
+    i = (cloud['irgb'] & 0xFF000000) >> 24
+    rgb = cloud['irgb'] & 0x00FFFFFF
+
+    dtype = [('xyz', '<f4', (3,)), ('intensity', '<u4'), ('rgb', '<u4')]
+    tmp = np.rec.fromarrays([cloud['xyz'], i, rgb], dtype=dtype)
+
+    PointCloud(metadata, tmp).save(save_path)
 
 
 def load_pcd(file):
-    dtype = [('xyz', '<f4', (3,)), ('color', '<u4')]
+    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     pc = PointCloud.from_path(file).pc_data
-    if 'rgb' in pc.dtype.names:
-        color = pc['rgb'].astype(np.uint32)
-        color_mode = 'RGB'
-    elif 'intensity' in pc.dtype.names:
-        color = pc['intensity'].astype(np.uint32)
+    rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
+    intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
+    color_mode = 'FLAT'
+    if 'intensity' in pc.dtype.names:
+        intensity = pc['intensity'].astype(np.uint32)
         color_mode = 'I'
-    else:
-        color = pc['z'].astype(np.uint32)
-        color_mode = 'FLAT'
-    cloud = np.rec.fromarrays(
-        [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
-        dtype=dtype)
+    if 'rgb' in pc.dtype.names:
+        rgb = pc['rgb'].astype(np.uint32)
+        color_mode = 'RGB'
+    irgb = (intensity << 24) | rgb
+    xyz = np.stack([pc['x'], pc['y'], pc['z']], axis=1)
+    cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
     return cloud, color_mode
 
 
@@ -83,10 +84,10 @@ def save_as_e57(cloud, save_path):
     x = cloud['xyz'][:, 0]
     y = cloud['xyz'][:, 1]
     z = cloud['xyz'][:, 2]
-    i = (cloud['color'] & 0xFF000000) >> 24
-    r = (cloud['color'] & 0x00FF0000) >> 16
-    g = (cloud['color'] & 0x0000FF00) >> 8
-    b = (cloud['color'] & 0x000000ff)
+    i = (cloud['irgb'] & 0xFF000000) >> 24
+    r = (cloud['irgb'] & 0x00FF0000) >> 16
+    g = (cloud['irgb'] & 0x0000FF00) >> 8
+    b = (cloud['irgb'] & 0x000000ff)
     data = {"cartesianX": x, "cartesianY": y, "cartesianZ": z,
             "intensity": i,
             "colorRed": r, "colorGreen": g, "colorBlue": b}
@@ -101,23 +102,23 @@ def load_e57(file_path):
     x = scans["cartesianX"]
     y = scans["cartesianY"]
     z = scans["cartesianZ"]
-    color = np.zeros([x.shape[0]], dtype=np.uint32)
+    rgb = np.zeros([x.shape[0]], dtype=np.uint32)
+    intensity = np.zeros([x.shape[0]], dtype=np.uint32)
+    color_mode = 'FLAT'
     if "intensity" in scans:
-        color = scans["intensity"].astype(np.uint32)
+        intensity = scans["intensity"].astype(np.uint32)
         color_mode = 'I'
     if all([x in scans for x in ["colorRed", "colorGreen", "colorBlue"]]):
         r = scans["colorRed"].astype(np.uint32)
         g = scans["colorGreen"].astype(np.uint32)
         b = scans["colorBlue"].astype(np.uint32)
-        color = (color.astype(np.uint32) << 24) | \
-                (r.astype(np.uint32) << 16) | \
-                (g.astype(np.uint32) << 8) | \
-                (b.astype(np.uint32) << 0)
+        rgb = (r << 16) | (g << 8) | b
         color_mode = 'RGB'
-    cloud = np.empty(
-        len(x), dtype=[('xyz', '<f4', (3,)), ('color', '<u4')])
-    cloud['xyz'] = np.stack((x, y, z), axis=-1)
-    cloud['color'] = color
+    irgb = (intensity << 24) | rgb
+    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
+    cloud = np.rec.fromarrays(
+        [np.stack([x, y, z], axis=1), irgb],
+        dtype=dtype)
     e57.close()
     return cloud, color_mode
 
@@ -125,26 +126,28 @@ def load_e57(file_path):
 def load_las(file):
     with laspy.open(file) as f:
         las = f.read()
-        points = np.vstack((las.x, las.y, las.z)).transpose()
-        dimensions = las.point_format.dimension_names
+        xyz = np.vstack((las.x, las.y, las.z)).transpose()
+        dimensions = list(las.point_format.dimension_names)
+        color_mode = 'FLAT'
+        rgb = np.zeros([las.x.shape[0]], dtype=np.uint32)
+        intensity = np.zeros([las.x.shape[0]], dtype=np.uint32)
+        if 'intensity' in dimensions:
+            intensity = las.intensity.astype(np.uint32)
+            color_mode = 'I'
         if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
             red = las.red
             green = las.green
             blue = las.blue
-            if red.dtype == np.dtype('uint16'):
+            max_val = np.max([red, green, blue])
+            if red.dtype == np.dtype('uint16') and max_val > 255:
                 red = (red / 65535.0 * 255).astype(np.uint32)
                 green = (green / 65535.0 * 255).astype(np.uint32)
                 blue = (blue / 65535.0 * 255).astype(np.uint32)
-            color = (red << 16) | (green << 8) | blue
+            rgb = (red << 16) | (green << 8) | blue
             color_mode = 'RGB'
-        elif 'intensity' in dimensions:
-            color = las.intensity
-            color_mode = 'I'
-        else:
-            color = las.z.astype(np.uint32)
-            color_mode = 'FLAT'
-        dtype = [('xyz', '<f4', (3,)), ('color', '<u4')]
-        cloud = np.rec.fromarrays([points, color], dtype=dtype)
+        color = (intensity << 24) | rgb
+        dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
+        cloud = np.rec.fromarrays([xyz, color], dtype=dtype)
     return cloud, color_mode
 
 def save_as_las(cloud, save_path):
@@ -153,12 +156,10 @@ def save_as_las(cloud, save_path):
     las.x = cloud['xyz'][:, 0]
     las.y = cloud['xyz'][:, 1]
     las.z = cloud['xyz'][:, 2]
-    if 'rgb' in cloud.dtype.names:
-        las.red = (cloud['color'] >> 16) & 0xFF
-        las.green = (cloud['color'] >> 8) & 0xFF
-        las.blue = cloud['color'] & 0xFF
-    elif 'intensity' in cloud.dtype.names:
-        las.intensity = cloud['color']
+    las.red = (cloud['irgb'] >> 16) & 0xFF
+    las.green = (cloud['irgb'] >> 8) & 0xFF
+    las.blue = cloud['irgb'] & 0xFF
+    las.intensity = cloud['irgb'] >> 24
     las.write(save_path)
 
 

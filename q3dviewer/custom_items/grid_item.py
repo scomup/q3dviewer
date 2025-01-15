@@ -35,7 +35,7 @@ class GridItem(BaseItem):
         layout.addWidget(spinbox_spacing)
         spinbox_spacing.setSingleStep(0.1)
         spinbox_spacing.setValue(self.spacing)
-        spinbox_spacing.valueChanged.connect(self.setSpacing)
+        spinbox_spacing.valueChanged.connect(self._on_spacing)
         spinbox_spacing.setRange(0, 1000)
 
         label_offset = QLabel("Set offset (x;y;z):")
@@ -45,17 +45,17 @@ class GridItem(BaseItem):
         validator = QRegularExpressionValidator(regex)
         self.edit_offset.setValidator(validator)
         self.edit_offset.setText(f"{self.offset[0]};{self.offset[1]};{self.offset[2]}")
-        self.edit_offset.textChanged.connect(self._onOffset)
+        self.edit_offset.textChanged.connect(self._on_offset)
         layout.addWidget(self.edit_offset)
 
     def set_size(self, size):
         self.size = size
 
-    def setSpacing(self, spacing):
+    def _on_spacing(self, spacing):
         if spacing > 0:
             self.spacing = spacing
 
-    def _onOffset(self, text):
+    def _on_offset(self, text):
         try:
             values = list(map(float, text.split(';')))
             if len(values) == 3:
@@ -65,7 +65,7 @@ class GridItem(BaseItem):
         except ValueError:
             pass
 
-    def setOffset(self, offset):
+    def set_offset(self, offset):
         if isinstance(offset, np.ndarray) and offset.shape == (3,):
             self.offset = offset
             self.edit_offset.setText(f"{self.offset[0]};{self.offset[1]};{self.offset[2]}")

@@ -41,24 +41,22 @@ def scan_cb(data):
     global color_mode
     pc = PointCloud.from_msg(data).pc_data
     data_type = viewer['scan'].data_type
+    rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
+    intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
+    color_mode = 'FLAT'
+    if 'intensity' in pc.dtype.names:
+        intensity = pc['intensity'].view(np.uint32)
+        color_mode = 'I'
     if 'rgb' in pc.dtype.names:
-        color = pc['rgb'].view(np.uint32)
-    else:
-        color = pc['intensity']
-
-    if color_mode is None:
-        if 'rgb' in pc.dtype.names:
-            color_mode = 'RGB'
-        else:
-            color_mode = 'I'
-        viewer['map'].set_color_mode(color_mode)
-
-    cloud = np.rec.fromarrays(
-        [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
-        dtype=data_type)
+        rgb = pc['rgb'].view(np.uint32)
+        color_mode = 'RGB'
+    irgb = (intensity << 24) | rgb
+    xyz = np.stack([pc['x'], pc['y'], pc['z']], axis=1)
+    cloud = np.rec.fromarrays([xyz, irgb], dtype=data_type)
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
+    viewer['map'].set_color_mode(color_mode)
     viewer['map'].set_data(data=cloud, append=True)
     viewer['scan'].set_data(data=cloud)
 
