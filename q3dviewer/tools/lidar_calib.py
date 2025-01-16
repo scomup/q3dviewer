@@ -13,7 +13,7 @@ import q3dviewer as q3d
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PySide6 import QtCore
-from q3dviewer.convert_ros_msg import convert_pointcloud2_msg
+from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 
 try:
     import open3d as o3d

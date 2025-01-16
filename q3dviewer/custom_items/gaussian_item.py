@@ -10,7 +10,7 @@ import numpy as np
 import os
 from PySide6.QtWidgets import QComboBox, QLabel
 from OpenGL.GL import shaders
-from q3dviewer.gl_utils import *
+from q3dviewer.utils import *
 
 
 def div_round_up(x, y):

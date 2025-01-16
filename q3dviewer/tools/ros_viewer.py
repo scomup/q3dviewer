@@ -5,7 +5,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from q3dviewer.utils import make_transform
+from q3dviewer.utils.maths import make_transform
 import q3dviewer as q3d
 import rospy
 from nav_msgs.msg import Odometry
@@ -13,7 +13,7 @@ from sensor_msgs.msg import PointCloud2
 import numpy as np
 import random
 from sensor_msgs.msg import Image
-from q3dviewer.convert_ros_msg import convert_pointcloud2_msg, convert_odometry_msg, convert_image_msg
+from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_odometry_msg, convert_image_msg
 
 viewer = None
 point_num_per_scan = None

@@ -15,7 +15,7 @@ from PySide6 import QtCore
 import rospy
 import cv2
 import argparse
-from q3dviewer.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
+from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
 
 clouds = []
 remap_info = None

@@ -12,8 +12,8 @@ import os
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QComboBox, QCheckBox
 from OpenGL.GL import shaders
-from q3dviewer.gl_utils import *
-from q3dviewer.range_slider import RangeSlider
+from q3dviewer.utils import *
+from q3dviewer.utils.range_slider import RangeSlider
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
 

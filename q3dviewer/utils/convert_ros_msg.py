@@ -5,7 +5,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 from pypcd4 import PointCloud
-from q3dviewer.utils import make_transform
+from q3dviewer.utils.maths import make_transform
 
 
 def convert_pointcloud2_msg(msg):

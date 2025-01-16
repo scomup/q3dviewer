@@ -7,7 +7,7 @@ from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
 from PySide6 import QtCore, QtGui, QtOpenGLWidgets
-from q3dviewer.utils import frustum, euler_to_matrix, makeT
+from q3dviewer.utils.maths import frustum, euler_to_matrix, makeT
 
 
 class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):

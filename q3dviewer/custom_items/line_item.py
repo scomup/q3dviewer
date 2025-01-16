@@ -10,7 +10,7 @@ import threading
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
-from q3dviewer.utils import hex_to_rgba
+from q3dviewer.utils.maths import hex_to_rgba
 
 
 class LineItem(BaseItem):

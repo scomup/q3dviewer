@@ -7,7 +7,7 @@ from q3dviewer.custom_items.cloud_item import CloudItem
 from pathlib import Path
 import os
 from PySide6.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
-from q3dviewer.cloud_io import save_pcd, save_ply, save_e57, save_las, load_pcd, load_ply, load_e57, load_las
+from q3dviewer.utils.cloud_io import save_pcd, save_ply, save_e57, save_las, load_pcd, load_ply, load_e57, load_las
 
 class CloudIOItem(CloudItem):
     """
