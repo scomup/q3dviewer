@@ -1,6 +1,9 @@
 /*
-draw 2d gaussian using proprocess data.
+Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
+Distributed under MIT license. See LICENSE for more information.
 */
+
+//draw 2d gaussian using proprocess data.
 
 #version 430 core
 

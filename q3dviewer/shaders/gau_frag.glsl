@@ -1,5 +1,5 @@
 /*
-this file is modified from GaussianSplattingViewer
+this file is modified from GaussianSplattingViewer licensed under the MIT License.
 see https://github.com/limacv/GaussianSplattingViewer/blob/main/shaders/gau_frag.glsl
 */
 

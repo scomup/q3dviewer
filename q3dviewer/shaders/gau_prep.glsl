@@ -1,7 +1,7 @@
 /*
 We proprocess gaussian using compute shader.
-this file is modified from GaussianSplattingViewer
-see https://github.com/limacv/GaussianSplattingViewer/blob/main/shaders/gau_frag.glsl
+this file is modified from GaussianSplattingViewer licensed under the MIT License.
+see https://github.com/limacv/GaussianSplattingViewer/blob/main/shaders/gau_vert.glsl
 */
 
 #version 430 core
