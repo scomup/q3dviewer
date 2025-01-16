@@ -6,3 +6,4 @@ from q3dviewer.viewer import *
 from q3dviewer.base_item import *
 from q3dviewer.base_glwidget import *
 from q3dviewer.range_slider import *
+from q3dviewer.cloud_io import *

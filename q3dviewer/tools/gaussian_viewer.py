@@ -7,7 +7,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from q3dviewer.gau_io import load_gs, rotate_gaussian
+from q3dviewer.cloud_io import load_gs, rotate_gaussian
 
 
 class GuassianViewer(q3d.Viewer):
