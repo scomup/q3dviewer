@@ -12,11 +12,10 @@ import q3dviewer as q3d
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
 from PySide6 import QtCore
-from pypcd4 import PointCloud
 import rospy
 import cv2
 import argparse
-
+from q3dviewer.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
 
 clouds = []
 remap_info = None
@@ -210,12 +209,7 @@ def camera_info_cb(data):
 
 def scan_cb(data):
     global viewer, clouds, cloud_accum, cloud_accum_color
-    pc = PointCloud.from_msg(data).pc_data
-    data_type = viewer['scan'].data_type
-    color = pc['intensity'].astype(np.uint32)
-    cloud = np.rec.fromarrays(
-        [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
-        dtype=data_type)
+    cloud, _, _  = convert_pointcloud2_msg(data)
     while len(clouds) > viewer.cloud_num:
         clouds.pop(0)
     clouds.append(cloud)
@@ -245,11 +239,7 @@ def image_cb(data):
     if remap_info is None:
         rospy.logwarn("Camera parameters not yet received.")
         return
-
-    image = np.frombuffer(data.data, dtype=np.uint8).reshape(
-        data.height, data.width, -1)
-    if data.encoding == 'bgr8':
-        image = image[:, :, ::-1]  # convert BGR to RGB
+    image, _ = convert_image_msg(data)
 
     # Undistort the image
     image_un = cv2.remap(image, remap_info[0], remap_info[1], cv2.INTER_LINEAR)

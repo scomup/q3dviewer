@@ -13,7 +13,7 @@ import q3dviewer as q3d
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PySide6 import QtCore
-from pypcd4 import PointCloud
+from q3dviewer.convert_ros_msg import convert_pointcloud2_msg
 
 try:
     import open3d as o3d
@@ -235,19 +235,9 @@ class ViewerWithPanel(q3d.Viewer):
                 f"Quaternion: [{quat[0]: .6f}, {quat[1]: .6f}, {quat[2]: .6f}, {quat[3]: .6f}]")
 
 
-def msg_cloud(data):
-    pc = PointCloud.from_msg(data).pc_data
-    data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
-    color = pc['intensity'].astype(np.uint32)
-    cloud = np.rec.fromarrays(
-        [np.stack([pc['x'], pc['y'], pc['z']], axis=1), color],
-        dtype=data_type)
-    return cloud
-
-
 def scan0_cb(data):
     global viewer, clouds0, cloud0_accum
-    cloud = msg_cloud(data)
+    cloud, _, _  = convert_pointcloud2_msg(data)
     while len(clouds0) > viewer.cloud_num:
         clouds0.pop(0)
     clouds0.append(cloud)
@@ -257,7 +247,7 @@ def scan0_cb(data):
 
 def scan1_cb(data):
     global viewer, clouds1, cloud1_accum
-    cloud = msg_cloud(data)
+    cloud, _, _  = convert_pointcloud2_msg(data)
     while len(clouds1) > viewer.cloud_num:
         clouds1.pop(0)
     clouds1.append(cloud)
