@@ -41,24 +41,26 @@ void main()
 
 
 class FrameItem(BaseItem):
-    def __init__(self, T=np.eye(4), size=1, width=3, img=None):
+    def __init__(self, T=np.eye(4), size=(1, 0.8), width=3, img=None):
         BaseItem.__init__(self)
-        self.size = size
+        self.w, self.h = size
         self.width = width
         self.T = T
         self.img = img
         self.texture = None
+        self.need_updating = False
 
     def initialize_gl(self):
         # Rectangle vertices and texture coordinates
-        hsize = self.size / 2
+        hw = self.w / 2
+        hh = self.h / 2
         self.vertices = np.array([
             # positions          # texture coords
-            [-hsize, -hsize,  0.0,  0.0, 0.0],  # bottom-left
-            [hsize, -hsize,  0.0,  1.0, 0.0],  # bottom-right
-            [hsize,  hsize,  0.0,  1.0, 1.0],  # top-right
-            [-hsize,  hsize,  0.0,  0.0, 1.0],   # top-left
-            [0,  0, -hsize * 0.66, 0.0, 0.0],   # top-left
+            [-hw, -hh,  0.0,  0.0, 0.0],  # bottom-left
+            [hw, -hh,  0.0,  1.0, 0.0],  # bottom-right
+            [hw,  hh,  0.0,  1.0, 1.0],  # top-right
+            [-hw,  hh,  0.0,  0.0, 1.0],   # top-left
+            [0,  0, -hh * 0.66, 0.0, 0.0],   # top-left
         ], dtype=np.float32)
 
         R = self.T[:3, :3]
@@ -66,7 +68,7 @@ class FrameItem(BaseItem):
         self.vertices[:, :3] = (
             R @ self.vertices[:, :3].T + t[:, np.newaxis]).T
 
-        self.focal_p = np.array([0, 0, hsize * 0.66])
+        self.focal_p = np.array([0, 0, hh * 0.66])
 
         indices = np.array([
             0, 1, 2,  # first triangle
@@ -105,7 +107,7 @@ class FrameItem(BaseItem):
         glUseProgram(self.program)
         set_uniform(self.program, project_matrix, 'project_matrix')
         glUseProgram(0)
-
+        self.texture = glGenTextures(1)
         self.set_data(img=self.img)
         
         # Define line vertices
@@ -134,19 +136,16 @@ class FrameItem(BaseItem):
         if transform is not None:
             self.T = transform
         self.img = img
-        if self.texture is not None:
-            glDeleteTextures(1, [self.texture])
-        
-        if self.img is not None:
+        self.need_updating = True
+
+    def update_img_buffer(self):
+        if self.img is not None and self.need_updating:
             self.texture = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, self.texture)
-
-            # Set texture parameters
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
+            # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             if self.img.ndim == 2:
                 # Convert grayscale to RGBA
                 self.img = np.stack((self.img,) * 3 + (np.ones_like(self.img) * 255,), axis=-1)
@@ -162,12 +161,12 @@ class FrameItem(BaseItem):
                          img.shape[0], 0, GL_RGBA, GL_UNSIGNED_BYTE, img)
             glGenerateMipmap(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, 0)
-        else:
-            self.texture = None
+            self.need_updating = False
 
     def paint(self):
         self.view_matrix = self.glwidget().get_view_matrix()
         project_matrix = self.glwidget().get_projection_matrix()
+        self.update_img_buffer()
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
