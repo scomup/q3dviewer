@@ -238,11 +238,11 @@ def load_gs_ply(path, T=None):
     shs[:, 2] = mesh.point_data['f_dc_2']
 
     sh_rest_dim = sh_dim - 3
-    for i in range(sh_rest_dim):
-        name = f"f_rest_{i}"
-        shs[:, 3 + i] = mesh.point_data[name]
-
-    shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim // 3).transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
+    if sh_rest_dim > 0:
+        for i in range(sh_rest_dim):
+            name = f"f_rest_{i}"
+            shs[:, 3 + i] = mesh.point_data[name]
+        shs[:, 3:] = shs[:, 3:].reshape(-1, 3, sh_rest_dim // 3).transpose([0, 2, 1]).reshape(-1, sh_rest_dim)
 
     pws = pws.astype(np.float32)
     rots = rots.astype(np.float32)
@@ -319,5 +319,5 @@ def get_example_gs():
 
 
 if __name__ == "__main__":
-    gs = load_gs("/home/liu/workspace/gaussian-splatting/output/e1af782f-8/point_cloud/iteration_7000/point_cloud.ply")
+    gs = load_gs("/home/liu/tmp.ply")
     print(gs.shape)
