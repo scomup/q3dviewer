@@ -7,9 +7,7 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
-from PIL import Image as PIL_Image
 from q3dviewer.utils import *
-from PySide6.QtWidgets import QLabel, QDoubleSpinBox
 
 
 # Vertex and Fragment shader source code
@@ -42,13 +40,14 @@ void main()
 """
 
 
-class GLCameraFrameItem(BaseItem):
-    def __init__(self, T=np.eye(4), size=1, width=3, path=None):
+class FrameItem(BaseItem):
+    def __init__(self, T=np.eye(4), size=1, width=3, img=None):
         BaseItem.__init__(self)
         self.size = size
         self.width = width
         self.T = T
-        self.path = path
+        self.img = img
+        self.texture = None
 
     def initialize_gl(self):
         # Rectangle vertices and texture coordinates
@@ -107,21 +106,64 @@ class GLCameraFrameItem(BaseItem):
         set_uniform(self.program, project_matrix, 'project_matrix')
         glUseProgram(0)
 
-        self.texture = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, self.texture)
+        self.set_data(img=self.img)
+        
+        # Define line vertices
+        self.line_vertices = np.array([
+            self.vertices[0, :3], self.vertices[1, :3],
+            self.vertices[1, :3], self.vertices[2, :3],
+            self.vertices[2, :3], self.vertices[3, :3],
+            self.vertices[3, :3], self.vertices[0, :3],
+            self.vertices[4, :3], self.vertices[0, :3],
+            self.vertices[4, :3], self.vertices[1, :3],
+            self.vertices[4, :3], self.vertices[2, :3],
+            self.vertices[4, :3], self.vertices[3, :3]
+        ], dtype=np.float32)
 
-        # Load image
-        image = PIL_Image.open(self.path)
-        # image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        img_data = image.convert("RGBA").tobytes()
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width,
-                     image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-        glGenerateMipmap(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, 0)
+        self.line_vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.line_vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.line_vertices.nbytes, self.line_vertices, GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
         glBindVertexArray(0)
 
     def set_transform(self, T):
         self.T = T
+
+    def set_data(self, img=None, transform=None):
+        if transform is not None:
+            self.T = transform
+        self.img = img
+        if self.texture is not None:
+            glDeleteTextures(1, [self.texture])
+        
+        if self.img is not None:
+            self.texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+
+            # Set texture parameters
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+            if self.img.ndim == 2:
+                # Convert grayscale to RGBA
+                self.img = np.stack((self.img,) * 3 + (np.ones_like(self.img) * 255,), axis=-1)
+            elif self.img.shape[2] == 3:
+                # Add an alpha channel
+                alpha_channel = np.ones((self.img.shape[0], self.img.shape[1], 1), dtype=np.uint8) * 255
+                self.img = np.concatenate((self.img, alpha_channel), axis=2)
+            
+            img = np.ascontiguousarray(self.img, dtype=np.uint8)
+
+            # Load image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.shape[1],
+                         img.shape[0], 0, GL_RGBA, GL_UNSIGNED_BYTE, img)
+            glGenerateMipmap(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, 0)
+        else:
+            self.texture = None
 
     def paint(self):
         self.view_matrix = self.glwidget().get_view_matrix()
@@ -135,32 +177,23 @@ class GLCameraFrameItem(BaseItem):
         set_uniform(self.program, self.view_matrix, 'view_matrix')
         set_uniform(self.program, project_matrix, 'project_matrix')
         glBindVertexArray(self.vao)
-        glBindTexture(GL_TEXTURE_2D, self.texture)
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
-        glBindTexture(GL_TEXTURE_2D, 0)
+        
+        if self.texture is not None:
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+            glBindTexture(GL_TEXTURE_2D, 0)
+        
         glBindVertexArray(0)
         glUseProgram(0)
 
         glLineWidth(self.width)
-        glBegin(GL_LINES)
-        glColor4f(1, 1, 1, 1)  # z is blue
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[0, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[1, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[2, :3])
-        glVertex3f(*self.vertices[4, :3])
-        glVertex3f(*self.vertices[3, :3])
-        glEnd()
+        glColor4f(1, 1, 1, 1)  # Set the color before drawing the lines
+        glBindBuffer(GL_ARRAY_BUFFER, self.line_vbo)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glVertexPointer(3, GL_FLOAT, 0, None)
+        glDrawArrays(GL_LINES, 0, len(self.line_vertices))
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
