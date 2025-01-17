@@ -20,10 +20,11 @@ out vec2 TexCoord;
 
 uniform mat4 view_matrix;
 uniform mat4 project_matrix;
+uniform mat4 model_matrix;
 
 void main()
 {
-    gl_Position = project_matrix * view_matrix * vec4(position, 1.0);
+    gl_Position = project_matrix * view_matrix * model_matrix * vec4(position, 1.0);
     TexCoord = texCoord;
 }
 """
@@ -63,34 +64,26 @@ class FrameItem(BaseItem):
             [0,  0, -hh * 0.66, 0.0, 0.0],   # top-left
         ], dtype=np.float32)
 
-        R = self.T[:3, :3]
-        t = self.T[:3, 3]
-        self.vertices[:, :3] = (
-            R @ self.vertices[:, :3].T + t[:, np.newaxis]).T
-
-        self.focal_p = np.array([0, 0, hh * 0.66])
-
-        indices = np.array([
+        self.indices = np.array([
             0, 1, 2,  # first triangle
             2, 3, 0   # second triangle
         ], dtype=np.uint32)
 
         self.vao = glGenVertexArrays(1)
-        vbo = glGenBuffers(1)
-        ebo = glGenBuffers(1)
+        self.vbo = glGenBuffers(1)
+        self.ebo = glGenBuffers(1)
 
         glBindVertexArray(self.vao)
 
-        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
         glBufferData(GL_ARRAY_BUFFER, self.vertices.itemsize *
                      5 * 4, self.vertices, GL_STATIC_DRAW)
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                     indices.nbytes, indices, GL_STATIC_DRAW)
+                     self.indices.nbytes, self.indices, GL_STATIC_DRAW)
 
         # Vertex positions
-
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                               20, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
@@ -105,6 +98,7 @@ class FrameItem(BaseItem):
             shaders.compileShader(fragment_shader_source, GL_FRAGMENT_SHADER),
         )
         glUseProgram(self.program)
+        set_uniform(self.program, np.eye(4), 'model_matrix')
         set_uniform(self.program, project_matrix, 'project_matrix')
         glUseProgram(0)
         self.texture = glGenTextures(1)
@@ -175,10 +169,12 @@ class FrameItem(BaseItem):
         glUseProgram(self.program)
         set_uniform(self.program, self.view_matrix, 'view_matrix')
         set_uniform(self.program, project_matrix, 'project_matrix')
+        set_uniform(self.program, self.T, 'model_matrix')
         glBindVertexArray(self.vao)
         
         if self.texture is not None:
             glBindTexture(GL_TEXTURE_2D, self.texture)
+            glMultMatrixf(self.T.T)  # Apply the transformation matrix
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
             glBindTexture(GL_TEXTURE_2D, 0)
         
