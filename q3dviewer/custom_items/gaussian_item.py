@@ -245,10 +245,10 @@ class GaussianItem(BaseItem):
 
     def set_data(self, **kwds):
         if 'gs_data' in kwds:
+            self.need_updateGS = False
             gs_data = kwds.pop('gs_data')
             self.gs_data = np.ascontiguousarray(gs_data, dtype=np.float32)
             self.sh_dim = self.gs_data.shape[-1] - (3 + 4 + 3 + 1)
-            self.need_updateGS = True
             self.prev_Rz = np.array([np.inf, np.inf, np.inf])
             self.cuda_pw = None
-        self.need_updateGS = True
+            self.need_updateGS = True
