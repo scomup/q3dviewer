@@ -26,6 +26,7 @@ def convert_pointcloud2_msg(msg):
     stamp = msg.header.stamp.to_sec()
     return cloud, fields, stamp
 
+
 def convert_odometry_msg(msg):
     pose = np.array(
         [msg.pose.pose.position.x,
@@ -39,6 +40,7 @@ def convert_odometry_msg(msg):
     transform = make_transform(pose, rotation)
     stamp = msg.header.stamp.to_sec()
     return transform, stamp
+
 
 def convert_image_msg(msg):
     image = np.frombuffer(msg.data, dtype=np.uint8).reshape(
