@@ -2,3 +2,5 @@
 data.pcd
 q3dviewer.egg-info/*
 build/*
+.vscode/*
+dist/*

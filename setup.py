@@ -2,8 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.0.2',
+    version='1.0.6',
     packages=find_packages(),
+    include_package_data=True,
+    package_data={
+        'q3dviewer': ['shaders/*.glsl'],
+    },
     install_requires=[
         'numpy',
         'pyside6',
