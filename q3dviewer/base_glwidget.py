@@ -123,6 +123,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.show_center = True
 
     def paintGL(self):
+        pass
         self.update_model_projection()
         self.update_model_view()
         bgcolor = self.color
@@ -195,12 +196,14 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         glLoadMatrixf(m.T)
         
     def get_view_matrix(self):
-        twc = self.center
-        tcw = np.array([0, 0, self.dist])
+        two = self.center # the origin(center) in the world frame
+        tco = np.array([0, 0, self.dist]) # the origin(center) in camera frame
         Rwc = euler_to_matrix(self.euler)
-        twc = twc + Rwc @ tcw
-        Twc = makeT(Rwc, twc)
-        return np.linalg.inv(Twc)
+        twc = two + Rwc @ tco
+        Rcw = Rwc.T
+        tcw = -Rcw @ twc
+        Tcw = makeT(Rcw, tcw)
+        return Tcw
 
     def set_cam_position(self, **kwargs):
         pos = kwargs.get('pos', None)
