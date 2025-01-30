@@ -134,10 +134,12 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             glMatrixMode(GL_MODELVIEW)
             glPushMatrix()
             glPushAttrib(GL_ALL_ATTRIB_BITS)
-            item.paint()
-            glPopAttrib()
-            glMatrixMode(GL_MODELVIEW)
-            glPopMatrix()
+            try:
+                item.paint()
+            finally:
+                glPopAttrib()
+                glMatrixMode(GL_MODELVIEW)
+                glPopMatrix()
         
         # Show center as a point if updated by mouse move event
         if self.enable_show_center and self.show_center:
