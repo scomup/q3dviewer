@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.0.6',
+    version='1.0.7',
     packages=find_packages(),
     include_package_data=True,
     package_data={

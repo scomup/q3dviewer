@@ -1,6 +1,6 @@
 ## q3dviewer
 
-`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on Qt (pyside6) and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph, but it focuses more on efficient 3D rendering.
+`q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on Qt (PySide6) and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph but focuses more on efficient 3D rendering.
 
 ## Installation
 
@@ -16,6 +16,14 @@ pip install q3dviewer
   - Download and install Python 3 from the [official Python website](https://www.python.org/downloads/).
   - During installation, make sure to check the "Add Python to PATH" option.
 
+### Note for Linux Users
+
+If you encounter an error related to loading the shared library `libxcb-cursor.so.0` on Ubuntu 20.04 or 22.04, please install `libxcb-cursor0`:
+
+```bash
+sudo apt-get install libxcb-cursor0
+```
+
 ## Tools
 
 Once installed, you can directly use the following tools:
@@ -26,25 +34,29 @@ A tool for visualizing point cloud files. Launch it by executing the following c
 
 ```sh
 cloud_viewer  # The viewer will be displayed
-# Use the command below if the path is not set, though it's not recommended
+```
+
+*Alternatively*, if the path is not set (though it's not recommended):
+
+```sh
 python3 -m q3dviewer.tools.cloud_viewer
 ```
 
 After the viewer launches, you can drag and drop files onto the window to display the point clouds. Multiple files can be dropped simultaneously to view them together. Supported formats include LAS, PCD, PLY, and E57.
 
-For example, you can download and check point clouds of Tokyo in LAS format from the following link:
+For example, you can download and view point clouds of Tokyo in LAS format from the following link:
 
 [Tokyo Point Clouds](https://www.geospatial.jp/ckan/dataset/tokyopc-23ku-2024/resource/7807d6d1-29f3-4b36-b0c8-f7aa0ea2cff3)
 
-![Screenshot](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/03c981c6-1aec-e5b9-4536-e07e1e56ff29.png)
+![Cloud Viewer Screenshot](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/03c981c6-1aec-e5b9-4536-e07e1e56ff29.png)
 
-Press `M` on your keyboard to display a menu on the screen, where you can modify visualization settings for each item. You can adjust various settings such as shape, size, color, and transparency of the point clouds.
+Press `M` on your keyboard to display a menu on the screen, where you can modify visualization settings for each item. For example, you can adjust various settings such as shape, size, color, and transparency for `CloudItem`.
 
-![Screenshot](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/deeb996a-e419-58f4-6bc2-535099b1b73a.png)
+![Cloud Viewer Settings](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/deeb996a-e419-58f4-6bc2-535099b1b73a.png)
 
 ### 2. ROS Viewer
 
-A high-performance SLAM viewer with strong compatibility with ROS, serving as an alternative to RVIZ.
+A high-performance SLAM viewer compatible with ROS, serving as an alternative to RVIZ.
 
 ```sh
 roscore &
@@ -53,15 +65,13 @@ ros_viewer
 
 ### 3. Gaussian Viewer
 
-A simple viewer for 3D Gaussian.
-see: https://github.com/scomup/EasyGaussianSplatting
-
+A simple viewer for 3D Gaussians. See [EasyGaussianSplatting](https://github.com/scomup/EasyGaussianSplatting) for more information.
 
 ```sh
 gaussian_viewer  # Drag and drop your Gaussian file onto the window
 ```
 
-![Viewer GIF](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/441e6f5a-214d-f7c1-11bf-5fa79e63b38e.gif)
+![Gaussian Viewer GIF](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/441e6f5a-214d-f7c1-11bf-5fa79e63b38e.gif)
 
 ### 4. LiDAR-LiDAR Calibration Tools
 
@@ -104,6 +114,7 @@ def main():
 
     # Create a viewer
     viewer = q3d.Viewer(name='example')
+    
     # Add items to the viewer
     viewer.add_items({
         'grid': grid_item,
@@ -120,14 +131,14 @@ if __name__ == '__main__':
 
 `q3dviewer` provides the following 3D items:
 
-- **AxisItem**: Displaying coordinate axes or self-position
-- **CloudItem**: Displaying point clouds
-- **CloudIOItem**: Displaying point clouds with I/O capabilities
-- **GaussianItem**: Displaying 3D Gaussians
-- **GridItem**: Displaying grids
-- **ImageItem**: Displaying 2D images
-- **Text2DItem**: Displaying 2D text
-- **LineItem**: Displaying lines or trajectories
+- **AxisItem**: Displays coordinate axes or the origin position.
+- **CloudItem**: Displays point clouds.
+- **CloudIOItem**: Displays point clouds with input/output capabilities.
+- **GaussianItem**: Displays 3D Gaussians.
+- **GridItem**: Displays grids.
+- **ImageItem**: Displays 2D images.
+- **Text2DItem**: Displays 2D text.
+- **LineItem**: Displays lines or trajectories.
 
 ### Developing Custom Items
 
@@ -142,7 +153,7 @@ from PySide6.QtWidgets import QLabel, QSpinBox
 class YourItem(q3d.BaseItem):
     def __init__(self):
         super(YourItem, self).__init__()
-        pass  # Necessary initialization
+        # Necessary initialization
 
     def add_setting(self, layout):
         # Initialize the settings screen
@@ -152,13 +163,16 @@ class YourItem(q3d.BaseItem):
         layout.addWidget(box)
 
     def set_data(self, data):
-        pass  # Obtain the data you want to visualize
+        # Obtain the data you want to visualize
+        pass
 
     def initialize_gl(self):
-        pass  # OpenGL initialization settings (if needed)
+        # OpenGL initialization settings (if needed)
+        pass
 
     def paint(self):
-        pass  # Visualize 3D objects using OpenGL
+        # Visualize 3D objects using OpenGL
+        pass
 ```
 
 Enjoy using `q3dviewer`!
