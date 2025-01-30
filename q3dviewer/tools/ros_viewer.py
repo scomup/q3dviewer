@@ -18,7 +18,7 @@ from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_odo
 viewer = None
 point_num_per_scan = None
 color_mode = None
-
+auto_set_color_mode = True
 
 def odom_cb(data):
     global viewer
@@ -29,16 +29,15 @@ def odom_cb(data):
 def scan_cb(data):
     global viewer
     global point_num_per_scan
+    global auto_set_color_mode
     cloud, fields, _ = convert_pointcloud2_msg(data)
     if (cloud.shape[0] > point_num_per_scan):
         idx = random.sample(range(cloud.shape[0]), point_num_per_scan)
         cloud = cloud[idx]
-    color_mode = 'FLAT'
-    if 'intensity' in fields:
-        color_mode = 'I'
-    if 'rgb' in fields:
-        color_mode = 'RGB'
-    viewer['map'].set_color_mode(color_mode)
+    if 'rgb' in fields and auto_set_color_mode:
+        print("Set color mode to RGB")
+        viewer['map'].set_color_mode('RGB')
+        auto_set_color_mode = False
     viewer['map'].set_data(data=cloud, append=True)
     viewer['scan'].set_data(data=cloud)
 
@@ -54,7 +53,7 @@ def main():
     global viewer
     global point_num_per_scan
     point_num_per_scan = 10000
-    map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='RGB')
+    map_item = q3d.CloudIOItem(size=1, alpha=0.1, color_mode='I')
     scan_item = q3d.CloudItem(
         size=2, alpha=1, color_mode='FLAT', color='#ffffff')
     odom_item = q3d.AxisItem(size=0.5, width=5)

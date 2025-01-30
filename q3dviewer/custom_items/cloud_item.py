@@ -124,7 +124,12 @@ class CloudItem(BaseItem):
 
     def set_color_mode(self, color_mode):
         if color_mode in {'FLAT', 'RGB', 'I'}:
-            self.combo_color.setCurrentIndex(self.mode_table[color_mode])
+            try:
+                self.combo_color.setCurrentIndex(self.mode_table[color_mode])
+            except RuntimeError:
+                pass
+            except ValueError:
+                pass
         else:
             print(f"Invalid color mode: {color_mode}")
 

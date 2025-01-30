@@ -73,8 +73,7 @@ class GLWidget(BaseGLWidget):
 
     def update(self):
         if self.followed_name != 'none':
-            pos = self.named_items[self.followed_name].T[:3, 3]
-            self.opts['center'] = QVector3D(pos[0], pos[1], pos[2])
+            self.center = self.named_items[self.followed_name].T[:3, 3]
         super().update()
 
     def add_setting(self, layout):

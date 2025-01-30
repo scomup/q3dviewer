@@ -49,7 +49,7 @@ class AxisItem(BaseItem):
         super().__init__()
         self.size = size
         self.width = width
-        self.model_matrix = np.eye(4, dtype=np.float32)
+        self.T = np.eye(4, dtype=np.float32)
         self.need_update_setting = True
 
     def initialize_gl(self):
@@ -116,7 +116,7 @@ class AxisItem(BaseItem):
             return
         glUseProgram(self.program)
         set_uniform(self.program, float(self.size), 'size')
-        set_uniform(self.program, self.model_matrix, 'model_matrix')
+        set_uniform(self.program, self.T, 'model_matrix')
         glUseProgram(0)
         self.need_update_setting = False
 
@@ -127,7 +127,7 @@ class AxisItem(BaseItem):
         """
         Set the transformation matrix for the axis item.
         """
-        self.model_matrix = transform
+        self.T = transform
         self.need_update_setting = True
 
     def paint(self):
