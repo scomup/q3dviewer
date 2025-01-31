@@ -98,6 +98,10 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         if hasattr(self, 'mousePos'):
             delattr(self, 'mousePos')
 
+    def set_dist(self, dist):
+        self.dist = dist
+        self.view_need_update = True
+
     def update_dist(self, delta):
         self.dist += delta
         if self.dist < 0.1:
@@ -225,9 +229,9 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         pos = kwargs.get('pos', None)
         distance = kwargs.get('distance', None)
         if pos is not None:
-            self.center = pos
+            self.set_center(pos)
         if distance is not None:
-            self.dist = distance
+            self.set_dist(distance)
 
     def set_color(self, color):
         self.color = color
