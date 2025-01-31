@@ -241,13 +241,17 @@ class CloudItem(BaseItem):
             self.buff = new_buff
 
             # if exceed the maximum cloud size, randomly select half of the points
-            while self.buff.shape[0] >= self.max_cloud_size:
-                print("[Cloud Item] Exceed maximum cloud size, reduce to half")
-                new_buff = np.empty((self.buff.shape[0] // 2), self.data_type)
-                indices = np.random.choice(new_buff_top, new_buff_top // 2, replace=False)
-                new_buff = self.buff[indices]
-                new_buff_top = new_buff_top // 2
-                self.buff = new_buff
+            exceed_flag = False
+            while new_buff.shape[0] > self.max_cloud_size:
+                exceed_flag = True
+                new_buff_half = new_buff[:new_buff_top:2]
+                new_buff_top = new_buff_half.shape[0]
+                new_buff = new_buff_half
+            if exceed_flag:
+                print("[Cloud Item] Exceed maximum cloud size %d, reduce the data size" % self.max_cloud_size)
+                self.buff = self.buff[:self.max_cloud_size]
+                self.buff[:new_buff_top] = new_buff
+
 
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes,
