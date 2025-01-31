@@ -73,7 +73,8 @@ class GLWidget(BaseGLWidget):
 
     def update(self):
         if self.followed_name != 'none':
-            self.center = self.named_items[self.followed_name].T[:3, 3]
+            new_center = self.named_items[self.followed_name].T[:3, 3]
+            self.set_center(new_center)
         super().update()
 
     def add_setting(self, layout):

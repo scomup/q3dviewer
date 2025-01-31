@@ -296,9 +296,9 @@ class CloudItem(BaseItem):
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
 
-        view_matrix = self.glwidget().get_view_matrix()
+        view_matrix = self.glwidget().view_matrix
         set_uniform(self.program, view_matrix, 'view_matrix')
-        project_matrix = self.glwidget().get_projection_matrix()
+        project_matrix = self.glwidget().projection_matrix
         set_uniform(self.program, project_matrix, 'projection_matrix')
         width = self.glwidget().current_width()
         focal = project_matrix[0, 0] * width / 2

@@ -25,6 +25,9 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.active_keys = set()
         self.show_center = False
         self.enable_show_center = True
+        self.view_need_update = True
+        self.view_matrix = self.get_view_matrix()
+        self.projection_matrix = self.get_projection_matrix()
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
         if ev.key() == QtCore.Qt.Key_Up or  \
@@ -87,6 +90,9 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         """
         for item in self.items:
             item.initialize()
+        # initialize the projection matrix and model view matrix
+        self.update_model_projection()
+        self.update_model_view()
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -103,6 +109,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
         self.show_center = True
+        self.view_need_update = True
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -121,11 +128,19 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             dist = max(self.dist, 0.5)
             self.center += Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist
         self.show_center = True
+        self.view_need_update = True
+
+    def set_center(self, center):
+        self.center = center
+        self.view_need_update = True
 
     def paintGL(self):
-        pass
-        self.update_model_projection()
-        self.update_model_view()
+        # if the camera is moved, update the model view matrix.
+        if self.view_need_update:
+            self.update_model_view()
+            self.view_need_update = False
+
+        # set the background color
         bgcolor = self.color
         glClearColor(*bgcolor)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
@@ -189,11 +204,12 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
                 self.center += Rz @ np.array([-trans_speed, 0, 0])
             if QtCore.Qt.Key_D in self.active_keys:
                 self.center += Rz @ np.array([trans_speed, 0, 0])
+        self.view_need_update = True
 
     def update_model_view(self):
-        m = self.get_view_matrix()
+        self.view_matrix = self.get_view_matrix()
         glMatrixMode(GL_MODELVIEW)
-        glLoadMatrixf(m.T)
+        glLoadMatrixf(self.view_matrix.T)
         
     def get_view_matrix(self):
         two = self.center # the origin(center) in the world frame
@@ -221,9 +237,9 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         super().update()
 
     def update_model_projection(self):
-        m = self.get_projection_matrix()
+        self.projection_matrix = self.get_projection_matrix()
         glMatrixMode(GL_PROJECTION)
-        glLoadMatrixf(m.T)
+        glLoadMatrixf(self.projection_matrix.T)
 
     def get_projection_matrix(self):
         w, h = self.current_width(), self.current_height()
@@ -259,3 +275,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
 
     def change_show_center(self, state):
         self.enable_show_center = state
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_model_projection()

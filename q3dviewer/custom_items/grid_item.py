@@ -12,12 +12,38 @@ import numpy as np
 
 
 class GridItem(BaseItem):
-    def __init__(self, size, spacing, color=np.array([255, 255, 255, 76.5]), offset=np.array([0, 0, 0])):
+    def __init__(self, size=100, spacing=20, color=np.array([255, 255, 255, 76.5]), offset=np.array([0., 0., 0.])):
         super().__init__()
         self.size = size
         self.spacing = spacing
         self.color = color
         self.offset = offset
+        self.need_update_grid = True
+        self.vertices = self.generate_grid_vertices()
+
+    def generate_grid_vertices(self):
+        vertices = []
+        x, y, z = self.offset
+        half_size = self.size / 2  # Keep as float
+        for i in np.arange(-half_size, half_size + self.spacing, self.spacing):
+            vertices.extend([i + x, -half_size + y, z, i + x, half_size + y, z])  # Grid lines parallel to Y axis
+            vertices.extend([-half_size + x, i + y, z, half_size + x, i + y, z])  # Grid lines parallel to X axis
+        vertices = np.array(vertices, dtype=np.float32)
+        return vertices
+
+    def initialize_gl(self):
+        self.vao = glGenVertexArrays(1)
+        vbo = glGenBuffers(1)
+
+        glBindVertexArray(self.vao)
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        glBindVertexArray(0)
 
     def add_setting(self, layout):
         label_size = QLabel("Set size:")
@@ -38,51 +64,72 @@ class GridItem(BaseItem):
         spinbox_spacing.valueChanged.connect(self._on_spacing)
         spinbox_spacing.setRange(0, 1000)
 
-        label_offset = QLabel("Set offset (x;y;z):")
+        label_offset = QLabel("Set offset (x, y, z):")
         layout.addWidget(label_offset)
-        self.edit_offset = QLineEdit()
-        regex = QRegularExpression(r"^-?\d+(\.\d+)?;-?\d+(\.\d+)?;-?\d+(\.\d+)?$")
-        validator = QRegularExpressionValidator(regex)
-        self.edit_offset.setValidator(validator)
-        self.edit_offset.setText(f"{self.offset[0]};{self.offset[1]};{self.offset[2]}")
-        self.edit_offset.textChanged.connect(self._on_offset)
-        layout.addWidget(self.edit_offset)
+        
+        self.spinbox_offset_x = QDoubleSpinBox()
+        self.spinbox_offset_x.setSingleStep(0.1)
+        self.spinbox_offset_x.setValue(self.offset[0])
+        self.spinbox_offset_x.valueChanged.connect(self._on_offset_x)
+        layout.addWidget(self.spinbox_offset_x)
+        
+        self.spinbox_offset_y = QDoubleSpinBox()
+        self.spinbox_offset_y.setSingleStep(0.1)
+        self.spinbox_offset_y.setValue(self.offset[1])
+        self.spinbox_offset_y.valueChanged.connect(self._on_offset_y)
+        layout.addWidget(self.spinbox_offset_y)
+        
+        self.spinbox_offset_z = QDoubleSpinBox()
+        self.spinbox_offset_z.setSingleStep(0.1)
+        self.spinbox_offset_z.setValue(self.offset[2])
+        self.spinbox_offset_z.valueChanged.connect(self._on_offset_z)
+        layout.addWidget(self.spinbox_offset_z)
 
     def set_size(self, size):
         self.size = size
+        self.need_update_grid = True
 
     def _on_spacing(self, spacing):
         if spacing > 0:
             self.spacing = spacing
+            self.need_update_grid = True
 
-    def _on_offset(self, text):
-        try:
-            values = list(map(float, text.split(';')))
-            if len(values) == 3:
-                self.offset = np.array(values)
-            else:
-                raise ValueError("Offset must have 3 values separated by ';'")
-        except ValueError:
-            pass
+    def _on_offset_x(self, value):
+        self.offset[0] = value
+        print(self.offset)
+        self.need_update_grid = True
+
+    def _on_offset_y(self, value):
+        self.offset[1] = value
+        self.need_update_grid = True
+
+    def _on_offset_z(self, value):
+        self.offset[2] = value
+        self.need_update_grid = True
 
     def set_offset(self, offset):
         if isinstance(offset, np.ndarray) and offset.shape == (3,):
             self.offset = offset
-            self.edit_offset.setText(f"{self.offset[0]};{self.offset[1]};{self.offset[2]}")
+            self.need_update_grid = True
         else:
             raise ValueError("Offset must be a numpy array with shape (3,)")
 
     def paint(self):
+        if self.need_update_grid:
+            self.vertices = self.generate_grid_vertices()
+            self.initialize_gl()
+            self.need_update_grid = False
+        
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
-        glBegin(GL_LINES)
-        for i in np.arange(-self.size, self.size + self.spacing, self.spacing):
-            glVertex3f(i + self.offset[0], -self.size + self.offset[1], self.offset[2])
-            glVertex3f(i + self.offset[0], self.size + self.offset[1], self.offset[2])
-            glVertex3f(-self.size + self.offset[0], i + self.offset[1], self.offset[2])
-            glVertex3f(self.size + self.offset[0], i + self.offset[1], self.offset[2])
-        glEnd()
+
+        glLineWidth(1)
+        glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
+        glBindVertexArray(self.vao)
+        glDrawArrays(GL_LINES, 0, len(self.vertices) // 3)
+        glBindVertexArray(0)
+        glLineWidth(1)
         glDisable(GL_BLEND)
 
 
