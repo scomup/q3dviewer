@@ -43,7 +43,7 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return float(text)
 
 
-class ViewerWithPanel(q3d.Viewer):
+class LiDARCalibViewer(q3d.Viewer):
     def __init__(self, **kwargs):
         self.t01 = np.array([0, 0, 0])
         self.R01 = np.eye(3)
@@ -51,15 +51,13 @@ class ViewerWithPanel(q3d.Viewer):
         self.radius = 0.2
         super().__init__(**kwargs)
 
-    def init_ui(self):
-        center_widget = QWidget()
-        self.setCentralWidget(center_widget)
-        main_layout = QHBoxLayout()
-        center_widget.setLayout(main_layout)
+    def add_control_panel(self):
+        # Set camera position and background color
+        self.glwidget.set_cam_position(distance=5)
+        self.glwidget.set_bg_color('#ffffff')
 
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
-
         # Add XYZ spin boxes
         label_xyz = QLabel("Set XYZ:")
         setting_layout.addWidget(label_xyz)
@@ -137,17 +135,8 @@ class ViewerWithPanel(q3d.Viewer):
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
-
-        self.glwidget = q3d.GLWidget()
-        main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.glwidget, 1)
-
-        timer = QtCore.QTimer(self)
-        timer.setInterval(20)  # period, in milliseconds
-        timer.timeout.connect(self.update)
-        self.glwidget.set_cam_position(distance=5)
-        self.glwidget.set_bg_color('#ffffff')
-        timer.start()
+        self.layout.addLayout(setting_layout)
+        
 
     def update_radius(self):
         self.radius = self.box_radius.value()
@@ -271,7 +260,7 @@ def main():
     args = parser.parse_args()
 
     app = q3d.QApplication(["LiDAR Calib"])
-    viewer = ViewerWithPanel(name='LiDAR Calib')
+    viewer = LiDARCalibViewer(name='LiDAR Calib')
     grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan0_item = q3d.CloudItem(
         size=2, alpha=1, color_mode='FLAT', color='#ff0000')

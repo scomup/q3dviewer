@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from PySide6 import QtCore
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QSpacerItem, QLabel, QLineEdit, QCheckBox
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QSpacerItem, QLabel, QLineEdit, QCheckBox, QGroupBox
 from PySide6.QtGui import QKeyEvent, QVector3D, QRegularExpressionValidator
 from PySide6.QtCore import QRegularExpression
 from OpenGL.GL import *
@@ -46,7 +46,11 @@ class SettingWindow(QWidget):
         key = list(self.items.keys())
         item = self.items[key[index]]
         if hasattr(item, "add_setting"):
-            item.add_setting(self.layout)
+            group_box = QGroupBox()
+            group_layout = QVBoxLayout()
+            item.add_setting(group_layout)
+            group_box.setLayout(group_layout)
+            self.layout.addWidget(group_box)
             self.layout.addItem(self.stretch)
         else:
             print("%s: No setting." % (item.__class__.__name__))

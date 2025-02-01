@@ -6,7 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.glwidget import *
 import signal
-from PySide6.QtWidgets import QMainWindow, QApplication
+from PySide6.QtWidgets import QMainWindow, QApplication, QHBoxLayout
 
 
 def handler(signal, frame):
@@ -20,6 +20,7 @@ class Viewer(QMainWindow):
         super(Viewer, self).__init__()
         self.setGeometry(0, 0, win_size[0], win_size[1])
         self.init_ui()
+        self.add_update_timer()
         self.setWindowTitle(name)
 
     def init_ui(self):
@@ -29,6 +30,16 @@ class Viewer(QMainWindow):
         center_widget.setLayout(self.layout)
         self.glwidget = GLWidget()
         self.layout.addWidget(self.glwidget, 1)
+        self.add_control_panel()
+
+    def add_control_panel(self):
+        """
+        Add control panel to the right of the main window.
+        override this function to add your own control panel.
+        """
+        pass
+
+    def add_update_timer(self):
         timer = QtCore.QTimer(self)
         timer.setInterval(20)  # period, in milliseconds
         timer.timeout.connect(self.update)
