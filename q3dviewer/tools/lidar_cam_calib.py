@@ -54,7 +54,7 @@ class LidarCamViewer(q3d.Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def add_control_panel(self):
+    def add_control_panel(self, main_layout):
         # Set camera position and background color
         self.glwidget.set_cam_position(distance=5)
         self.glwidget.set_bg_color('#ffffff')
@@ -148,7 +148,7 @@ class LidarCamViewer(q3d.Viewer):
 
         # Add a stretch to push the widgets to the top
         setting_layout.addStretch(1)
-        self.layout.addLayout(setting_layout)
+        main_layout.addLayout(setting_layout)
 
 
     def update_point_size(self):

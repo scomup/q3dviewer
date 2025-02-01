@@ -26,16 +26,17 @@ class Viewer(QMainWindow):
     def init_ui(self):
         center_widget = QWidget()
         self.setCentralWidget(center_widget)
-        self.layout = QHBoxLayout()
-        center_widget.setLayout(self.layout)
+        main_layout = QHBoxLayout()
+        center_widget.setLayout(main_layout)
         self.glwidget = GLWidget()
-        self.layout.addWidget(self.glwidget, 1)
-        self.add_control_panel()
+        main_layout.addWidget(self.glwidget, 1)
+        self.add_control_panel(main_layout)
 
-    def add_control_panel(self):
+    def add_control_panel(self, main_layout):
         """
-        Add control panel to the right of the main window.
-        override this function to add your own control panel.
+        Override this function to add your own control panel to 
+        the right of the main window.
+        Don't forget add your own layout to the main_layout.
         """
         pass
 
