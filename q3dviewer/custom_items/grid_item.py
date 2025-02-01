@@ -9,17 +9,24 @@ from PySide6.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
 import numpy as np
+from q3dviewer.utils.maths import hex_to_rgba
 
 
 class GridItem(BaseItem):
-    def __init__(self, size=100, spacing=20, color=np.array([255, 255, 255, 76.5]), offset=np.array([0., 0., 0.])):
+    def __init__(self, size=100, spacing=20, color='#ffffff40', offset=np.array([0., 0., 0.])):
         super().__init__()
         self.size = size
         self.spacing = spacing
-        self.color = color
         self.offset = offset
         self.need_update_grid = True
+        self.set_color(color)
         self.vertices = self.generate_grid_vertices()
+
+    def set_color(self, color):
+        try:
+            self.rgba = hex_to_rgba(color)
+        except ValueError:
+            pass
 
     def generate_grid_vertices(self):
         vertices = []
@@ -120,10 +127,9 @@ class GridItem(BaseItem):
         
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
 
         glLineWidth(1)
-        glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
+        glColor4f(*self.rgba)
         glBindVertexArray(self.vao)
         glDrawArrays(GL_LINES, 0, len(self.vertices) // 3)
         glBindVertexArray(0)

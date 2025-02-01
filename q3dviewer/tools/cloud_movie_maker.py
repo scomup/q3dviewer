@@ -80,14 +80,14 @@ class Viewer2(q3d.Viewer):
         # Get camera pose in world frame
         Twc = np.linalg.inv(view_matrix)
         # add a FrameItem to the scene
-        frame_item = q3d.FrameItem(Twc, width=3, img=None, color=(0, 0, 1))
+        frame_item = q3d.FrameItem(Twc, width=3, color='#0000FF')
         self.glwidget.add_item(frame_item)
         # move the camera back to 0.5 meter, let the user see the frame
         self.glwidget.update_dist(0.5)
 
         # Add the key frame to the list
         current_index = self.frame_list.currentRow()
-        frame = Frame(Twc, 0, frame_item)
+        frame = Frame(Twc, frame_item)
         self.frames.insert(current_index + 1, frame)
         item = QListWidgetItem(f"Frame {current_index + 2}")
         self.frame_list.insertItem(current_index + 1, item)
@@ -114,12 +114,12 @@ class Viewer2(q3d.Viewer):
         current = self.frame_list.currentRow()
         for i, frame in enumerate(self.frames):
             if i == current:
-                frame.item.set_color([1.0, 0.0, 0.0])
+                frame.item.set_color('#FF0000')
                 frame.item.set_line_width(5)
                 self.velocity_spinbox.setValue(frame.velociy)
                 self.stop_time_spinbox.setValue(frame.stop_time)
             else:
-                frame.item.set_color([0.0, 0.0, 1.0])
+                frame.item.set_color('#0000FF')
                 frame.item.set_line_width(3)
 
     def set_frame_velocity(self, value):

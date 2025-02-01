@@ -42,7 +42,7 @@ void main()
 
 
 class FrameItem(BaseItem):
-    def __init__(self, T=np.eye(4), size=(1, 0.8), width=3, img=None, color=(0, 0, 1)):
+    def __init__(self, T=np.eye(4), size=(1, 0.8), width=3, img=None, color='#0000FF'):
         BaseItem.__init__(self)
         self.w, self.h = size
         self.width = width
@@ -50,7 +50,7 @@ class FrameItem(BaseItem):
         self.img = img
         self.texture = None
         self.need_updating = False
-        self.color = color
+        self.set_color(color)
 
     def initialize_gl(self):
         # Rectangle vertices and texture coordinates
@@ -162,7 +162,14 @@ class FrameItem(BaseItem):
             self.need_updating = False
         
     def set_color(self, color):
-        self.color = color
+        if isinstance(color, str):
+            self.rgba = hex_to_rgba(color)
+        elif isinstance(color, list):
+            self.rgba = color
+        elif isinstance(color, tuple):
+            self.rgba = list(color)
+        else:
+            raise ValueError("Invalid color format")
 
     def set_line_width(self, width):
         self.width = width
@@ -193,7 +200,7 @@ class FrameItem(BaseItem):
         
         glLineWidth(self.width)
         # set color to bule
-        glColor3f(*self.color)
+        glColor4f(*self.rgba)
         glBindBuffer(GL_ARRAY_BUFFER, self.line_vbo)
         glEnableClientState(GL_VERTEX_ARRAY)
         glMultMatrixf(self.T.T)

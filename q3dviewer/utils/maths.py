@@ -157,11 +157,25 @@ def makeRt(T):
     return R, t
 
 def hex_to_rgba(hex_color):
-    color_flat = int(hex_color[1:], 16)
-    red = (color_flat >> 16) & 0xFF
-    green = (color_flat >> 8) & 0xFF
-    blue = color_flat & 0xFF
-    return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
+    if not hex_color.startswith("#"):
+        print("Invalid hex color string.")
+        return (1.0, 1.0, 1.0, 1.0)
+    if len(hex_color) == 7:
+        color_flat = int(hex_color[1:], 16)
+        red = (color_flat >> 16) & 0xFF
+        green = (color_flat >> 8) & 0xFF
+        blue = color_flat & 0xFF
+        return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
+    elif len(hex_color) == 9:
+        color_flat = int(hex_color[1:], 16)
+        red = (color_flat >> 24) & 0xFF
+        green = (color_flat >> 16) & 0xFF
+        blue = (color_flat >> 8) & 0xFF
+        alpha = color_flat & 0xFF
+        return (red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0)
+    else:
+        print("Invalid hex color string.")
+        return (1.0, 1.0, 1.0, 1.0)
 
 # euler = np.array([1, 0.1, 0.1])
 # euler_angles = matrix_to_euler(euler_to_matrix(euler))
