@@ -39,6 +39,10 @@ class BaseItem(QtCore.QObject):
     def initialize(self):
         if not self._initialized:
             self.initialize_gl()
+            self._initialized = True
+
+    def is_initialized(self):
+        return self._initialized
 
     def add_setting(self, layout):
         """

@@ -106,6 +106,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.dist += delta
         if self.dist < 0.1:
             self.dist = 0.1
+        self.view_need_update = True
 
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
@@ -113,7 +114,6 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
         self.show_center = True
-        self.view_need_update = True
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -151,6 +151,12 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         for item in self.items:
             if not item.visible():
                 continue
+            if not item.is_initialized():
+                """
+                The item may not be initialized if it is added
+                after the widget is shown, so we need to initialize it here.
+                """
+                item.initialize()
             glMatrixMode(GL_MODELVIEW)
             glPushMatrix()
             glPushAttrib(GL_ALL_ATTRIB_BITS)

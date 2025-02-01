@@ -168,7 +168,7 @@ class GaussianItem(BaseItem):
 
     def paint(self):
         # get current view matrix
-        self.view_matrix = self.glwidget().get_view_matrix()
+        self.view_matrix = self.glwidget().view_matrix
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.updateGS()
