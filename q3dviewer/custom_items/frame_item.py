@@ -204,3 +204,4 @@ class FrameItem(BaseItem):
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
+

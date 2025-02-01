@@ -46,7 +46,7 @@ class CloudItem(BaseItem):
         self.path = os.path.dirname(__file__)
 
     def add_setting(self, layout):
-        label_ptype = QLabel("Set point display type:")
+        label_ptype = QLabel("Point Type:")
         layout.addWidget(label_ptype)
         combo_ptype = QComboBox()
         combo_ptype.addItem("pixels")
@@ -55,26 +55,25 @@ class CloudItem(BaseItem):
         combo_ptype.setCurrentIndex(self.point_type_table[self.point_type])
         combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
-        self.label_size = QLabel("Set size: (pixel)")
-        layout.addWidget(self.label_size)
+
         self.box_size = QDoubleSpinBox()
+        self.box_size.setPrefix("Size: ")
         self.box_size.setSingleStep(1)
         self.box_size.setDecimals(0)
-        layout.addWidget(self.box_size)
         self.box_size.setValue(self.size)
-        self.box_size.valueChanged.connect(self.set_size)
         self.box_size.setRange(0, 100)
+        self.box_size.valueChanged.connect(self.set_size)
+        layout.addWidget(self.box_size)
 
-        label_alpha = QLabel("Set Alpha:")
-        layout.addWidget(label_alpha)
         box_alpha = QDoubleSpinBox()
-        layout.addWidget(box_alpha)
+        box_alpha.setPrefix("Alpha: ")
         box_alpha.setSingleStep(0.01)
         box_alpha.setValue(self.alpha)
-        box_alpha.valueChanged.connect(self.set_alpha)
         box_alpha.setRange(0, 1)
+        box_alpha.valueChanged.connect(self.set_alpha)
+        layout.addWidget(box_alpha)
 
-        label_color = QLabel("Set ColorMode:")
+        label_color = QLabel("Color Mode:")
         layout.addWidget(label_color)
         self.combo_color = QComboBox()
         self.combo_color.addItem("flat color")
@@ -84,6 +83,8 @@ class CloudItem(BaseItem):
         self.combo_color.currentIndexChanged.connect(self._on_color_mode)
         layout.addWidget(self.combo_color)
 
+        label_rgb = QLabel("Color:")
+        layout.addWidget(label_rgb)
         self.edit_rgb = QLineEdit()
         self.edit_rgb.setToolTip("Hex number, i.e. #FF4500")
         self.edit_rgb.setText(f"#{self.flat_rgb:06x}")
@@ -96,11 +97,8 @@ class CloudItem(BaseItem):
         self.slider_v = RangeSlider()
         self.slider_v.setRange(0, 255)
         self.slider_v.rangeChanged.connect(self._on_range)
-
         layout.addWidget(self.slider_v)
-        self.combo_color.setCurrentIndex(self.color_mode)
 
-        # Add a checkbox for enabling/disabling depth test
         self.checkbox_depth_test = QCheckBox(
             "Show front points first (Depth Test)")
         self.checkbox_depth_test.setChecked(self.depth_test_enabled)

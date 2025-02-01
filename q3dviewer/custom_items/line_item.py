@@ -27,7 +27,7 @@ class LineItem(BaseItem):
         self.line_type = GL_LINE_STRIP if line_type == 'LINE_STRIP' else GL_LINES
 
     def add_setting(self, layout):
-        label_color = QLabel("Set trajectory color:")
+        label_color = QLabel("Color:")
         layout.addWidget(label_color)
         self.color_edit = QLineEdit()
         self.color_edit.setToolTip("Hex number, i.e. #FF4500")
@@ -38,14 +38,13 @@ class LineItem(BaseItem):
         self.color_edit.setValidator(validator)
         layout.addWidget(self.color_edit)
 
-        label_width = QLabel("Set width:")
-        layout.addWidget(label_width)
         spinbox_width = QDoubleSpinBox()
+        spinbox_width.setPrefix("Width: ")
         spinbox_width.setSingleStep(0.1)
-        layout.addWidget(spinbox_width)
         spinbox_width.setValue(self.width)
-        spinbox_width.valueChanged.connect(self.set_width)
         spinbox_width.setRange(0.1, 10.0)
+        spinbox_width.valueChanged.connect(self.set_width)
+        layout.addWidget(spinbox_width)
 
     def _on_color(self, color):
         try:

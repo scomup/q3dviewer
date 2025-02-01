@@ -7,7 +7,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton, QWidget, QDoubleSpinBox
 from PySide6.QtCore import QThread, Signal
 from cloud_viewer import ProgressDialog,  FileLoaderThread
 from PySide6 import QtCore
@@ -16,10 +16,11 @@ from q3dviewer import GLWidget
 
 
 class Frame:
-    def __init__(self, Tcw, velociy):
+    def __init__(self, Tcw, item):
         self.Twc = Tcw # from world to camera
-        self.velociy = velociy
+        self.velociy = 0
         self.stop_time = 0
+        self.item = item
 
 
 class CustomGLWidget(GLWidget):
@@ -37,7 +38,6 @@ class CustomGLWidget(GLWidget):
 class Viewer2(q3d.Viewer):
     def __init__(self, **kwargs):
         self.frames = []
-        self.frames_item = []
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
         self.frame_list.itemSelectionChanged.connect(self.change_frame_color)
         self.installEventFilter(self)
@@ -57,6 +57,19 @@ class Viewer2(q3d.Viewer):
         # Add a list of key frames
         self.frame_list = QListWidget()
         setting_layout.addWidget(self.frame_list)
+
+        # Add double spin boxes for velocity and stop time
+        self.velocity_spinbox = QDoubleSpinBox()
+        self.velocity_spinbox.setPrefix("Velocity: ")
+        self.velocity_spinbox.setRange(0, 100)
+        self.velocity_spinbox.valueChanged.connect(self.set_frame_velocity)
+        setting_layout.addWidget(self.velocity_spinbox)
+
+        self.stop_time_spinbox = QDoubleSpinBox()
+        self.stop_time_spinbox.setPrefix("Stop Time: ")
+        self.stop_time_spinbox.setRange(0, 100)
+        self.stop_time_spinbox.valueChanged.connect(self.set_frame_stop_time)
+        setting_layout.addWidget(self.stop_time_spinbox)
         
         setting_layout.setAlignment(QtCore.Qt.AlignTop)
         main_layout.addLayout(setting_layout)
@@ -69,13 +82,12 @@ class Viewer2(q3d.Viewer):
         # add a FrameItem to the scene
         frame_item = q3d.FrameItem(Twc, width=3, img=None, color=(0, 0, 1))
         self.glwidget.add_item(frame_item)
-        self.frames_item.append(frame_item)
         # move the camera back to 0.5 meter, let the user see the frame
         self.glwidget.update_dist(0.5)
 
         # Add the key frame to the list
         current_index = self.frame_list.currentRow()
-        frame = Frame(Twc, 0)
+        frame = Frame(Twc, 0, frame_item)
         self.frames.insert(current_index + 1, frame)
         item = QListWidgetItem(f"Frame {current_index + 2}")
         self.frame_list.insertItem(current_index + 1, item)
@@ -87,9 +99,8 @@ class Viewer2(q3d.Viewer):
     def del_key_frame(self):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
+            self.glwidget.remove_item(self.frames[current_index].item)
             self.frames.pop(current_index)
-            self.glwidget.remove_item(self.frames_item[current_index])
-            self.frames_item.pop(current_index)
             self.frame_list.itemSelectionChanged.disconnect(self.change_frame_color)
             self.frame_list.takeItem(current_index)
             self.frame_list.itemSelectionChanged.connect(self.change_frame_color)
@@ -101,13 +112,25 @@ class Viewer2(q3d.Viewer):
 
     def change_frame_color(self):
         current = self.frame_list.currentRow()
-        for i, item in enumerate(self.frames_item):
+        for i, frame in enumerate(self.frames):
             if i == current:
-                item.set_color([1.0, 0.0, 0.0])
-                item.set_line_width(5)
+                frame.item.set_color([1.0, 0.0, 0.0])
+                frame.item.set_line_width(5)
+                self.velocity_spinbox.setValue(frame.velociy)
+                self.stop_time_spinbox.setValue(frame.stop_time)
             else:
-                item.set_color([0.0, 0.0, 1.0])
-                item.set_line_width(3)
+                frame.item.set_color([0.0, 0.0, 1.0])
+                frame.item.set_line_width(3)
+
+    def set_frame_velocity(self, value):
+        current_index = self.frame_list.currentRow()
+        if current_index >= 0:
+            self.frames[current_index].velociy = value
+
+    def set_frame_stop_time(self, value):
+        current_index = self.frame_list.currentRow()
+        if current_index >= 0:
+            self.frames[current_index].stop_time = value
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.KeyPress:
