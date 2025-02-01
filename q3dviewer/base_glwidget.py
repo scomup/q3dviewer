@@ -91,8 +91,14 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         for item in self.items:
             item.initialize()
         # initialize the projection matrix and model view matrix
+        self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
+        self.view_matrix = self.get_view_matrix()
         self.update_model_view()
+
+    def set_view_matrix(self, view_matrix):
+        self.view_matrix = view_matrix
+        self.view_need_update = False
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -141,8 +147,9 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
     def paintGL(self):
         # if the camera is moved, update the model view matrix.
         if self.view_need_update:
-            self.update_model_view()
+            self.view_matrix = self.get_view_matrix()
             self.view_need_update = False
+        self.update_model_view()
 
         # set the background color
         bgcolor = self.color
@@ -217,7 +224,6 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.view_need_update = True
 
     def update_model_view(self):
-        self.view_matrix = self.get_view_matrix()
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(self.view_matrix.T)
         
@@ -247,7 +253,6 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         super().update()
 
     def update_model_projection(self):
-        self.projection_matrix = self.get_projection_matrix()
         glMatrixMode(GL_PROJECTION)
         glLoadMatrixf(self.projection_matrix.T)
 
@@ -288,4 +293,5 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
