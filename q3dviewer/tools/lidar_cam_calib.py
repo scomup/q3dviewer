@@ -54,13 +54,15 @@ class LidarCamViewer(q3d.Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def add_control_panel(self, main_layout):
+    def default_gl_setting(self, glwidget):
         # Set camera position and background color
-        self.glwidget.set_cam_position(distance=5)
-        self.glwidget.set_bg_color('#ffffff')
+        glwidget.set_bg_color('#ffffff')
+        glwidget.set_cam_position(distance=5)
 
+    def add_control_panel(self, main_layout):
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
+        setting_layout.setAlignment(QtCore.Qt.AlignTop)
         # Add a checkbox for RGB
         self.checkbox_rgb = QCheckBox("Enable RGB Cloud")
         self.checkbox_rgb.setChecked(False)
@@ -146,8 +148,6 @@ class LidarCamViewer(q3d.Viewer):
         self.box_pitch.valueChanged.connect(self.update_rpy)
         self.box_yaw.valueChanged.connect(self.update_rpy)
 
-        # Add a stretch to push the widgets to the top
-        setting_layout.addStretch(1)
         main_layout.addLayout(setting_layout)
 
 

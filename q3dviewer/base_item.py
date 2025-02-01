@@ -16,6 +16,7 @@ class BaseItem(QtCore.QObject):
         self._glwidget = None
         self._visible = True
         self._initialized = False
+        self._disable_setting = False
         
     def set_glwidget(self, v):
         self._glwidget = v
@@ -38,6 +39,13 @@ class BaseItem(QtCore.QObject):
     def initialize(self):
         if not self._initialized:
             self.initialize_gl()
+
+    def add_setting(self, layout):
+        """
+        Add setting widgets to the layout.
+        This method should be overridden by subclasses to add any necessary setting widgets to the layout.
+        """
+        pass
     
     def initialize_gl(self):
         """
@@ -52,6 +60,9 @@ class BaseItem(QtCore.QObject):
         This method should be overridden by subclasses to perform the actual rendering.
         """
         pass
+
+    def disable_setting(self):
+        self._disable_setting = True
 
 
 

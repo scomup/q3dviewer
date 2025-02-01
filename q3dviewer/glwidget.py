@@ -4,7 +4,7 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from PySide6 import QtCore
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QSpacerItem, QLabel, QLineEdit, QCheckBox, QGroupBox
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
 from PySide6.QtGui import QKeyEvent, QVector3D, QRegularExpressionValidator
 from PySide6.QtCore import QRegularExpression
 from OpenGL.GL import *
@@ -17,11 +17,9 @@ class SettingWindow(QWidget):
         self.combo_items = QComboBox()
         self.combo_items.currentIndexChanged.connect(self.on_combo_selection)
         main_layout = QVBoxLayout()
-        self.stretch = QSpacerItem(
-            10, 10, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        main_layout.setAlignment(QtCore.Qt.AlignTop)
         main_layout.addWidget(self.combo_items)
         self.layout = QVBoxLayout()
-        self.layout.addItem(self.stretch)
         main_layout.addLayout(self.layout)
         self.setLayout(main_layout)
         self.setWindowTitle("Setting Window")
@@ -39,21 +37,15 @@ class SettingWindow(QWidget):
                 child.widget().deleteLater()
 
     def on_combo_selection(self, index):
-        self.layout.removeItem(self.stretch)
         # remove all setting of previous widget
         self.clear_setting()
-
         key = list(self.items.keys())
         item = self.items[key[index]]
-        if hasattr(item, "add_setting"):
-            group_box = QGroupBox()
-            group_layout = QVBoxLayout()
-            item.add_setting(group_layout)
-            group_box.setLayout(group_layout)
-            self.layout.addWidget(group_box)
-            self.layout.addItem(self.stretch)
-        else:
-            print("%s: No setting." % (item.__class__.__name__))
+        group_box = QGroupBox()
+        group_layout = QVBoxLayout()
+        item.add_setting(group_layout)
+        group_box.setLayout(group_layout)
+        self.layout.addWidget(group_box)
 
 
 class GLWidget(BaseGLWidget):
@@ -61,7 +53,7 @@ class GLWidget(BaseGLWidget):
         self.followed_name = 'none'
         self.named_items = {}
         self.color_str = '#000000'
-        self.followable_item_name = ['none']
+        self.followable_item_name = None
         self.setting_window = SettingWindow()
         self.enable_show_center = True
         super(GLWidget, self).__init__()
@@ -95,6 +87,10 @@ class GLWidget(BaseGLWidget):
         
         label_focus = QLabel("Set Focus:")
         combo_focus = QComboBox()
+    
+        if self.followable_item_name is None:
+            self.initial_followable()
+
         for name in self.followable_item_name:
             combo_focus.addItem(name)
         combo_focus.currentIndexChanged.connect(self.on_followable_selection)
@@ -105,6 +101,12 @@ class GLWidget(BaseGLWidget):
         checkbox_show_center.setChecked(self.enable_show_center)
         checkbox_show_center.stateChanged.connect(self.change_show_center)
         layout.addWidget(checkbox_show_center)
+
+    def initial_followable(self):
+        self.followable_item_name = ['none']
+        for name, item in self.named_items.items():
+            if item.__class__.__name__ == 'AxisItem' and not item._disable_setting:
+                self.followable_item_name.append(name)
 
     def set_bg_color(self, color_str):
         try:
@@ -119,9 +121,8 @@ class GLWidget(BaseGLWidget):
 
     def add_item_with_name(self, name, item):
         self.named_items.update({name: item})
-        if (item.__class__.__name__ == 'AxisItem'):
-            self.followable_item_name.append(name)
-        self.setting_window.add_setting(name, item)
+        if not item._disable_setting:
+            self.setting_window.add_setting(name, item)
         super().add_item(item)
 
     def open_setting_window(self):
