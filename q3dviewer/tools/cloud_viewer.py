@@ -116,6 +116,9 @@ def main():
         viewer.open_cloud_file(pcd_fn)
 
     viewer.show()
+    print(viewer.glwidget.current_height())
+    print(viewer.glwidget.current_width())
+    print(viewer.glwidget.get_K())
     app.exec()
 
 
