@@ -18,11 +18,11 @@ import os
 
 
 class KeyFrame:
-    def __init__(self, Twc):
+    def __init__(self, Twc, lin_vel=10, ang_vel=np.pi/3, stop_time=0):
         self.Twc = Twc
-        self.linear_velocity = 10
-        self.angular_velocity = 1
-        self.stop_time = 0
+        self.lin_vel = lin_vel
+        self.ang_vel = ang_vel # rad/s
+        self.stop_time = stop_time
         self.item = q3d.FrameItem(Twc, width=3, color='#0000FF')
 
 
@@ -116,8 +116,8 @@ class CMMViewer(q3d.Viewer):
         setting_layout.addWidget(self.lin_vel_spinbox)
 
         self.lin_ang_spinbox = QDoubleSpinBox()
-        self.lin_ang_spinbox.setPrefix("Angular Velocity (rad/s): ")
-        self.lin_ang_spinbox.setRange(0, 100)
+        self.lin_ang_spinbox.setPrefix("Angular Velocity (deg/s): ")
+        self.lin_ang_spinbox.setRange(0, 360)
         self.lin_ang_spinbox.valueChanged.connect(self.set_frame_ang_vel)
         setting_layout.addWidget(self.lin_ang_spinbox)
 
@@ -147,21 +147,23 @@ class CMMViewer(q3d.Viewer):
         view_matrix = self.glwidget.view_matrix
         # Get camera pose in world frame
         Twc = np.linalg.inv(view_matrix)
-        # Add the key frame to the list
-        key_frame = KeyFrame(Twc)
-        current_index = self.frame_list.currentRow()
-        self.key_frames.insert(current_index + 1, key_frame)
+        # Add the key frame to the end of the list
+        if self.key_frames:
+            prev = self.key_frames[-1]
+            key_frame = KeyFrame(Twc, 
+                                 lin_vel=prev.lin_vel, 
+                                 ang_vel=prev.ang_vel)
+        else:
+            key_frame = KeyFrame(Twc)
+        self.key_frames.append(key_frame)
         # visualize this key frame using FrameItem
         self.glwidget.add_item(key_frame.item)
         # move the camera back to 0.5 meter, let the user see the frame
         self.glwidget.update_dist(0.5)
         # Add the key frame to the Qt ListWidget
-        item = QListWidgetItem(f"Frame {current_index + 2}")
-        self.frame_list.insertItem(current_index + 1, item)
-        self.frame_list.setCurrentRow(current_index + 1)
-        # Update frame labels
-        for i in range(len(self.key_frames)):
-            self.frame_list.item(i).setText(f"Frame {i + 1}")
+        item = QListWidgetItem(f"Frame {len(self.key_frames)}")
+        self.frame_list.addItem(item)
+        self.frame_list.setCurrentRow(len(self.key_frames) - 1)
 
     def del_key_frame(self):
         current_index = self.frame_list.currentRow()
@@ -174,7 +176,6 @@ class CMMViewer(q3d.Viewer):
             self.on_select_frame()
         # Update frame labels
         for i in range(len(self.key_frames)):
-            
             self.frame_list.item(i).setText(f"Frame {i + 1}")
     
     def on_select_frame(self):
@@ -185,8 +186,8 @@ class CMMViewer(q3d.Viewer):
                 frame.item.set_color('#FF0000')
                 frame.item.set_line_width(5)
                 # show current frame's parameters in the spinboxes
-                self.lin_vel_spinbox.setValue(frame.linear_velocity)
-                self.lin_ang_spinbox.setValue(frame.angular_velocity)
+                self.lin_vel_spinbox.setValue(frame.lin_vel)
+                self.lin_ang_spinbox.setValue(np.rad2deg(frame.ang_vel))
                 self.stop_time_spinbox.setValue(frame.stop_time)
             else:
                 frame.item.set_color('#0000FF')
@@ -195,12 +196,12 @@ class CMMViewer(q3d.Viewer):
     def set_frame_lin_vel(self, value):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
-            self.key_frames[current_index].linear_velocity = value
+            self.key_frames[current_index].lin_vel = value
 
     def set_frame_ang_vel(self, value):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
-            self.key_frames[current_index].angular_velocity = value
+            self.key_frames[current_index].ang_vel = np.deg2rad(value)
 
     def set_frame_stop_time(self, value):
         current_index = self.frame_list.currentRow()
@@ -221,8 +222,8 @@ class CMMViewer(q3d.Viewer):
                     self.frames.append([i, current_frame.Twc])
             next_frame = self.key_frames[i + 1]
             Ts = q3d.interpolate_pose(current_frame.Twc, next_frame.Twc,
-                                      current_frame.linear_velocity,
-                                      current_frame.angular_velocity,
+                                      current_frame.lin_vel,
+                                      current_frame.ang_vel,
                                       dt)
             for T in Ts:
                 self.frames.append([i, T])
@@ -254,6 +255,7 @@ class CMMViewer(q3d.Viewer):
         self.play_button.setStyleSheet("")
         self.play_button.setText("Play")
         self.record_checkbox.setEnabled(True)
+        self.frame_list.setCurrentRow(len(self.key_frames) - 1)
         if self.is_recording:
             self.stop_recording()
 
