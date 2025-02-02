@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "q3dviewer"
+version = "1.1.0"
+description = "A library designed for quickly deploying a 3D viewer."
+authors = ["Liu Yang <scomup@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.21"
+pyside6 = "^6.2"
+PyOpenGL = "^3.1"
+pillow = "^8.3"
+meshio = "^4.4"
+pypcd4 = "^0.1"
+pye57 = "^0.1"
+laspy = "^2.0"
+imageio = "^2.9"
+
+[tool.poetry.scripts]
+cloud_viewer = "q3dviewer.tools.cloud_viewer:main"
+ros_viewer = "q3dviewer.tools.ros_viewer:main"
+mesh_viewer = "q3dviewer.tools.mesh_viewer:main"
+gaussian_viewer = "q3dviewer.tools.gaussian_viewer:main"
+lidar_cam_calib = "q3dviewer.tools.lidar_cam_calib:main"
+lidar_calib = "q3dviewer.tools.lidar_calib:main"
+film_maker = "q3dviewer.tools.film_maker:main"

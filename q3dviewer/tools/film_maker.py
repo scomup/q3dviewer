@@ -21,7 +21,7 @@ class KeyFrame:
     def __init__(self, Twc, lin_vel=10, ang_vel=np.pi/3, stop_time=0):
         self.Twc = Twc
         self.lin_vel = lin_vel
-        self.ang_vel = ang_vel # rad/s
+        self.ang_vel = ang_vel  # rad/s
         self.stop_time = stop_time
         self.item = q3d.FrameItem(Twc, width=3, color='#0000FF')
 
@@ -106,6 +106,7 @@ class CMMViewer(q3d.Viewer):
         self.frame_list = QListWidget()
         setting_layout.addWidget(self.frame_list)
         self.frame_list.itemSelectionChanged.connect(self.on_select_frame)
+        self.frame_list.itemDoubleClicked.connect(self.on_double_click_frame)
         self.installEventFilter(self)
 
         # Add spin boxes for linear / angular velocity and stop time
@@ -147,12 +148,12 @@ class CMMViewer(q3d.Viewer):
         view_matrix = self.glwidget.view_matrix
         # Get camera pose in world frame
         Twc = np.linalg.inv(view_matrix)
-        # Add the key frame to the end of the list
         if self.key_frames:
             prev = self.key_frames[-1]
-            key_frame = KeyFrame(Twc, 
+            key_frame = KeyFrame(Twc,
                                  lin_vel=prev.lin_vel, 
-                                 ang_vel=prev.ang_vel)
+                                 ang_vel=prev.ang_vel,
+                                 stop_time=prev.stop_time)
         else:
             key_frame = KeyFrame(Twc)
         self.key_frames.append(key_frame)
@@ -167,19 +168,22 @@ class CMMViewer(q3d.Viewer):
 
     def del_key_frame(self):
         current_index = self.frame_list.currentRow()
-        if current_index >= 0:
-            self.glwidget.remove_item(self.key_frames[current_index].item)
-            self.key_frames.pop(current_index)
-            self.frame_list.itemSelectionChanged.disconnect(self.on_select_frame)
-            self.frame_list.takeItem(current_index)
-            self.frame_list.itemSelectionChanged.connect(self.on_select_frame)
-            self.on_select_frame()
+        if current_index < 0:
+            return
+        self.glwidget.remove_item(self.key_frames[current_index].item)
+        self.key_frames.pop(current_index)
+        self.frame_list.itemSelectionChanged.disconnect(self.on_select_frame)
+        self.frame_list.takeItem(current_index)
+        self.frame_list.itemSelectionChanged.connect(self.on_select_frame)
+        self.on_select_frame()
         # Update frame labels
         for i in range(len(self.key_frames)):
             self.frame_list.item(i).setText(f"Frame {i + 1}")
     
     def on_select_frame(self):
         current = self.frame_list.currentRow()
+        if current < 0:
+            return
         for i, frame in enumerate(self.key_frames):
             if i == current:
                 # Highlight the selected frame
@@ -195,18 +199,33 @@ class CMMViewer(q3d.Viewer):
 
     def set_frame_lin_vel(self, value):
         current_index = self.frame_list.currentRow()
-        if current_index >= 0:
-            self.key_frames[current_index].lin_vel = value
+        if current_index < 0:
+            return
+        self.key_frames[current_index].lin_vel = value
 
     def set_frame_ang_vel(self, value):
         current_index = self.frame_list.currentRow()
-        if current_index >= 0:
-            self.key_frames[current_index].ang_vel = np.deg2rad(value)
+        if current_index < 0:
+            return
+        self.key_frames[current_index].ang_vel = np.deg2rad(value)
 
     def set_frame_stop_time(self, value):
         current_index = self.frame_list.currentRow()
-        if current_index >= 0:
-            self.key_frames[current_index].stop_time = value
+        if current_index < 0:
+            return
+        self.key_frames[current_index].stop_time = value
+
+    def on_double_click_frame(self, item):
+        """
+        TODO: Implement this function to set the camera position to the selected frame.
+        """
+        current_index = self.frame_list.row(item)
+        if current_index < 0:
+            return
+        # self.glwidget.set_cam_position(center=glw_params['center'],
+        #                                distance=glw_params['distance'],
+        #                                euler=glw_params['euler'])
+
 
     def create_frames(self):
         """
@@ -368,7 +387,7 @@ class CMMViewer(q3d.Viewer):
             return
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-        self.glwidget.set_cam_position(pos=center)
+        self.glwidget.set_cam_position(center=center)
 
 def main():
     import argparse

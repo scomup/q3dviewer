@@ -2,7 +2,17 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.0.9',
+    version='1.1.0',
+    author="Liu Yang",
+    description="A library designed for quickly deploying a 3D viewer.",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/scomup/q3dviewer",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
     packages=find_packages(),
     include_package_data=True,
     package_data={

@@ -238,12 +238,19 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         return Tcw
 
     def set_cam_position(self, **kwargs):
-        pos = kwargs.get('pos', None)
+        center = kwargs.get('center', None)
         distance = kwargs.get('distance', None)
-        if pos is not None:
-            self.set_center(pos)
+        euler = kwargs.get('euler', None)
+        if center is not None:
+            self.set_center(center)
         if distance is not None:
             self.set_dist(distance)
+        if euler is not None:
+            self.set_euler(euler)
+    
+    def set_euler(self, euler):
+        self.euler = euler
+        self.view_need_update = True
 
     def set_color(self, color):
         self.color = color

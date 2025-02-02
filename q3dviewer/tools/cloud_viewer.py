@@ -52,7 +52,7 @@ class FileLoaderThread(QThread):
             self.viewer.progress_dialog.set_file_name(file_path)
             cloud = cloud_item.load(file_path, append=(i > 0))
             center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-            self.viewer.glwidget.set_cam_position(pos=center)
+            self.viewer.glwidget.set_cam_position(center=center)
             self.progress.emit(int((i + 1) / len(self.files) * 100))
         self.finished.emit()
 
@@ -94,7 +94,7 @@ class CloudViewer(q3d.Viewer):
             return
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-        self.glwidget.set_cam_position(pos=center)
+        self.glwidget.set_cam_position(center=center)
 
 
 def main():
