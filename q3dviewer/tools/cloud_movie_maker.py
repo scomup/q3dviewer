@@ -18,7 +18,7 @@ from q3dviewer import GLWidget
 class Frame:
     def __init__(self, Tcw, item):
         self.Twc = Tcw # from world to camera
-        self.linear_velociy = 1
+        self.linear_velociy = 10
         self.angular_velocity = 1
         self.stop_time = 0
         self.item = item
@@ -48,9 +48,8 @@ class CMMViewer(q3d.Viewer):
         self.timer = QTimer()
         self.timer.timeout.connect(self.play_frames)
         self.current_frame_index = 0
-        self.interpolation_steps = 0
-        self.current_interpolation_step = 0
         self.is_playing = False
+        self.setAcceptDrops(True)
 
     def add_control_panel(self, main_layout):
         """
@@ -78,13 +77,13 @@ class CMMViewer(q3d.Viewer):
 
         # Add spin boxes for linear / angular velocity and stop time
         self.lin_vel_spinbox = QDoubleSpinBox()
-        self.lin_vel_spinbox.setPrefix("Linear Velocity: ")
+        self.lin_vel_spinbox.setPrefix("Linear Velocity (m/s): ")
         self.lin_vel_spinbox.setRange(0, 100)
         self.lin_vel_spinbox.valueChanged.connect(self.set_frame_lin_vel)
         setting_layout.addWidget(self.lin_vel_spinbox)
 
         self.lin_ang_spinbox = QDoubleSpinBox()
-        self.lin_ang_spinbox.setPrefix("Angular Velocity: ")
+        self.lin_ang_spinbox.setPrefix("Angular Velocity (rad/s): ")
         self.lin_ang_spinbox.setRange(0, 100)
         self.lin_ang_spinbox.valueChanged.connect(self.set_frame_ang_vel)
         setting_layout.addWidget(self.lin_ang_spinbox)
@@ -162,15 +161,16 @@ class CMMViewer(q3d.Viewer):
             self.key_frames[current_index].stop_time = value
 
     def create_frames(self):
-        frames = []
+        self.frames = []
+        dt = 1 / float(self.update_interval)
         for i in range(len(self.key_frames) - 1):
             current_frame = self.key_frames[i]
             next_frame = self.key_frames[i + 1]
             Ts = q3d.interpolate_pose(current_frame.Twc, next_frame.Twc,
                                       current_frame.linear_velociy,
                                       current_frame.angular_velocity,
-                                      current_frame.stop_time)
-            frames.extend(Ts)
+                                      dt)
+            self.frames.extend(Ts)
 
     def toggle_playback(self):
         if self.is_playing:
@@ -180,9 +180,9 @@ class CMMViewer(q3d.Viewer):
 
     def start_playback(self):
         if self.key_frames:
+            self.create_frames()
             self.current_frame_index = 0
-            self.current_interpolation_step = 0
-            self.timer.start(100)  # Adjust the interval as needed
+            self.timer.start(self.update_interval)  # Adjust the interval as needed
             self.is_playing = True
             self.play_button.setText("Stop")
 
@@ -192,24 +192,13 @@ class CMMViewer(q3d.Viewer):
         self.play_button.setText("Play")
 
     def play_frames(self):
-        if self.current_frame_index < len(self.key_frames) - 1:
-            current_frame = self.key_frames[self.current_frame_index]
-            next_frame = self.key_frames[self.current_frame_index + 1]
-            self.interpolation_steps = int(100 / current_frame.velociy)  # Adjust the divisor as needed
-
-            if self.current_interpolation_step < self.interpolation_steps:
-                alpha = self.current_interpolation_step / self.interpolation_steps
-                interpolated_Twc = self.interpolate_matrices(current_frame.Twc, next_frame.Twc, alpha)
-                self.glwidget.set_view_matrix(np.linalg.inv(interpolated_Twc))
-                self.current_interpolation_step += 1
-            else:
-                self.current_frame_index += 1
-                self.current_interpolation_step = 0
+        if self.current_frame_index < len(self.frames):
+            self.glwidget.set_view_matrix(np.linalg.inv(self.frames[self.current_frame_index]))
+            self.current_frame_index += 1
         else:
             self.timer.stop()
-
-    def interpolate_matrices(self, Twc1, Twc2, alpha):
-        return (1 - alpha) * Twc1 + alpha * Twc2
+            self.is_playing = False
+            self.play_button.setText("Play")
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.KeyPress:
@@ -218,6 +207,39 @@ class CMMViewer(q3d.Viewer):
                 return True
         return super().eventFilter(obj, event)
 
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """
+        Overwrite the drop event to open the cloud file.
+        """
+        self.progress_dialog = ProgressDialog(self)
+        self.progress_dialog.show()
+        files = event.mimeData().urls()
+        self.progress_thread = FileLoaderThread(self, files)
+        self['cloud'].load(files[0].toLocalFile(), append=False)
+        self.progress_thread.progress.connect(self.file_loading_progress)
+        self.progress_thread.finished.connect(self.file_loading_finished)
+        self.progress_thread.start()
+
+    def file_loading_progress(self, value):
+        self.progress_dialog.set_value(value)
+
+    def file_loading_finished(self):
+        self.progress_dialog.close()
+
+    def open_cloud_file(self, file, append=False):
+        cloud_item = self['cloud']
+        if cloud_item is None:
+            print("Can't find clouditem.")
+            return
+        cloud = cloud_item.load(file, append=append)
+        center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+        self.glwidget.set_cam_position(pos=center)
 
 def main():
     import argparse
@@ -225,7 +247,7 @@ def main():
     parser.add_argument("--path", help="the cloud file path")
     args = parser.parse_args()
     app = q3d.QApplication(['Cloud Movie Maker'])
-    viewer = CMMViewer(name='Cloud Movie Maker')
+    viewer = CMMViewer(name='Cloud Movie Maker', update_interval=30)
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)

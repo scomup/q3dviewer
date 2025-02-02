@@ -15,12 +15,14 @@ def handler(signal, frame):
 
 
 class Viewer(QMainWindow):
-    def __init__(self, name='Viewer', win_size=[1920, 1080], gl_widget_class=GLWidget):
+    def __init__(self, name='Viewer', win_size=[1920, 1080], 
+                 gl_widget_class=GLWidget, update_interval=20):
         signal.signal(signal.SIGINT, handler)
         super(Viewer, self).__init__()
         self.setGeometry(0, 0, win_size[0], win_size[1])
         self.gl_widget_class = gl_widget_class
         self.init_ui()
+        self.update_interval = update_interval
         self.add_update_timer()
         self.setWindowTitle(name)
         self.installEventFilter(self)
@@ -51,7 +53,7 @@ class Viewer(QMainWindow):
 
     def add_update_timer(self):
         timer = QtCore.QTimer(self)
-        timer.setInterval(20)  # period, in milliseconds
+        timer.setInterval(self.update_interval)  # period, in milliseconds
         timer.timeout.connect(self.update)
         timer.start()
 

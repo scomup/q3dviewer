@@ -113,7 +113,7 @@ def logSO3(R):
     return omega
 
 
-def interpolate_pose(T1, T2, v_max, omega_max, dt=0.1):
+def interpolate_pose(T1, T2, v_max, omega_max, dt=0.02):
     R1, t1 = makeRt(T1)
     R2, t2 = makeRt(T2)
     

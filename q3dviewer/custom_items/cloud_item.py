@@ -134,13 +134,13 @@ class CloudItem(BaseItem):
     def _on_point_type_selection(self, index):
         self.point_type = list(self.point_type_table.keys())[index]
         if self.point_type == 'PIXEL':
-            self.label_size.setText("Set size: (pixel)")
+            self.box_size.setPrefix("Set size (pixel): ")
             self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
             self.box_size.setValue(1)
             self.size = 1
         else:
-            self.label_size.setText("Set size: (meter)")
+            self.box_size.setPrefix("Set size (meter): ")
             self.box_size.setDecimals(2)
             self.box_size.setSingleStep(0.01)
             self.box_size.setValue(0.01)
