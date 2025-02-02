@@ -59,10 +59,10 @@ class CMMViewer(q3d.Viewer):
         setting_layout = QVBoxLayout()
 
         # Buttons to add and delete key frames
-        add_button = QPushButton("Add Key Frame")
+        add_button = QPushButton("Add Key Frame (Key Space)")
         add_button.clicked.connect(self.add_key_frame)
         setting_layout.addWidget(add_button)
-        del_button = QPushButton("Delete Key Frame")
+        del_button = QPushButton("Delete Key Frame (Key Delete)")
         del_button.clicked.connect(self.del_key_frame)
         setting_layout.addWidget(del_button)
 
