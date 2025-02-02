@@ -7,8 +7,8 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton, QWidget, QDoubleSpinBox
-from PySide6.QtCore import QThread, Signal, QTimer
+from PySide6.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox
+from PySide6.QtCore import QTimer
 from cloud_viewer import ProgressDialog,  FileLoaderThread
 from PySide6 import QtCore
 from PySide6.QtGui import QKeyEvent
@@ -18,7 +18,8 @@ from q3dviewer import GLWidget
 class Frame:
     def __init__(self, Tcw, item):
         self.Twc = Tcw # from world to camera
-        self.velociy = 1
+        self.linear_velociy = 1
+        self.angular_velocity = 1
         self.stop_time = 0
         self.item = item
 
@@ -35,7 +36,10 @@ class CustomGLWidget(GLWidget):
             self.viewer.del_key_frame()
         super().keyPressEvent(ev)
 
-class Viewer2(q3d.Viewer):
+class CMMViewer(q3d.Viewer):
+    """
+    This class is a subclass of Viewer, which is used to create a cloud movie maker.
+    """
     def __init__(self, **kwargs):
         self.key_frames = []
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
@@ -49,6 +53,9 @@ class Viewer2(q3d.Viewer):
         self.is_playing = False
 
     def add_control_panel(self, main_layout):
+        """
+        Add a control panel to the viewer.
+        """
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
 
@@ -69,12 +76,18 @@ class Viewer2(q3d.Viewer):
         self.frame_list = QListWidget()
         setting_layout.addWidget(self.frame_list)
 
-        # Add double spin boxes for velocity and stop time
-        self.velocity_spinbox = QDoubleSpinBox()
-        self.velocity_spinbox.setPrefix("Velocity: ")
-        self.velocity_spinbox.setRange(0, 100)
-        self.velocity_spinbox.valueChanged.connect(self.set_frame_velocity)
-        setting_layout.addWidget(self.velocity_spinbox)
+        # Add spin boxes for linear / angular velocity and stop time
+        self.lin_vel_spinbox = QDoubleSpinBox()
+        self.lin_vel_spinbox.setPrefix("Linear Velocity: ")
+        self.lin_vel_spinbox.setRange(0, 100)
+        self.lin_vel_spinbox.valueChanged.connect(self.set_frame_lin_vel)
+        setting_layout.addWidget(self.lin_vel_spinbox)
+
+        self.lin_ang_spinbox = QDoubleSpinBox()
+        self.lin_ang_spinbox.setPrefix("Angular Velocity: ")
+        self.lin_ang_spinbox.setRange(0, 100)
+        self.lin_ang_spinbox.valueChanged.connect(self.set_frame_ang_vel)
+        setting_layout.addWidget(self.lin_ang_spinbox)
 
         self.stop_time_spinbox = QDoubleSpinBox()
         self.stop_time_spinbox.setPrefix("Stop Time: ")
@@ -126,23 +139,38 @@ class Viewer2(q3d.Viewer):
             if i == current:
                 frame.item.set_color('#FF0000')
                 frame.item.set_line_width(5)
-                self.velocity_spinbox.setValue(frame.velociy)
-                self.stop_time_spinbox.setValue(frame.stop_time)
-                self.velocity_spinbox.setValue(frame.velociy)
+                self.lin_vel_spinbox.setValue(frame.linear_velociy)
+                self.lin_ang_spinbox.setValue(frame.angular_velocity)
                 self.stop_time_spinbox.setValue(frame.stop_time)
             else:
                 frame.item.set_color('#0000FF')
                 frame.item.set_line_width(3)
 
-    def set_frame_velocity(self, value):
+    def set_frame_lin_vel(self, value):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
-            self.key_frames[current_index].velociy = value
+            self.key_frames[current_index].linear_velociy = value
+
+    def set_frame_ang_vel(self, value):
+        current_index = self.frame_list.currentRow()
+        if current_index >= 0:
+            self.key_frames[current_index].angular_velocity = value
 
     def set_frame_stop_time(self, value):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
             self.key_frames[current_index].stop_time = value
+
+    def create_frames(self):
+        frames = []
+        for i in range(len(self.key_frames) - 1):
+            current_frame = self.key_frames[i]
+            next_frame = self.key_frames[i + 1]
+            Ts = q3d.interpolate_pose(current_frame.Twc, next_frame.Twc,
+                                      current_frame.linear_velociy,
+                                      current_frame.angular_velocity,
+                                      current_frame.stop_time)
+            frames.extend(Ts)
 
     def toggle_playback(self):
         if self.is_playing:
@@ -196,8 +224,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", help="the cloud file path")
     args = parser.parse_args()
-    app = q3d.QApplication(['Cloud Viewer'])
-    viewer = Viewer2(name='Cloud Viewer')
+    app = q3d.QApplication(['Cloud Movie Maker'])
+    viewer = CMMViewer(name='Cloud Movie Maker')
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)

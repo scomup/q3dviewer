@@ -3,7 +3,144 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
+"""
+Math proofs and implementations: 
+https://github.com/scomup/MathematicalRobotics.git
+"""
+
+
 import numpy as np
+
+
+_epsilon_ = 1e-5
+
+
+def skew(vector):
+    return np.array([[0, -vector[2], vector[1]],
+                     [vector[2], 0, -vector[0]],
+                     [-vector[1], vector[0], 0]])
+
+
+
+def expSO3(omega):
+    """
+    Exponential map of SO3
+    The proof is shown in 3d_rotation_group.md (10)
+    """
+    theta2 = omega.dot(omega)
+    theta = np.sqrt(theta2)
+    nearZero = theta2 <= _epsilon_
+    W = skew(omega)
+    if (nearZero):
+        return np.eye(3) + W
+    else:
+        K = W/theta
+        KK = K.dot(K)
+        sin_theta = np.sin(theta)
+        one_minus_cos = 1 - np.cos(theta)
+        R = np.eye(3) + sin_theta * K + one_minus_cos * KK  # rotation.md (10)
+        return R
+
+
+def logSO3(R):
+    """
+    Logarithm map of SO3
+    The proof is shown in rotation.md (14)
+    """
+    R11, R12, R13 = R[0, :]
+    R21, R22, R23 = R[1, :]
+    R31, R32, R33 = R[2, :]
+    tr = np.trace(R)
+    omega = np.zeros(3)
+    v = np.array([R32 - R23, R13 - R31, R21 - R12])
+    # when trace == -1, i.e., the theta is approx to +-pi, +-3pi, +-5pi, etc.
+    # we do something special
+    if (tr + 1.0 < 1e-3):
+        if (R33 > R22 and R33 > R11):
+            # R33 is largest
+            # sin(theta) approx to sgn_w*pi-theta, cos(theta) approx to -1
+            W = R21 - R12  # 2*r3*sin(theta) = 2*r3*(sgn_w*pi-theta)
+            Q1 = R31 + R13          # 4 * r1*r3
+            Q2 = R23 + R32          # 4 * r2*r3
+            Q3 = 2.0 + 2.0 * R33    # 4 * r3*r3
+            r = np.sqrt(Q3)         # 2 * r3
+            one_over_r = 1 / r      # 1 / (2*r3)
+            norm = np.sqrt(Q1*Q1 + Q2*Q2 + Q3*Q3 + W*W)  # 4*r3
+            sgn_w = np.sign(W)      # get the sgn of theta
+            mag = np.pi - (2 * sgn_w * W) / norm   # theta*sgn_w
+            scale = 0.5 * mag * one_over_r  # theta * sgn_w / (4*r3)
+            # omega = theta * [4*r1*r3, 4*r2*r3, 4*r3*r3]/ (4*r3)
+            omega = sgn_w * scale * np.array([Q1, Q2, Q3])
+        elif (R22 > R11):
+            # R22 is the largest
+            W = R13 - R31  # 2*r2*sin(theta) = 2*r2*(sgn_w*pi-theta)
+            Q1 = R12 + R21        # 4 * r2*r1
+            Q2 = 2.0 + 2.0 * R22  # 4 * r2*r2
+            Q3 = R23 + R32        # 4 * r2*r3
+            r = np.sqrt(Q2)
+            one_over_r = 1 / r
+            norm = np.sqrt(Q1*Q1 + Q2*Q2 + Q3*Q3 + W*W)
+            sgn_w = np.sign(W)
+            mag = np.pi - (2 * sgn_w * W) / norm
+            scale = 0.5 * one_over_r * mag
+            omega = sgn_w * scale * np.array([Q1, Q2, Q3])
+        else:
+            # R11 is the largest
+            W = R32 - R23  # 2*r1*sin(theta) = 2*r1*(sgn_w*pi-theta)
+            Q1 = 2.0 + 2.0 * R11 # 4 * r1*r1
+            Q2 = R12 + R21       # 4 * r1*r2
+            Q3 = R31 + R13       # 4 * r1*r3
+            r = np.sqrt(Q1)
+            one_over_r = 1 / r
+            norm = np.sqrt(Q1*Q1 + Q2*Q2 + Q3*Q3 + W*W)
+            sgn_w = np.sign(W)
+            mag = np.pi - (2 * sgn_w * W) / norm
+            scale = 0.5 * one_over_r * mag
+            omega = sgn_w * scale * np.array([Q1, Q2, Q3])
+    else:
+        magnitude = 0
+        tr_3 = tr - 3.0
+        if (tr_3 < -1e-6):
+            # this is the normal case -1 < trace < 3
+            theta = np.arccos((tr - 1.0) / 2.0)
+            magnitude = theta / (2.0 * np.sin(theta))
+        else:
+            # when theta near 0, +-2pi, +-4pi, etc. (trace near 3.0)
+            # use Taylor expansion: theta \approx 1/2-(t-3)/12 + O((t-3)^2)
+            # see https://github.com/borglab/gtsam/issues/746 for details
+            magnitude = 0.5 - tr_3 / 12.0 + tr_3*tr_3/60.0
+        omega = magnitude * np.array([R32 - R23, R13 - R31, R21 - R12])
+    return omega
+
+
+def interpolate_pose(T1, T2, v_max, omega_max, dt=0.1):
+    R1, t1 = makeRt(T1)
+    R2, t2 = makeRt(T2)
+    
+    # Get transfrom time based on linear velocity
+    d = np.linalg.norm(t2 - t1)
+    t_lin = d / v_max
+    
+    # Get transform time based on angular velocity
+    omega = logSO3(R2 @ R1.T)
+    theta = np.linalg.norm(omega)
+    t_ang = theta / omega_max
+    
+    # Get total time based on the linear and angular time.
+    t_total = max(t_lin, t_ang)
+    num_steps = int(np.ceil(t_total / dt))
+    
+    # Generate interpolated transforms
+    interpolated_Ts = []
+    for i in range(num_steps + 1):
+        s = i / num_steps
+        t_interp = (1 - s) * t1 + s * t2
+        # Interpolate rotation using SO3.
+        R_interp = expSO3(s * omega) @ R1
+        T_interp = makeT(R_interp, t_interp)
+        interpolated_Ts.append(T_interp)
+    
+    return interpolated_Ts
 
 
 def frustum(left, right, bottom, top, near, far):

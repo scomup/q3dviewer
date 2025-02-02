@@ -5,6 +5,11 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
+"""
+this script tests the rendering of a cloud in a camera frame based on the 
+camera pose and intrinsic matrix
+"""
+
 import numpy as np
 import q3dviewer as q3d
 import cv2
