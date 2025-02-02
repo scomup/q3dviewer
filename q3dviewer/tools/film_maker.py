@@ -17,6 +17,15 @@ import imageio.v2 as imageio
 import os
 
 
+def recover_center_euler(Twc, dist):
+    Rwc = Twc[:3, :3]  # Extract rotation
+    twc = Twc[:3, 3]   # Extract translation
+    tco = np.array([0, 0, dist])  # Camera frame origin
+    two = twc - Rwc @ tco  # Compute center
+    euler = q3d.matrix_to_euler(Rwc)
+    return two, euler
+
+
 class KeyFrame:
     def __init__(self, Twc, lin_vel=10, ang_vel=np.pi/3, stop_time=0):
         self.Twc = Twc
@@ -160,7 +169,7 @@ class CMMViewer(q3d.Viewer):
         # visualize this key frame using FrameItem
         self.glwidget.add_item(key_frame.item)
         # move the camera back to 0.5 meter, let the user see the frame
-        self.glwidget.update_dist(0.5)
+        # self.glwidget.update_dist(0.5)
         # Add the key frame to the Qt ListWidget
         item = QListWidgetItem(f"Frame {len(self.key_frames)}")
         self.frame_list.addItem(item)
@@ -216,15 +225,13 @@ class CMMViewer(q3d.Viewer):
         self.key_frames[current_index].stop_time = value
 
     def on_double_click_frame(self, item):
-        """
-        TODO: Implement this function to set the camera position to the selected frame.
-        """
         current_index = self.frame_list.row(item)
         if current_index < 0:
             return
-        # self.glwidget.set_cam_position(center=glw_params['center'],
-        #                                distance=glw_params['distance'],
-        #                                euler=glw_params['euler'])
+        Twc = self.key_frames[current_index].Twc
+        center, euler = recover_center_euler(Twc, self.glwidget.dist)
+        self.glwidget.set_cam_position(center=center,
+                                       euler=euler)
 
 
     def create_frames(self):
