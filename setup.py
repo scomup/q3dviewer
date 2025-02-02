@@ -17,7 +17,8 @@ setup(
         'pypcd4',
         'pye57',
         'laspy',
-        ],
+        'imageio',
+    ],
     entry_points={
         'console_scripts': [
             'cloud_viewer = q3dviewer.tools.cloud_viewer:main',

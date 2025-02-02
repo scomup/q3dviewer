@@ -17,13 +17,13 @@ import imageio.v2 as imageio
 import os
 
 
-class Frame:
-    def __init__(self, Tcw, item):
-        self.Twc = Tcw # from world to camera
-        self.linear_velociy = 10
+class KeyFrame:
+    def __init__(self, Twc):
+        self.Twc = Twc
+        self.linear_velocity = 10
         self.angular_velocity = 1
         self.stop_time = 0
-        self.item = item
+        self.item = q3d.FrameItem(Twc, width=3, color='#0000FF')
 
 
 class CustomGLWidget(GLWidget):
@@ -46,11 +46,7 @@ class CMMViewer(q3d.Viewer):
         self.key_frames = []
         self.video_path = os.path.join(os.path.expanduser("~"), "output.mp4")
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.play_frames)
-        self.current_frame_index = 0
-        self.is_playing = False
-        self.is_recording = False
+        # for drop cloud file
         self.setAcceptDrops(True)
 
     def add_control_panel(self, main_layout):
@@ -72,6 +68,13 @@ class CMMViewer(q3d.Viewer):
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self.toggle_playback)
         setting_layout.addWidget(self.play_button)
+
+        # add a timer to play the frames
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.play_frames)
+        self.current_frame_index = 0
+        self.is_playing = False
+        self.is_recording = False
 
         # Add record checkbox
         self.record_checkbox = QCheckBox("Record")
@@ -116,24 +119,23 @@ class CMMViewer(q3d.Viewer):
         setting_layout.setAlignment(QtCore.Qt.AlignTop)
         main_layout.addLayout(setting_layout)
 
+
     def update_video_path(self, path):
         self.video_path = path
 
     def add_key_frame(self):
         view_matrix = self.glwidget.view_matrix
-
         # Get camera pose in world frame
         Twc = np.linalg.inv(view_matrix)
-        # add a FrameItem to the scene
-        frame_item = q3d.FrameItem(Twc, width=3, color='#0000FF')
-        self.glwidget.add_item(frame_item)
+        # Add the key frame to the list
+        key_frame = KeyFrame(Twc)
+        current_index = self.frame_list.currentRow()
+        self.key_frames.insert(current_index + 1, key_frame)
+        # visualize this key frame using FrameItem
+        self.glwidget.add_item(key_frame.item)
         # move the camera back to 0.5 meter, let the user see the frame
         self.glwidget.update_dist(0.5)
-
-        # Add the key frame to the list
-        current_index = self.frame_list.currentRow()
-        frame = Frame(Twc, frame_item)
-        self.key_frames.insert(current_index + 1, frame)
+        # Add the key frame to the Qt ListWidget
         item = QListWidgetItem(f"Frame {current_index + 2}")
         self.frame_list.insertItem(current_index + 1, item)
         self.frame_list.setCurrentRow(current_index + 1)
@@ -152,15 +154,18 @@ class CMMViewer(q3d.Viewer):
             self.on_select_frame()
         # Update frame labels
         for i in range(len(self.key_frames)):
+            
             self.frame_list.item(i).setText(f"Frame {i + 1}")
     
     def on_select_frame(self):
         current = self.frame_list.currentRow()
         for i, frame in enumerate(self.key_frames):
             if i == current:
+                # Highlight the selected frame
                 frame.item.set_color('#FF0000')
                 frame.item.set_line_width(5)
-                self.lin_vel_spinbox.setValue(frame.linear_velociy)
+                # show current frame's parameters in the spinboxes
+                self.lin_vel_spinbox.setValue(frame.linear_velocity)
                 self.lin_ang_spinbox.setValue(frame.angular_velocity)
                 self.stop_time_spinbox.setValue(frame.stop_time)
             else:
@@ -170,7 +175,7 @@ class CMMViewer(q3d.Viewer):
     def set_frame_lin_vel(self, value):
         current_index = self.frame_list.currentRow()
         if current_index >= 0:
-            self.key_frames[current_index].linear_velociy = value
+            self.key_frames[current_index].linear_velocity = value
 
     def set_frame_ang_vel(self, value):
         current_index = self.frame_list.currentRow()
@@ -183,16 +188,26 @@ class CMMViewer(q3d.Viewer):
             self.key_frames[current_index].stop_time = value
 
     def create_frames(self):
+        """
+        Create the frames for playback by interpolating between key frames.
+        """
         self.frames = []
         dt = 1 / float(self.update_interval)
         for i in range(len(self.key_frames) - 1):
             current_frame = self.key_frames[i]
+            if current_frame.stop_time > 0:
+                num_steps = int(current_frame.stop_time / dt)
+                for j in range(num_steps):
+                    self.frames.append(current_frame.Twc)
             next_frame = self.key_frames[i + 1]
             Ts = q3d.interpolate_pose(current_frame.Twc, next_frame.Twc,
-                                      current_frame.linear_velociy,
+                                      current_frame.linear_velocity,
                                       current_frame.angular_velocity,
                                       dt)
             self.frames.extend(Ts)
+        
+        print(f"Total frames: {len(self.frames)}")
+        print(f"Total time: {len(self.frames) * dt:.2f} seconds")
 
     def toggle_playback(self):
         if self.is_playing:
@@ -209,6 +224,8 @@ class CMMViewer(q3d.Viewer):
             self.play_button.setStyleSheet("")
             self.play_button.setText("Stop")
             self.record_checkbox.setEnabled(False)
+            if self.is_recording is True:
+                self.start_recording()
 
     def stop_playback(self):
         self.timer.stop()
@@ -216,22 +233,21 @@ class CMMViewer(q3d.Viewer):
         self.play_button.setStyleSheet("")
         self.play_button.setText("Play")
         self.record_checkbox.setEnabled(True)
+        if self.is_recording:
+            self.stop_recording()
 
     def play_frames(self):
-        if self.is_recording is True and self.current_frame_index == 0:
-            self.start_recording()
-
+        """
+        callback function for the timer to play the frames
+        """
+        # play the frames
         if self.current_frame_index < len(self.frames):
             self.glwidget.set_view_matrix(np.linalg.inv(self.frames[self.current_frame_index]))
             self.current_frame_index += 1
             if self.is_recording:
                 self.record_frame()
         else:
-            self.timer.stop()
-            self.is_playing = False
-            self.record_checkbox.setEnabled(True)
-            if self.is_recording:
-                self.stop_recording()
+            self.stop_playback()
 
     def toggle_recording(self, state):
         if state == 2:
@@ -247,13 +263,17 @@ class CMMViewer(q3d.Viewer):
         self.play_button.setText("Recording")
         self.writer = imageio.get_writer(video_path, fps=self.update_interval,
                                          codec="libx264", bitrate="5M", quality=10)
+        # disable the all the frame_item while recording
+        for frame in self.key_frames:
+            frame.item.hide()
 
-    def stop_recording(self):
+    def stop_recording(self, save_movie=True):
         self.is_recording = False
-        self.play_button.setStyleSheet("")
-        self.play_button.setText("Play")
         self.record_checkbox.setChecked(False)
-        if hasattr(self, 'writer'):
+        # enable the all the frame_item after recording
+        for frame in self.key_frames:
+            frame.item.show()
+        if hasattr(self, 'writer') and save_movie:
             self.writer.close()
             self.show_save_message()
 
@@ -267,9 +287,18 @@ class CMMViewer(q3d.Viewer):
 
     def record_frame(self):
         frame = self.glwidget.capture_frame()
+        # make sure the frame size is multiple of 16
+        height, width, _ = frame.shape
+        if height % 16 != 0 or width % 16 != 0:
+            frame = frame[:-(height % 16), :-(width % 16), :]
+            frame = np.ascontiguousarray(frame)
         self.frames_to_record.append(frame)
-        print(f"Recorded frame {len(self.frames_to_record)}")
-        self.writer.append_data(frame)
+        try:
+            self.writer.append_data(frame)
+        except Exception as e:
+            print("Don't change the window size during recording.")
+            self.stop_recording(False) # Stop recording without saving
+            self.stop_playback()
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.KeyPress:

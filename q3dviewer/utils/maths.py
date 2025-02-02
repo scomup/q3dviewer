@@ -21,7 +21,6 @@ def skew(vector):
                      [-vector[1], vector[0], 0]])
 
 
-
 def expSO3(omega):
     """
     Exponential map of SO3
@@ -132,7 +131,7 @@ def interpolate_pose(T1, T2, v_max, omega_max, dt=0.02):
     
     # Generate interpolated transforms
     interpolated_Ts = []
-    for i in range(num_steps + 1):
+    for i in range(num_steps):
         s = i / num_steps
         t_interp = (1 - s) * t1 + s * t2
         # Interpolate rotation using SO3.
