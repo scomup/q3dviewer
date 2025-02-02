@@ -261,7 +261,7 @@ def main():
 
     app = q3d.QApplication(["LiDAR Calib"])
     viewer = LiDARCalibViewer(name='LiDAR Calib')
-    grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
+    grid_item = q3d.GridItem(size=10, spacing=1, color='#00000040')
     scan0_item = q3d.CloudItem(
         size=2, alpha=1, color_mode='FLAT', color='#ff0000')
     scan1_item = q3d.CloudItem(

@@ -282,7 +282,7 @@ def main():
 
     app = q3d.QApplication(['LiDAR Cam Calib'])
     viewer = LidarCamViewer(name='LiDAR Cam Calib')
-    grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
+    grid_item = q3d.GridItem(size=10, spacing=1, color='#00000040')
     scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.add_items({'scan': scan_item, 'grid': grid_item, 'img': img_item})
