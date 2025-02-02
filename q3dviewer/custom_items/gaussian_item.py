@@ -35,8 +35,8 @@ class GaussianItem(BaseItem):
             self.sort = self.openg_sort
 
     def add_setting(self, layout):
-        label1 = QLabel("set render mode:")
-        layout.addWidget(label1)
+        label_render_mode = QLabel("Render Mode:")
+        layout.addWidget(label_render_mode)
         combo = QComboBox()
         combo.addItem("render normal guassian")
         combo.addItem("render ball")
@@ -168,7 +168,7 @@ class GaussianItem(BaseItem):
 
     def paint(self):
         # get current view matrix
-        self.view_matrix = self.glwidget().get_view_matrix()
+        self.view_matrix = self.glwidget().view_matrix
 
         # if gaussian data is update, renew vao, ssbo, etc...
         self.updateGS()

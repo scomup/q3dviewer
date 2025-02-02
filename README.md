@@ -63,7 +63,22 @@ roscore &
 ros_viewer
 ```
 
-### 3. Gaussian Viewer
+### 3. Film Maker
+
+Would you like to create a video from point cloud data? With Film Maker, you can easily create videos with simple operations. Just edit keyframes using the user-friendly GUI, and the software will automatically interpolate the keyframes to generate the video.
+
+```sh
+film_maker # drag and drop your cloud file to the window
+```
+
+* Space key to add a keyframe.
+* Delete key to remove a keyframe.
+
+Film Maker GUI: 
+
+![Screenshot from 2025-02-02 18-20-51.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/a1a6ad63-237c-482e-439d-e760223c59ca.png)
+
+### 4. Gaussian Viewer
 
 A simple viewer for 3D Gaussians. See [EasyGaussianSplatting](https://github.com/scomup/EasyGaussianSplatting) for more information.
 
@@ -73,7 +88,7 @@ gaussian_viewer  # Drag and drop your Gaussian file onto the window
 
 ![Gaussian Viewer GIF](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/441e6f5a-214d-f7c1-11bf-5fa79e63b38e.gif)
 
-### 4. LiDAR-LiDAR Calibration Tools
+### 5. LiDAR-LiDAR Calibration Tools
 
 A tool to compute the relative pose between two LiDARs. It allows for both manual adjustment in the settings screen and automatic calibration.
 
@@ -83,7 +98,7 @@ lidar_calib --lidar0=/YOUR_LIDAR0_TOPIC --lidar1=/YOUR_LIDAR1_TOPIC
 
 ![LiDAR Calibration](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/5a8a9903-a42a-8322-1d23-0cbecd3fa99a.png)
 
-### 5. LiDAR-Camera Calibration Tools
+### 6. LiDAR-Camera Calibration Tools
 
 A tool for calculating the relative pose between a LiDAR and a camera. It allows for manual adjustment in the settings screen and real-time verification of LiDAR point projection onto images.
 

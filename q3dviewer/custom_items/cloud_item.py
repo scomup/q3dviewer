@@ -20,7 +20,11 @@ from PySide6.QtGui import QRegularExpressionValidator
 
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
-    def __init__(self, size, alpha, color_mode='I', color='#ffffff', point_type='PIXEL'):
+    def __init__(self, size, alpha, 
+                 color_mode='I', 
+                 color='#ffffff', 
+                 point_type='PIXEL', 
+                 depth_test=False):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
@@ -42,11 +46,11 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
         self.max_cloud_size = 300000000
         # Enable depth test when full opaque
-        self.depth_test_enabled = (alpha == 1)
+        self.depth_test = depth_test
         self.path = os.path.dirname(__file__)
 
     def add_setting(self, layout):
-        label_ptype = QLabel("Set point display type:")
+        label_ptype = QLabel("Point Type:")
         layout.addWidget(label_ptype)
         combo_ptype = QComboBox()
         combo_ptype.addItem("pixels")
@@ -55,26 +59,25 @@ class CloudItem(BaseItem):
         combo_ptype.setCurrentIndex(self.point_type_table[self.point_type])
         combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
-        self.label_size = QLabel("Set size: (pixel)")
-        layout.addWidget(self.label_size)
+
         self.box_size = QDoubleSpinBox()
+        self.box_size.setPrefix("Size: ")
         self.box_size.setSingleStep(1)
         self.box_size.setDecimals(0)
-        layout.addWidget(self.box_size)
         self.box_size.setValue(self.size)
-        self.box_size.valueChanged.connect(self.set_size)
         self.box_size.setRange(0, 100)
+        self.box_size.valueChanged.connect(self.set_size)
+        layout.addWidget(self.box_size)
 
-        label_alpha = QLabel("Set Alpha:")
-        layout.addWidget(label_alpha)
         box_alpha = QDoubleSpinBox()
-        layout.addWidget(box_alpha)
+        box_alpha.setPrefix("Alpha: ")
         box_alpha.setSingleStep(0.01)
         box_alpha.setValue(self.alpha)
-        box_alpha.valueChanged.connect(self.set_alpha)
         box_alpha.setRange(0, 1)
+        box_alpha.valueChanged.connect(self.set_alpha)
+        layout.addWidget(box_alpha)
 
-        label_color = QLabel("Set ColorMode:")
+        label_color = QLabel("Color Mode:")
         layout.addWidget(label_color)
         self.combo_color = QComboBox()
         self.combo_color.addItem("flat color")
@@ -84,6 +87,8 @@ class CloudItem(BaseItem):
         self.combo_color.currentIndexChanged.connect(self._on_color_mode)
         layout.addWidget(self.combo_color)
 
+        label_rgb = QLabel("Color:")
+        layout.addWidget(label_rgb)
         self.edit_rgb = QLineEdit()
         self.edit_rgb.setToolTip("Hex number, i.e. #FF4500")
         self.edit_rgb.setText(f"#{self.flat_rgb:06x}")
@@ -96,14 +101,11 @@ class CloudItem(BaseItem):
         self.slider_v = RangeSlider()
         self.slider_v.setRange(0, 255)
         self.slider_v.rangeChanged.connect(self._on_range)
-
         layout.addWidget(self.slider_v)
-        self.combo_color.setCurrentIndex(self.color_mode)
 
-        # Add a checkbox for enabling/disabling depth test
         self.checkbox_depth_test = QCheckBox(
             "Show front points first (Depth Test)")
-        self.checkbox_depth_test.setChecked(self.depth_test_enabled)
+        self.checkbox_depth_test.setChecked(self.depth_test)
         self.checkbox_depth_test.stateChanged.connect(self.set_depthtest)
         layout.addWidget(self.checkbox_depth_test)
 
@@ -136,13 +138,13 @@ class CloudItem(BaseItem):
     def _on_point_type_selection(self, index):
         self.point_type = list(self.point_type_table.keys())[index]
         if self.point_type == 'PIXEL':
-            self.label_size.setText("Set size: (pixel)")
+            self.box_size.setPrefix("Set size (pixel): ")
             self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
             self.box_size.setValue(1)
             self.size = 1
         else:
-            self.label_size.setText("Set size: (meter)")
+            self.box_size.setPrefix("Set size (meter): ")
             self.box_size.setDecimals(2)
             self.box_size.setSingleStep(0.01)
             self.box_size.setValue(0.01)
@@ -172,7 +174,7 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
 
     def set_depthtest(self, state):
-        self.depth_test_enabled = state
+        self.depth_test = state
 
     def clear(self):
         data = np.empty((0), self.data_type)
@@ -285,7 +287,7 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        if self.depth_test_enabled:
+        if self.depth_test:
             glEnable(GL_DEPTH_TEST)
         else:
             glDisable(GL_DEPTH_TEST)
@@ -318,5 +320,5 @@ class CloudItem(BaseItem):
         glDisable(GL_POINT_SPRITE)
         glDisable(GL_PROGRAM_POINT_SIZE)
         glDisable(GL_BLEND)
-        if self.depth_test_enabled:
+        if self.depth_test:
             glDisable(GL_DEPTH_TEST)  # Disable depth testing if it was enabled

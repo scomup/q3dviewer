@@ -4,11 +4,9 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from q3dviewer.base_item import BaseItem
-from q3dviewer.utils import set_uniform
 from OpenGL.GL import *
 import numpy as np
-from OpenGL.GL import shaders
-from PySide6.QtWidgets import QLabel, QDoubleSpinBox
+from PySide6.QtWidgets import QDoubleSpinBox
 
 
 class AxisItem(BaseItem):
@@ -37,23 +35,21 @@ class AxisItem(BaseItem):
 
 
     def add_setting(self, layout):
-        label_size = QLabel("Set size:")
-        layout.addWidget(label_size)
         spinbox_size = QDoubleSpinBox()
+        spinbox_size.setPrefix("Size: ")
         spinbox_size.setSingleStep(0.1)
-        layout.addWidget(spinbox_size)
         spinbox_size.setValue(self.size)
-        spinbox_size.valueChanged.connect(self.set_size)
         spinbox_size.setRange(0.0, 100)
+        spinbox_size.valueChanged.connect(self.set_size)
+        layout.addWidget(spinbox_size)
 
-        label_width = QLabel("Set width:")
-        layout.addWidget(label_width)
         spinbox_width = QDoubleSpinBox()
-        layout.addWidget(spinbox_width)
+        spinbox_width.setPrefix("Width: ")
         spinbox_width.setSingleStep(0.1)
         spinbox_width.setValue(self.width)
-        spinbox_width.valueChanged.connect(self.set_width)
         spinbox_width.setRange(0, 1000)
+        spinbox_width.valueChanged.connect(self.set_width)
+        layout.addWidget(spinbox_width)
 
     def set_size(self, size):
         self.size = size

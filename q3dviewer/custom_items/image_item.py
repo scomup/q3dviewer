@@ -154,9 +154,8 @@ class ImageItem(BaseItem):
         glDisable(GL_BLEND)
 
     def add_setting(self, layout):
-        alpha_label = QLabel("Set Alpha:")
-        layout.addWidget(alpha_label)
         spinbox_alpha = QSpinBox()
+        spinbox_alpha.setPrefix("Alpha: ")
         spinbox_alpha.setSingleStep(1)
         spinbox_alpha.setRange(0, 255)
         spinbox_alpha.setValue(self.alpha)

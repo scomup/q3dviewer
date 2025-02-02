@@ -9,17 +9,24 @@ from PySide6.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
 import numpy as np
+from q3dviewer.utils.maths import hex_to_rgba
 
 
 class GridItem(BaseItem):
-    def __init__(self, size=100, spacing=20, color=np.array([255, 255, 255, 76.5]), offset=np.array([0., 0., 0.])):
+    def __init__(self, size=100, spacing=20, color='#ffffff40', offset=np.array([0., 0., 0.])):
         super().__init__()
         self.size = size
         self.spacing = spacing
-        self.color = color
         self.offset = offset
         self.need_update_grid = True
+        self.set_color(color)
         self.vertices = self.generate_grid_vertices()
+
+    def set_color(self, color):
+        try:
+            self.rgba = hex_to_rgba(color)
+        except ValueError:
+            pass
 
     def generate_grid_vertices(self):
         vertices = []
@@ -46,44 +53,42 @@ class GridItem(BaseItem):
         glBindVertexArray(0)
 
     def add_setting(self, layout):
-        label_size = QLabel("Set size:")
-        layout.addWidget(label_size)
         spinbox_size = QDoubleSpinBox()
+        spinbox_size.setPrefix("Size: ")
         spinbox_size.setSingleStep(1.0)
-        layout.addWidget(spinbox_size)
         spinbox_size.setValue(self.size)
-        spinbox_size.valueChanged.connect(self.set_size)
         spinbox_size.setRange(0, 100000)
+        spinbox_size.valueChanged.connect(self.set_size)
+        layout.addWidget(spinbox_size)
 
-        label_spacing = QLabel("Set spacing:")
-        layout.addWidget(label_spacing)
         spinbox_spacing = QDoubleSpinBox()
-        layout.addWidget(spinbox_spacing)
+        spinbox_spacing.setPrefix("Spacing: ")
         spinbox_spacing.setSingleStep(0.1)
         spinbox_spacing.setValue(self.spacing)
-        spinbox_spacing.valueChanged.connect(self._on_spacing)
         spinbox_spacing.setRange(0, 1000)
+        spinbox_spacing.valueChanged.connect(self._on_spacing)
+        layout.addWidget(spinbox_spacing)
 
-        label_offset = QLabel("Set offset (x, y, z):")
-        layout.addWidget(label_offset)
+        spinbox_offset_x = QDoubleSpinBox()
+        spinbox_offset_x.setPrefix("Offset X: ")
+        spinbox_offset_x.setSingleStep(0.1)
+        spinbox_offset_x.setValue(self.offset[0])
+        spinbox_offset_x.valueChanged.connect(self._on_offset_x)
+        layout.addWidget(spinbox_offset_x)
         
-        self.spinbox_offset_x = QDoubleSpinBox()
-        self.spinbox_offset_x.setSingleStep(0.1)
-        self.spinbox_offset_x.setValue(self.offset[0])
-        self.spinbox_offset_x.valueChanged.connect(self._on_offset_x)
-        layout.addWidget(self.spinbox_offset_x)
+        spinbox_offset_y = QDoubleSpinBox()
+        spinbox_offset_y.setPrefix("Offset Y: ")
+        spinbox_offset_y.setSingleStep(0.1)
+        spinbox_offset_y.setValue(self.offset[1])
+        spinbox_offset_y.valueChanged.connect(self._on_offset_y)
+        layout.addWidget(spinbox_offset_y)
         
-        self.spinbox_offset_y = QDoubleSpinBox()
-        self.spinbox_offset_y.setSingleStep(0.1)
-        self.spinbox_offset_y.setValue(self.offset[1])
-        self.spinbox_offset_y.valueChanged.connect(self._on_offset_y)
-        layout.addWidget(self.spinbox_offset_y)
-        
-        self.spinbox_offset_z = QDoubleSpinBox()
-        self.spinbox_offset_z.setSingleStep(0.1)
-        self.spinbox_offset_z.setValue(self.offset[2])
-        self.spinbox_offset_z.valueChanged.connect(self._on_offset_z)
-        layout.addWidget(self.spinbox_offset_z)
+        spinbox_offset_z = QDoubleSpinBox()
+        spinbox_offset_z.setPrefix("Offset Z: ")
+        spinbox_offset_z.setSingleStep(0.1)
+        spinbox_offset_z.setValue(self.offset[2])
+        spinbox_offset_z.valueChanged.connect(self._on_offset_z)
+        layout.addWidget(spinbox_offset_z)
 
     def set_size(self, size):
         self.size = size
@@ -122,10 +127,9 @@ class GridItem(BaseItem):
         
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
 
         glLineWidth(1)
-        glColor4f(self.color[0] / 255.0, self.color[1] / 255.0, self.color[2] / 255.0, self.color[3] / 255.0)
+        glColor4f(*self.rgba)
         glBindVertexArray(self.vao)
         glDrawArrays(GL_LINES, 0, len(self.vertices) // 3)
         glBindVertexArray(0)

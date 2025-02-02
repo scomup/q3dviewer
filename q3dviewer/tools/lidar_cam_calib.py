@@ -36,7 +36,7 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return float(text)
 
 
-class ViewerWithPanel(q3d.Viewer):
+class LidarCamViewer(q3d.Viewer):
     def __init__(self, **kwargs):
         # b: camera body frame
         # c: camera image frame
@@ -54,15 +54,15 @@ class ViewerWithPanel(q3d.Viewer):
         self.en_rgb = False
         super().__init__(**kwargs)
 
-    def init_ui(self):
-        center_widget = QWidget()
-        self.setCentralWidget(center_widget)
-        main_layout = QHBoxLayout()
-        center_widget.setLayout(main_layout)
+    def default_gl_setting(self, glwidget):
+        # Set camera position and background color
+        glwidget.set_bg_color('#ffffff')
+        glwidget.set_cam_position(distance=5)
 
+    def add_control_panel(self, main_layout):
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
-
+        setting_layout.setAlignment(QtCore.Qt.AlignTop)
         # Add a checkbox for RGB
         self.checkbox_rgb = QCheckBox("Enable RGB Cloud")
         self.checkbox_rgb.setChecked(False)
@@ -148,19 +148,8 @@ class ViewerWithPanel(q3d.Viewer):
         self.box_pitch.valueChanged.connect(self.update_rpy)
         self.box_yaw.valueChanged.connect(self.update_rpy)
 
-        # Add a stretch to push the widgets to the top
-        setting_layout.addStretch(1)
-
-        self.glwidget = q3d.GLWidget()
         main_layout.addLayout(setting_layout)
-        main_layout.addWidget(self.glwidget, 1)
 
-        timer = QtCore.QTimer(self)
-        timer.setInterval(20)  # period, in milliseconds
-        timer.timeout.connect(self.update)
-        self.glwidget.set_cam_position(distance=5)
-        self.glwidget.set_bg_color('#ffffff')
-        timer.start()
 
     def update_point_size(self):
         self.psize = self.box_psize.value()
@@ -292,7 +281,7 @@ def main():
     args = parser.parse_args()
 
     app = q3d.QApplication(['LiDAR Cam Calib'])
-    viewer = ViewerWithPanel(name='LiDAR Cam Calib')
+    viewer = LidarCamViewer(name='LiDAR Cam Calib')
     grid_item = q3d.GridItem(size=10, spacing=1, color=(0, 0, 0, 70))
     scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
