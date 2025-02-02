@@ -20,7 +20,11 @@ from PySide6.QtGui import QRegularExpressionValidator
 
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
-    def __init__(self, size, alpha, color_mode='I', color='#ffffff', point_type='PIXEL'):
+    def __init__(self, size, alpha, 
+                 color_mode='I', 
+                 color='#ffffff', 
+                 point_type='PIXEL', 
+                 depth_test=False):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
@@ -42,7 +46,7 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
         self.max_cloud_size = 300000000
         # Enable depth test when full opaque
-        self.depth_test_enabled = (alpha == 1)
+        self.depth_test = depth_test
         self.path = os.path.dirname(__file__)
 
     def add_setting(self, layout):
@@ -101,7 +105,7 @@ class CloudItem(BaseItem):
 
         self.checkbox_depth_test = QCheckBox(
             "Show front points first (Depth Test)")
-        self.checkbox_depth_test.setChecked(self.depth_test_enabled)
+        self.checkbox_depth_test.setChecked(self.depth_test)
         self.checkbox_depth_test.stateChanged.connect(self.set_depthtest)
         layout.addWidget(self.checkbox_depth_test)
 
@@ -170,7 +174,7 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
 
     def set_depthtest(self, state):
-        self.depth_test_enabled = state
+        self.depth_test = state
 
     def clear(self):
         data = np.empty((0), self.data_type)
@@ -283,7 +287,7 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        if self.depth_test_enabled:
+        if self.depth_test:
             glEnable(GL_DEPTH_TEST)
         else:
             glDisable(GL_DEPTH_TEST)
@@ -316,5 +320,5 @@ class CloudItem(BaseItem):
         glDisable(GL_POINT_SPRITE)
         glDisable(GL_PROGRAM_POINT_SIZE)
         glDisable(GL_BLEND)
-        if self.depth_test_enabled:
+        if self.depth_test:
             glDisable(GL_DEPTH_TEST)  # Disable depth testing if it was enabled

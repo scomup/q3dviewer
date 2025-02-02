@@ -27,6 +27,7 @@ setup(
             'gaussian_viewer = q3dviewer.tools.gaussian_viewer:main',
             'lidar_cam_calib = q3dviewer.tools.lidar_cam_calib:main',
             'lidar_calib = q3dviewer.tools.lidar_calib:main',
+            'film_maker = q3dviewer.tools.film_maker:main',
         ],
     },
 )
