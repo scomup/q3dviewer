@@ -295,3 +295,12 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         super().resizeEvent(event)
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
+
+    def capture_frame(self):
+        self.makeCurrent()  # Ensure the OpenGL context is current
+        width = self.current_width()
+        height = self.current_height()
+        pixels = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+        frame = np.frombuffer(pixels, dtype=np.uint8).reshape(height, width, 3)
+        frame = np.flip(frame, 0)
+        return frame

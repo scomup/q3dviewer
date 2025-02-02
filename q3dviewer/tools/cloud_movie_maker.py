@@ -7,12 +7,14 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox
+from PySide6.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox, QCheckBox, QLineEdit, QMessageBox, QLabel, QHBoxLayout
 from PySide6.QtCore import QTimer
 from cloud_viewer import ProgressDialog,  FileLoaderThread
 from PySide6 import QtCore
 from PySide6.QtGui import QKeyEvent
 from q3dviewer import GLWidget
+import imageio.v2 as imageio
+import os
 
 
 class Frame:
@@ -42,13 +44,13 @@ class CMMViewer(q3d.Viewer):
     """
     def __init__(self, **kwargs):
         self.key_frames = []
+        self.video_path = os.path.join(os.path.expanduser("~"), "output.mp4")
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
-        self.frame_list.itemSelectionChanged.connect(self.on_select_frame)
-        self.installEventFilter(self)
         self.timer = QTimer()
         self.timer.timeout.connect(self.play_frames)
         self.current_frame_index = 0
         self.is_playing = False
+        self.is_recording = False
         self.setAcceptDrops(True)
 
     def add_control_panel(self, main_layout):
@@ -71,9 +73,26 @@ class CMMViewer(q3d.Viewer):
         self.play_button.clicked.connect(self.toggle_playback)
         setting_layout.addWidget(self.play_button)
 
+        # Add record checkbox
+        self.record_checkbox = QCheckBox("Record")
+        self.record_checkbox.stateChanged.connect(self.toggle_recording)
+        setting_layout.addWidget(self.record_checkbox)
+
+        # Add video path setting
+        video_path_layout = QHBoxLayout()
+        label_video_path = QLabel("Video Path:")
+        video_path_layout.addWidget(label_video_path)
+        self.video_path_edit = QLineEdit()
+        self.video_path_edit.setText(self.video_path)
+        self.video_path_edit.textChanged.connect(self.update_video_path)
+        video_path_layout.addWidget(self.video_path_edit)
+        setting_layout.addLayout(video_path_layout)
+
         # Add a list of key frames
         self.frame_list = QListWidget()
         setting_layout.addWidget(self.frame_list)
+        self.frame_list.itemSelectionChanged.connect(self.on_select_frame)
+        self.installEventFilter(self)
 
         # Add spin boxes for linear / angular velocity and stop time
         self.lin_vel_spinbox = QDoubleSpinBox()
@@ -96,6 +115,9 @@ class CMMViewer(q3d.Viewer):
         
         setting_layout.setAlignment(QtCore.Qt.AlignTop)
         main_layout.addLayout(setting_layout)
+
+    def update_video_path(self, path):
+        self.video_path = path
 
     def add_key_frame(self):
         view_matrix = self.glwidget.view_matrix
@@ -184,21 +206,70 @@ class CMMViewer(q3d.Viewer):
             self.current_frame_index = 0
             self.timer.start(self.update_interval)  # Adjust the interval as needed
             self.is_playing = True
+            self.play_button.setStyleSheet("")
             self.play_button.setText("Stop")
+            self.record_checkbox.setEnabled(False)
 
     def stop_playback(self):
         self.timer.stop()
         self.is_playing = False
+        self.play_button.setStyleSheet("")
         self.play_button.setText("Play")
+        self.record_checkbox.setEnabled(True)
 
     def play_frames(self):
+        if self.is_recording is True and self.current_frame_index == 0:
+            self.start_recording()
+
         if self.current_frame_index < len(self.frames):
             self.glwidget.set_view_matrix(np.linalg.inv(self.frames[self.current_frame_index]))
             self.current_frame_index += 1
+            if self.is_recording:
+                self.record_frame()
         else:
             self.timer.stop()
             self.is_playing = False
-            self.play_button.setText("Play")
+            self.record_checkbox.setEnabled(True)
+            if self.is_recording:
+                self.stop_recording()
+
+    def toggle_recording(self, state):
+        if state == 2:
+            self.is_recording = True
+        else:
+            self.is_recording = False
+
+    def start_recording(self):
+        self.is_recording = True
+        self.frames_to_record = []
+        video_path = self.video_path_edit.text()
+        self.play_button.setStyleSheet("background-color: red")
+        self.play_button.setText("Recording")
+        self.writer = imageio.get_writer(video_path, fps=self.update_interval,
+                                         codec="libx264", bitrate="5M", quality=10)
+
+    def stop_recording(self):
+        self.is_recording = False
+        self.play_button.setStyleSheet("")
+        self.play_button.setText("Play")
+        self.record_checkbox.setChecked(False)
+        if hasattr(self, 'writer'):
+            self.writer.close()
+            self.show_save_message()
+
+    def show_save_message(self):
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setWindowTitle("Video Saved")
+        msg_box.setText(f"Video saved to {self.video_path_edit.text()}")
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec()
+
+    def record_frame(self):
+        frame = self.glwidget.capture_frame()
+        self.frames_to_record.append(frame)
+        print(f"Recorded frame {len(self.frames_to_record)}")
+        self.writer.append_data(frame)
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.KeyPress:
