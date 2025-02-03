@@ -348,18 +348,22 @@ class CMMViewer(q3d.Viewer):
         
         # restart recording if the window size changes
         if self.prv_frame_shape is not None and frame.shape != self.prv_frame_shape:
-            self.start_recording(False)
+            self.writer.close()
+            self.start_recording()
             return
         self.prv_frame_shape = frame.shape 
 
         height, width, _ = frame.shape
-        if height % 16 != 0 or width % 16 != 0:
-            frame = frame[:-(height % 16), :-(width % 16), :]
-            frame = np.ascontiguousarray(frame)
+        # Adjust frame dimensions to be multiples of 16
+        new_height = height - (height % 16)
+        new_width = width - (width % 16)
+        frame = frame[:new_height, :new_width, :]
+        frame = np.ascontiguousarray(frame)
         try:
             self.writer.append_data(frame)
         except Exception as e:
             # unexpected error, stop recording without saving
+            print("Error while recording:")
             print(e)
             self.stop_recording(False)
             self.stop_playback()
