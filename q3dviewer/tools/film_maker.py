@@ -308,7 +308,7 @@ class CMMViewer(q3d.Viewer):
 
     def start_recording(self):
         self.is_recording = True
-        self.frames_to_record = []
+        self.prv_frame_shape = None
         video_path = self.video_path_edit.text()
         codec = self.codec_combo.currentText()
         self.play_button.setStyleSheet("background-color: red")
@@ -323,6 +323,7 @@ class CMMViewer(q3d.Viewer):
 
     def stop_recording(self, save_movie=True):
         self.is_recording = False
+        self.prv_frame_shape = None
         self.record_checkbox.setChecked(False)
         # enable the all the frame_item after recording
         for frame in self.key_frames:
@@ -342,17 +343,23 @@ class CMMViewer(q3d.Viewer):
 
     def record_frame(self):
         frame = self.glwidget.capture_frame()
-        # make sure the frame size is multiple of 16
+        
+        # restart recording if the window size changes
+        if self.prv_frame_shape is not None and frame.shape != self.prv_frame_shape:
+            self.start_recording(False)
+            return
+        self.prv_frame_shape = frame.shape 
+
         height, width, _ = frame.shape
         if height % 16 != 0 or width % 16 != 0:
             frame = frame[:-(height % 16), :-(width % 16), :]
             frame = np.ascontiguousarray(frame)
-        self.frames_to_record.append(frame)
         try:
             self.writer.append_data(frame)
         except Exception as e:
-            print("Don't change the window size during recording.")
-            self.stop_recording(False) # Stop recording without saving
+            # unexpected error, stop recording without saving
+            print(e)
+            self.stop_recording(False)
             self.stop_playback()
 
     def eventFilter(self, obj, event):
