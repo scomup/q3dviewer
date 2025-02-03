@@ -317,7 +317,9 @@ class CMMViewer(q3d.Viewer):
         self.play_button.setText("Recording")
         self.writer = imageio.get_writer(video_path, 
                                          fps=self.update_interval,
-                                         codec=codec)  # quality=10
+                                         codec=codec,
+                                         quality=10,
+                                         pixelformat='yuvj420p')
         # disable the all the frame_item while recording
         for frame in self.key_frames:
             frame.item.hide()
