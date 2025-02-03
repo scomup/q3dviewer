@@ -67,6 +67,7 @@ class CloudItem(BaseItem):
         self.box_size.setValue(self.size)
         self.box_size.setRange(0, 100)
         self.box_size.valueChanged.connect(self.set_size)
+        self._on_point_type_selection(self.point_type_table[self.point_type])
         layout.addWidget(self.box_size)
 
         box_alpha = QDoubleSpinBox()

@@ -195,33 +195,42 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         # Handle rotation keys
         if QtCore.Qt.Key_Up in self.active_keys:
             self.rotate(radians(rot_speed), 0, 0)
+            self.view_need_update = True
         if QtCore.Qt.Key_Down in self.active_keys:
             self.rotate(radians(-rot_speed), 0, 0)
+            self.view_need_update = True
         if QtCore.Qt.Key_Left in self.active_keys:
             self.rotate(0, 0, radians(rot_speed))
+            self.view_need_update = True
         if QtCore.Qt.Key_Right in self.active_keys:
             self.rotate(0, 0, radians(-rot_speed))
+            self.view_need_update = True
         # Handle zoom keys
         xz_keys = {QtCore.Qt.Key_Z, QtCore.Qt.Key_X}
         if self.active_keys & xz_keys:
             Rwc = euler_to_matrix(self.euler)
             if QtCore.Qt.Key_Z in self.active_keys:
                 self.center += Rwc @ np.array([0, 0, -trans_speed])
+                self.view_need_update = True
             if QtCore.Qt.Key_X in self.active_keys:
                 self.center += Rwc @ np.array([0, 0, trans_speed])
+                self.view_need_update = True
         # Handle translation keys on the z plane
         dir_keys = {QtCore.Qt.Key_W, QtCore.Qt.Key_S, QtCore.Qt.Key_A, QtCore.Qt.Key_D}
         if self.active_keys & dir_keys:
             Rz = euler_to_matrix([0, 0, self.euler[2]])
             if QtCore.Qt.Key_W in self.active_keys:
                 self.center += Rz @ np.array([0, trans_speed, 0])
+                self.view_need_update = True
             if QtCore.Qt.Key_S in self.active_keys:
                 self.center += Rz @ np.array([0, -trans_speed, 0])
+                self.view_need_update = True
             if QtCore.Qt.Key_A in self.active_keys:
                 self.center += Rz @ np.array([-trans_speed, 0, 0])
+                self.view_need_update = True
             if QtCore.Qt.Key_D in self.active_keys:
                 self.center += Rz @ np.array([trans_speed, 0, 0])
-        self.view_need_update = True
+                self.view_need_update = True
 
     def update_model_view(self):
         glMatrixMode(GL_MODELVIEW)

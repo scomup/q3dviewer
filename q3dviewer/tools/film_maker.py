@@ -269,8 +269,8 @@ class CMMViewer(q3d.Viewer):
             self.current_frame_index = 0
             self.timer.start(self.update_interval)  # Adjust the interval as needed
             self.is_playing = True
-            self.play_button.setStyleSheet("")
-            self.play_button.setText("Stop")
+            self.play_button.setStyleSheet("background-color: red")
+            self.play_button.setText("Playing")
             self.record_checkbox.setEnabled(False)
             if self.is_recording is True:
                 self.start_recording()

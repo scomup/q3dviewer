@@ -28,6 +28,7 @@ setup(
         'pye57',
         'laspy',
         'imageio',
+        'imageio[ffmpeg]',
     ],
     entry_points={
         'console_scripts': [
