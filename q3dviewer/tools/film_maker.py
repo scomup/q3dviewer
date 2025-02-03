@@ -143,6 +143,8 @@ class CMMViewer(q3d.Viewer):
         dock_widget = QDockWidget("Settings", self)
         dock_widget.setWidget(QWidget())
         dock_widget.widget().setLayout(setting_layout)
+        # Hide close and undock buttons, I don't want the user to close the dock
+        dock_widget.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock_widget)
 
         # Add the dock widget to the main layout
