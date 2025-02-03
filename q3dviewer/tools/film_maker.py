@@ -107,7 +107,7 @@ class CMMViewer(q3d.Viewer):
         label_codec = QLabel("Codec:")
         codec_layout.addWidget(label_codec)
         self.codec_combo = QComboBox()
-        self.codec_combo.addItems(["mjpeg", "mpeg4", "libx264", "libx265"])
+        self.codec_combo.addItems(["libx264", "mjpeg", "mpeg4", "libx265"])
         codec_layout.addWidget(self.codec_combo)
         setting_layout.addLayout(codec_layout)
 
