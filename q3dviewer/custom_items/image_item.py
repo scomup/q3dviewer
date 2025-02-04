@@ -7,7 +7,6 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 from OpenGL.GL import shaders
-from PIL import Image as PIL_Image
 from PySide6.QtWidgets import QLabel, QSpinBox, QCheckBox
 
 
@@ -108,12 +107,8 @@ class ImageItem(BaseItem):
         glBindVertexArray(0)
 
     def set_data(self, data):
-        if isinstance(data, np.ndarray):
-            pass
-        elif isinstance(data, PIL_Image.Image):
-            data = np.array(data)
-        else:
-            print("not support image type")
+        if not isinstance(data, np.ndarray):
+            print("The image type is not supported.")
             raise NotImplementedError
 
         if data.ndim == 2:  # Grayscale image

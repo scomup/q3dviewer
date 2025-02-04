@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.1.2',
+    version='1.1.3',
     author="Liu Yang",
     description="A library designed for quickly deploying a 3D viewer.",
     long_description=open("README.md").read(),
@@ -22,7 +22,6 @@ setup(
         'numpy',
         'pyside6',
         'PyOpenGL',
-        'pillow',
         'meshio',
         'pypcd4',
         'pye57',
