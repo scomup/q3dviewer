@@ -2,6 +2,11 @@
 
 `q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on Qt (PySide6) and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph but focuses more on efficient 3D rendering.
 
+## Features
+- Efficient 3D rendering: Capable of displaying large-scale 3D data such as point clouds efficiently.
+- Rich settings: Provides a GUI for dynamically adjusting 3D data, allowing for beautiful data visualization.
+- Easy to extend: Quickly develop customized viewers and extend to display your own objects.
+
 ## Installation
 
 To install `q3dviewer`, execute the following command in your terminal on either Linux or Windows:
@@ -30,10 +35,10 @@ Once installed, you can directly use the following tools:
 
 ### 1. Cloud Viewer
 
-A tool for visualizing point cloud files. Launch it by executing the following command in your terminal:
+A tool for visualizing point cloud files (LAS, PCD, PLY, E57). Launch it by executing the following command in your terminal:
 
 ```sh
-cloud_viewer  # The viewer will be displayed
+cloud_viewer
 ```
 
 *Alternatively*, if the path is not set (though it's not recommended):
@@ -42,7 +47,13 @@ cloud_viewer  # The viewer will be displayed
 python3 -m q3dviewer.tools.cloud_viewer
 ```
 
-After the viewer launches, you can drag and drop files onto the window to display the point clouds. Multiple files can be dropped simultaneously to view them together. Supported formats include LAS, PCD, PLY, and E57.
+**Basic Operations**
+* Load files: Drag and drop point cloud files onto the window (multiple files are OK).
+* `M` key: Display the visualization settings screen for point clouds, background color, etc.
+* `Left mouse button` & `W, A, S, D` keys: Move the viewpoint on the horizontal plane.
+* `Z, X` keys: Move in the direction the screen is facing.
+* `Right mouse button` & `Arrow` keys: Rotate the viewpoint while keeping the screen center unchanged.
+* `Shift` + `Right mouse button` & `Arrow` keys: Rotate the viewpoint while keeping the camera position unchanged.
 
 For example, you can download and view point clouds of Tokyo in LAS format from the following link:
 
@@ -68,11 +79,15 @@ ros_viewer
 Would you like to create a video from point cloud data? With Film Maker, you can easily create videos with simple operations. Just edit keyframes using the user-friendly GUI, and the software will automatically interpolate the keyframes to generate the video.
 
 ```sh
-film_maker # drag and drop your cloud file to the window
+film_maker
 ```
 
+**Basic Operations**
+* File loading & viewpoint movement: Same as Cloud_Viewer
 * Space key to add a keyframe.
 * Delete key to remove a keyframe.
+* Play button: Automatically play the video (pressing again will stop playback)
+* Record checkbox: When checked, actions will be automatically recorded during playback
 
 Film Maker GUI: 
 
