@@ -2,10 +2,9 @@
 
 `q3dviewer` is a library designed for quickly deploying a 3D viewer. It is based on Qt (PySide6) and provides efficient OpenGL items for displaying 3D objects (e.g., point clouds, cameras, and 3D Gaussians). You can use it to visualize your 3D data or set up an efficient viewer application. It is inspired by PyQtGraph but focuses more on efficient 3D rendering.
 
-## Features
-- Efficient 3D rendering: Capable of displaying large-scale 3D data such as point clouds efficiently.
-- Rich settings: Provides a GUI for dynamically adjusting 3D data, allowing for beautiful data visualization.
-- Easy to extend: Quickly develop customized viewers and extend to display your own objects.
+
+To show how to use `q3dviewer` as a library, we also provide some [very useful tools](#tools).
+
 
 ## Installation
 
