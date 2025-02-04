@@ -25,7 +25,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.active_keys = set()
         self.show_center = False
         self.enable_show_center = True
-        self.view_need_update = True
+        self.need_recalc_view = True
         self.view_matrix = self.get_view_matrix()
         self.projection_matrix = self.get_projection_matrix()
 
@@ -98,7 +98,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
 
     def set_view_matrix(self, view_matrix):
         self.view_matrix = view_matrix
-        self.view_need_update = False
+        self.need_recalc_view = False
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -106,13 +106,13 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
 
     def set_dist(self, dist):
         self.dist = dist
-        self.view_need_update = True
+        self.need_recalc_view = True
 
     def update_dist(self, delta):
         self.dist += delta
         if self.dist < 0.1:
             self.dist = 0.1
-        self.view_need_update = True
+        self.need_recalc_view = True
 
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
@@ -120,6 +120,24 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
         self.show_center = True
+
+
+    def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
+        """
+        Rotate the camera while keeping the current camera position. 
+        This updates both the Euler angles and the center point.
+        """
+        new_euler = self.euler + np.array([rx, ry, rz])
+        new_euler = (new_euler + np.pi) % (2 * np.pi) - np.pi
+        
+        Rwc_old = euler_to_matrix(self.euler)
+        tco = np.array([0, 0, self.dist])
+        twc = self.center + Rwc_old @ tco
+        
+        Rwc_new = euler_to_matrix(new_euler)
+        self.center = twc - Rwc_new @ tco
+        self.euler = new_euler
+        self.need_recalc_view = True
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -131,24 +149,26 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             rot_speed = 0.2
             dyaw = radians(-diff.x() * rot_speed)
             droll = radians(-diff.y() * rot_speed)
-            self.rotate(droll, 0, dyaw)
+            if ev.modifiers() & QtCore.Qt.ShiftModifier:
+                self.rotate_keep_cam_pos(droll, 0, dyaw)
+            else:
+                self.rotate(droll, 0, dyaw)
         elif ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
             Rwc = euler_to_matrix(self.euler)
             Kinv = np.linalg.inv(self.get_K())
             dist = max(self.dist, 0.5)
-            self.center += Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist
+            self.translate(Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist)
         self.show_center = True
-        self.view_need_update = True
 
     def set_center(self, center):
         self.center = center
-        self.view_need_update = True
+        self.need_recalc_view = True
 
     def paintGL(self):
         # if the camera is moved, update the model view matrix.
-        if self.view_need_update:
+        if self.need_recalc_view:
             self.view_matrix = self.get_view_matrix()
-            self.view_need_update = False
+            self.need_recalc_view = False
         self.update_model_view()
 
         # set the background color
@@ -192,45 +212,48 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
             return
         rot_speed = 0.5
         trans_speed = max(self.dist * 0.005, 0.1)
+        shift_pressed = QtCore.Qt.Key_Shift in self.active_keys
         # Handle rotation keys
         if QtCore.Qt.Key_Up in self.active_keys:
-            self.rotate(radians(rot_speed), 0, 0)
-            self.view_need_update = True
+            if shift_pressed:
+                self.rotate_keep_cam_pos(radians(rot_speed), 0, 0)
+            else:
+                self.rotate(radians(rot_speed), 0, 0)
         if QtCore.Qt.Key_Down in self.active_keys:
-            self.rotate(radians(-rot_speed), 0, 0)
-            self.view_need_update = True
+            if shift_pressed:
+                self.rotate_keep_cam_pos(radians(-rot_speed), 0, 0)
+            else:
+                self.rotate(radians(-rot_speed), 0, 0)
         if QtCore.Qt.Key_Left in self.active_keys:
-            self.rotate(0, 0, radians(rot_speed))
-            self.view_need_update = True
+            if shift_pressed:
+                self.rotate_keep_cam_pos(0, 0, radians(rot_speed))
+            else:
+                self.rotate(0, 0, radians(rot_speed))
         if QtCore.Qt.Key_Right in self.active_keys:
-            self.rotate(0, 0, radians(-rot_speed))
-            self.view_need_update = True
+            if shift_pressed:
+                self.rotate_keep_cam_pos(0, 0, radians(-rot_speed))
+            else:
+                self.rotate(0, 0, radians(-rot_speed))
         # Handle zoom keys
         xz_keys = {QtCore.Qt.Key_Z, QtCore.Qt.Key_X}
         if self.active_keys & xz_keys:
             Rwc = euler_to_matrix(self.euler)
             if QtCore.Qt.Key_Z in self.active_keys:
-                self.center += Rwc @ np.array([0, 0, -trans_speed])
-                self.view_need_update = True
+                self.translate(Rwc @ np.array([0, 0, -trans_speed]))
             if QtCore.Qt.Key_X in self.active_keys:
-                self.center += Rwc @ np.array([0, 0, trans_speed])
-                self.view_need_update = True
+                self.translate(Rwc @ np.array([0, 0, trans_speed]))
         # Handle translation keys on the z plane
         dir_keys = {QtCore.Qt.Key_W, QtCore.Qt.Key_S, QtCore.Qt.Key_A, QtCore.Qt.Key_D}
         if self.active_keys & dir_keys:
             Rz = euler_to_matrix([0, 0, self.euler[2]])
             if QtCore.Qt.Key_W in self.active_keys:
-                self.center += Rz @ np.array([0, trans_speed, 0])
-                self.view_need_update = True
+                self.translate(Rz @ np.array([0, trans_speed, 0]))
             if QtCore.Qt.Key_S in self.active_keys:
-                self.center += Rz @ np.array([0, -trans_speed, 0])
-                self.view_need_update = True
+                self.translate(Rz @ np.array([0, -trans_speed, 0]))
             if QtCore.Qt.Key_A in self.active_keys:
-                self.center += Rz @ np.array([-trans_speed, 0, 0])
-                self.view_need_update = True
+                self.translate(Rz @ np.array([-trans_speed, 0, 0]))
             if QtCore.Qt.Key_D in self.active_keys:
-                self.center += Rz @ np.array([trans_speed, 0, 0])
-                self.view_need_update = True
+                self.translate(Rz @ np.array([trans_speed, 0, 0]))
 
     def update_model_view(self):
         glMatrixMode(GL_MODELVIEW)
@@ -259,7 +282,7 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
     
     def set_euler(self, euler):
         self.euler = euler
-        self.view_need_update = True
+        self.need_recalc_view = True
 
     def set_color(self, color):
         self.color = color
@@ -303,6 +326,11 @@ class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
         self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
         self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
         self.euler[0] = np.clip(self.euler[0], 0, np.pi)
+        self.need_recalc_view = True
+
+    def translate(self, trans):
+        self.center += trans
+        self.need_recalc_view = True
 
     def change_show_center(self, state):
         self.enable_show_center = state
