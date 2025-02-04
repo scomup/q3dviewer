@@ -90,7 +90,9 @@ film_maker
 
 Film Maker GUI: 
 
-![Screenshot from 2025-02-02 18-20-51.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/a1a6ad63-237c-482e-439d-e760223c59ca.png)
+![Peek2025-02-0412-47-ezgif.com-optimize.gif](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/378dca5f-f769-a527-5599-e833d1f669f4.gif)
+
+The demo video demonstrating how to use Film Maker utilizes the [cloud data of Kyobashi Station Area](https://www.geospatial.jp/ckan/dataset/kyoubasiekisyuuhen_las) located in Osaka, Japan.
 
 ### 4. Gaussian Viewer
 

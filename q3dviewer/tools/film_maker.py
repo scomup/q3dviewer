@@ -151,7 +151,6 @@ class CMMViewer(q3d.Viewer):
         main_layout.addWidget(dock_widget)
         self.dock = dock_widget
 
-
     def update_video_path(self, path):
         self.video_path = path
 
@@ -234,7 +233,6 @@ class CMMViewer(q3d.Viewer):
         center, euler = recover_center_euler(Twc, self.glwidget.dist)
         self.glwidget.set_cam_position(center=center,
                                        euler=euler)
-
 
     def create_frames(self):
         """
