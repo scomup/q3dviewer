@@ -90,7 +90,7 @@ film_maker
 
 Film Maker GUI: 
 
-![Peek2025-02-0412-47-ezgif.com-optimize.gif](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/378dca5f-f769-a527-5599-e833d1f669f4.gif)
+![film_maker_demo.gif](imgs/film_maker_demo.gif)
 
 The demo video demonstrating how to use Film Maker utilizes the [cloud data of Kyobashi Station Area](https://www.geospatial.jp/ckan/dataset/kyoubasiekisyuuhen_las) located in Osaka, Japan.
 
