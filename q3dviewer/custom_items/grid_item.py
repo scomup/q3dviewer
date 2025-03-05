@@ -41,16 +41,13 @@ class GridItem(BaseItem):
     def initialize_gl(self):
         self.vao = glGenVertexArrays(1)
         vbo = glGenBuffers(1)
-
         glBindVertexArray(self.vao)
-
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
         glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
-
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
-
         glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def add_setting(self, layout):
         spinbox_size = QDoubleSpinBox()
@@ -73,6 +70,7 @@ class GridItem(BaseItem):
         spinbox_offset_x.setPrefix("Offset X: ")
         spinbox_offset_x.setSingleStep(0.1)
         spinbox_offset_x.setValue(self.offset[0])
+        spinbox_offset_x.setRange(-1000, 1000)
         spinbox_offset_x.valueChanged.connect(self._on_offset_x)
         layout.addWidget(spinbox_offset_x)
         
@@ -80,6 +78,7 @@ class GridItem(BaseItem):
         spinbox_offset_y.setPrefix("Offset Y: ")
         spinbox_offset_y.setSingleStep(0.1)
         spinbox_offset_y.setValue(self.offset[1])
+        spinbox_offset_y.setRange(-1000, 1000)
         spinbox_offset_y.valueChanged.connect(self._on_offset_y)
         layout.addWidget(spinbox_offset_y)
         
@@ -87,6 +86,7 @@ class GridItem(BaseItem):
         spinbox_offset_z.setPrefix("Offset Z: ")
         spinbox_offset_z.setSingleStep(0.1)
         spinbox_offset_z.setValue(self.offset[2])
+        spinbox_offset_z.setRange(-1000, 1000)
         spinbox_offset_z.valueChanged.connect(self._on_offset_z)
         layout.addWidget(spinbox_offset_z)
 
