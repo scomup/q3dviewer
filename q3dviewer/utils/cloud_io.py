@@ -51,8 +51,35 @@ def save_pcd(cloud, save_path):
     i = (cloud['irgb'] & 0xFF000000) >> 24
     rgb = cloud['irgb'] & 0x00FFFFFF
 
-    dtype = [('xyz', '<f4', (3,)), ('intensity', '<u4'), ('rgb', '<u4')]
-    tmp = np.rec.fromarrays([cloud['xyz'], i, rgb], dtype=dtype)
+    # check no rgb value
+    if np.max(rgb) == 0:
+        fields = ('x', 'y', 'z', 'intensity')
+        metadata = MetaData.model_validate(
+            {
+                "fields": fields,
+                "size": [4, 4, 4, 4],
+                "type": ['F', 'F', 'F', 'U'],
+                "count": [1, 1, 1, 1],
+                "width": cloud.shape[0],
+                "points": cloud.shape[0],
+            })
+
+        dtype = [('xyz', '<f4', (3,)), ('intensity', '<u4')]
+        tmp = np.rec.fromarrays([cloud['xyz'], i], dtype=dtype)
+        PointCloud(metadata, tmp).save(save_path)
+    else:
+        fields = ('x', 'y', 'z', 'intensity', 'rgb')
+        metadata = MetaData.model_validate(
+        {
+            "fields": fields,
+            "size": [4, 4, 4, 4, 4],
+            "type": ['F', 'F', 'F', 'U', 'U'],
+            "count": [1, 1, 1, 1, 1],
+            "width": cloud.shape[0],
+            "points": cloud.shape[0],
+        })
+        dtype = [('xyz', '<f4', (3,)), ('intensity', '<u4'), ('rgb', '<u4')]
+        tmp = np.rec.fromarrays([cloud['xyz'], i, rgb], dtype=dtype)
 
     PointCloud(metadata, tmp).save(save_path)
 
