@@ -14,6 +14,7 @@ pypcd4 = "^0.1"
 pye57 = "^0.1"
 laspy = "^2.0"
 imageio = "^2.9"
+matplotlib = "^3.4"
 
 [tool.poetry.scripts]
 cloud_viewer = "q3dviewer.tools.cloud_viewer:main"

@@ -28,6 +28,7 @@ setup(
         'laspy',
         'imageio',
         'imageio[ffmpeg]',
+        'matplotlib',
     ],
     entry_points={
         'console_scripts': [
