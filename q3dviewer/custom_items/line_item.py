@@ -8,9 +8,7 @@ from OpenGL.GL import *
 import numpy as np
 import threading
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
-from PySide6.QtCore import QRegularExpression
-from PySide6.QtGui import QRegularExpressionValidator
-from q3dviewer.utils.maths import hex_to_rgba
+from q3dviewer.utils.maths import text_to_rgba
 
 
 class LineItem(BaseItem):
@@ -28,19 +26,20 @@ class LineItem(BaseItem):
         self.capacity = 100000
         self.valid_buff_top = 0
         self.color = color
-        self.rgb = hex_to_rgba(color)
+        try:
+            self.rgb = text_to_rgba(color)
+        except ValueError:
+            raise ValueError("Invalid color format. Use mathplotlib color format.")
+
         self.line_type = GL_LINE_STRIP if line_type == 'LINE_STRIP' else GL_LINES
 
     def add_setting(self, layout):
         label_color = QLabel("Color:")
         layout.addWidget(label_color)
         self.color_edit = QLineEdit()
-        self.color_edit.setToolTip("Hex number, i.e. #FF4500")
+        self.color_edit.setToolTip("mathplotlib color format")
         self.color_edit.setText(self.color)
         self.color_edit.textChanged.connect(self._on_color)
-        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
-        validator = QRegularExpressionValidator(regex)
-        self.color_edit.setValidator(validator)
         layout.addWidget(self.color_edit)
 
         spinbox_width = QDoubleSpinBox()
@@ -53,10 +52,10 @@ class LineItem(BaseItem):
 
     def _on_color(self, color):
         try:
-            self.rgb = hex_to_rgba(color)
+            self.rgb = text_to_rgba(color)
             self.color = color
         except ValueError:
-            pass
+            print("Invalid color format. Use mathplotlib color format.")
 
     def set_color(self, color):
         self.color_edit.setText(color)

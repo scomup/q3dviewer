@@ -6,10 +6,8 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from PySide6.QtWidgets import QLabel, QDoubleSpinBox, QLineEdit
-from PySide6.QtCore import QRegularExpression
-from PySide6.QtGui import QRegularExpressionValidator
 import numpy as np
-from q3dviewer.utils.maths import hex_to_rgba
+from q3dviewer.utils.maths import text_to_rgba
 
 
 class GridItem(BaseItem):
@@ -24,9 +22,9 @@ class GridItem(BaseItem):
 
     def set_color(self, color):
         try:
-            self.rgba = hex_to_rgba(color)
+            self.rgba = text_to_rgba(color)
         except ValueError:
-            pass
+            raise ValueError("Invalid color format. Use hex format like '#RRGGBB' or '#RRGGBBAA'.")
 
     def generate_grid_vertices(self):
         vertices = []

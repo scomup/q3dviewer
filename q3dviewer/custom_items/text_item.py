@@ -6,7 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 from PySide6 import QtCore, QtGui
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
-from q3dviewer.utils.maths import hex_to_rgba
+from q3dviewer.utils.maths import text_to_rgba
 
 
 class Text2DItem(BaseItem):
@@ -16,8 +16,10 @@ class Text2DItem(BaseItem):
         """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
         self.pos = (20, 50)
-        self.color = '#ffffff'
-        self.rgb = hex_to_rgba(self.color)
+        try:
+            self.rgb = text_to_rgba(self.color)
+        except ValueError:
+            raise ValueError("Invalid color format. Use mathplotlib color format.")
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
         self.set_data(**kwds)
@@ -44,10 +46,10 @@ class Text2DItem(BaseItem):
 
     def set_color(self, color):
         try:
-            self.rgb = hex_to_rgba(color)
+            self.rgb = text_to_rgba(color)
             self.color = color
         except ValueError:
-            pass
+            print("Invalid color format. Use mathplotlib color format.")
 
     def paint(self):
         if len(self.text) < 1:

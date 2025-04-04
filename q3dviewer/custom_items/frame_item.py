@@ -162,13 +162,9 @@ class FrameItem(BaseItem):
             self.need_updating = False
         
     def set_color(self, color):
-        if isinstance(color, str):
-            self.rgba = hex_to_rgba(color)
-        elif isinstance(color, list):
-            self.rgba = color
-        elif isinstance(color, tuple):
-            self.rgba = list(color)
-        else:
+        try:
+            self.rgba = text_to_rgba(color)
+        except ValueError:
             raise ValueError("Invalid color format")
 
     def set_line_width(self, width):

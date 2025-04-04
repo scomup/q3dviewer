@@ -14,15 +14,13 @@ from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
 from OpenGL.GL import shaders
 from q3dviewer.utils import *
 from q3dviewer.utils.range_slider import RangeSlider
-from PySide6.QtCore import QRegularExpression
-from PySide6.QtGui import QRegularExpressionValidator
 
 
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
     def __init__(self, size, alpha, 
                  color_mode='I', 
-                 color='#ffffff', 
+                 color='white', 
                  point_type='PIXEL', 
                  depth_test=False):
         super().__init__()
@@ -34,7 +32,12 @@ class CloudItem(BaseItem):
         self.point_type = point_type
         self.mutex = threading.Lock()
         self.data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
-        self.flat_rgb = int(color[1:], 16)
+        self.color = color
+        try:
+            self.flat_rgb = text_to_rgba(color, flat=True)
+        except ValueError:
+            print(f"Invalid color: {color}, please use matplotlib color format")
+            exit(1)
         self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2}
         self.point_type_table = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
         self.color_mode = self.mode_table[color_mode]
@@ -89,14 +92,12 @@ class CloudItem(BaseItem):
         layout.addWidget(self.combo_color)
 
         label_rgb = QLabel("Color:")
+        label_rgb.setToolTip("Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
         layout.addWidget(label_rgb)
         self.edit_rgb = QLineEdit()
-        self.edit_rgb.setToolTip("Hex number, i.e. #FF4500")
-        self.edit_rgb.setText(f"#{self.flat_rgb:06x}")
+        self.edit_rgb.setToolTip("Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
+        self.edit_rgb.setText(self.color)
         self.edit_rgb.textChanged.connect(self._on_color)
-        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
-        validator = QRegularExpressionValidator(regex)
-        self.edit_rgb.setValidator(validator)
         layout.addWidget(self.edit_rgb)
 
         self.slider_v = RangeSlider()
@@ -108,6 +109,7 @@ class CloudItem(BaseItem):
             "Show front points first (Depth Test)")
         self.checkbox_depth_test.setChecked(self.depth_test)
         self.checkbox_depth_test.stateChanged.connect(self.set_depthtest)
+        self._on_color_mode(self.color_mode)
         layout.addWidget(self.checkbox_depth_test)
 
     def _on_range(self, lower, upper):
@@ -164,11 +166,10 @@ class CloudItem(BaseItem):
 
     def _on_color(self, color):
         try:
-            flat_rgb = int(color[1:], 16)
-            self.flat_rgb = flat_rgb
+            self.flat_rgb = text_to_rgba(color, flat=True)
             self.need_update_setting = True
         except ValueError:
-            pass
+            print(f"Invalid color: {color}, please use matplotlib color format")
 
     def set_size(self, size):
         self.size = size

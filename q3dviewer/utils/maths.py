@@ -10,6 +10,7 @@ https://github.com/scomup/MathematicalRobotics.git
 
 
 import numpy as np
+from matplotlib.colors import to_rgba
 
 
 _epsilon_ = 1e-5
@@ -292,26 +293,27 @@ def makeRt(T):
     t = T[0:3, 3]
     return R, t
 
-def hex_to_rgba(hex_color):
-    if not hex_color.startswith("#"):
-        print("Invalid hex color string.")
-        return (1.0, 1.0, 1.0, 1.0)
-    if len(hex_color) == 7:
-        color_flat = int(hex_color[1:], 16)
-        red = (color_flat >> 16) & 0xFF
-        green = (color_flat >> 8) & 0xFF
-        blue = color_flat & 0xFF
-        return (red / 255.0, green / 255.0, blue / 255.0, 1.0)
-    elif len(hex_color) == 9:
-        color_flat = int(hex_color[1:], 16)
-        red = (color_flat >> 24) & 0xFF
-        green = (color_flat >> 16) & 0xFF
-        blue = (color_flat >> 8) & 0xFF
-        alpha = color_flat & 0xFF
-        return (red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0)
+
+def text_to_rgba(color_text, flat=False):
+    """
+    Convert a color text to an RGBA tuple.
+    
+    :param color_text: e.g. '#FF0000', '#FF0000FF', 'red', 'green', 'blue', 'yellow', 
+                       'black', 'white', 'magenta', 'cyan', 'r', 'g', 'b', 'y', 'k', 'w', 'm', 'c'
+    :return: RGBA tuple, e.g. (1.0, 0.0, 0.0, 1.0)
+    """
+    rgba = to_rgba(color_text)
+    if flat:
+        r, g, b, _ = (np.array(rgba)*255).astype(np.uint32)
+        falt_rgb = ((r << 16) & 0xFF0000) | \
+                   ((g << 8) & 0x00FF00) | \
+                   ((b << 0) & 0x0000FF)
+        return falt_rgb
     else:
-        print("Invalid hex color string.")
-        return (1.0, 1.0, 1.0, 1.0)
+        return rgba
+    # except ValueError as e:
+    #     raise ValueError(f"Invalid color text '{color_text}': {e}")
+
 
 # euler = np.array([1, 0.1, 0.1])
 # euler_angles = matrix_to_euler(euler_to_matrix(euler))

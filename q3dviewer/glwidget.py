@@ -5,11 +5,11 @@ Distributed under MIT license. See LICENSE for more information.
 
 from PySide6 import QtCore
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
-from PySide6.QtGui import QKeyEvent, QVector3D, QRegularExpressionValidator
-from PySide6.QtCore import QRegularExpression
+from PySide6.QtGui import QKeyEvent, QVector3D
 from OpenGL.GL import *
 import numpy as np
 from q3dviewer.base_glwidget import BaseGLWidget
+from q3dviewer.utils.maths import text_to_rgba
 
 class SettingWindow(QWidget):
     def __init__(self):
@@ -52,7 +52,7 @@ class GLWidget(BaseGLWidget):
     def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
-        self.color_str = '#000000'
+        self.color_str = 'black'
         self.followable_item_name = None
         self.setting_window = SettingWindow()
         self.enable_show_center = True
@@ -80,9 +80,6 @@ class GLWidget(BaseGLWidget):
         color_edit.setToolTip("'using hex color, i.e. #FF4500")
         color_edit.setText(self.color_str)
         color_edit.textChanged.connect(self.set_bg_color)
-        regex = QRegularExpression(r"^#[0-9A-Fa-f]{6}$")
-        validator = QRegularExpressionValidator(regex)
-        color_edit.setValidator(validator)
         layout.addWidget(color_edit)
         
         label_focus = QLabel("Set Focus:")
@@ -108,16 +105,13 @@ class GLWidget(BaseGLWidget):
             if item.__class__.__name__ == 'AxisItem' and not item._disable_setting:
                 self.followable_item_name.append(name)
 
-    def set_bg_color(self, color_str):
+    def set_bg_color(self, color):
         try:
-            color_flat = int(color_str[1:], 16)
-            red = (color_flat >> 16) & 0xFF
-            green = (color_flat >> 8) & 0xFF
-            blue = color_flat & 0xFF
-            self.color_str = color_str
-            self.set_color([red, green, blue, 0])
+            self.color_str = color
+            red, green, blue, alpha = text_to_rgba(color)
+            self.set_color([red, green, blue, alpha])
         except ValueError:
-            return
+            print("Invalid color format. Use mathplotlib color format.")
 
     def add_item_with_name(self, name, item):
         self.named_items.update({name: item})
