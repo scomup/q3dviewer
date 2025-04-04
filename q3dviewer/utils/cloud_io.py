@@ -24,17 +24,14 @@ def load_ply(file):
     xyz = mesh.points
     rgb = np.zeros([xyz.shape[0]], dtype=np.uint32)
     intensity = np.zeros([xyz.shape[0]], dtype=np.uint32)
-    color_mode = 'FLAT'
     if "intensity" in mesh.point_data:
         intensity = mesh.point_data["intensity"]
-        color_mode = 'I'
     if "rgb" in mesh.point_data:
         rgb = mesh.point_data["rgb"]
-        color_mode = 'RGB'
     irgb = (intensity << 24) | rgb
     dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
-    return cloud, color_mode
+    return cloud
 
 
 def save_pcd(cloud, save_path):
@@ -89,17 +86,14 @@ def load_pcd(file):
     pc = PointCloud.from_path(file).pc_data
     rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
     intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
-    color_mode = 'FLAT'
     if 'intensity' in pc.dtype.names:
         intensity = pc['intensity'].astype(np.uint32)
-        color_mode = 'I'
     if 'rgb' in pc.dtype.names:
         rgb = pc['rgb'].astype(np.uint32)
-        color_mode = 'RGB'
     irgb = (intensity << 24) | rgb
     xyz = np.stack([pc['x'], pc['y'], pc['z']], axis=1)
     cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
-    return cloud, color_mode
+    return cloud
 
 
 def save_e57(cloud, save_path):
@@ -127,23 +121,20 @@ def load_e57(file_path):
     z = scans["cartesianZ"]
     rgb = np.zeros([x.shape[0]], dtype=np.uint32)
     intensity = np.zeros([x.shape[0]], dtype=np.uint32)
-    color_mode = 'FLAT'
     if "intensity" in scans:
         intensity = scans["intensity"].astype(np.uint32)
-        color_mode = 'I'
     if all([x in scans for x in ["colorRed", "colorGreen", "colorBlue"]]):
         r = scans["colorRed"].astype(np.uint32)
         g = scans["colorGreen"].astype(np.uint32)
         b = scans["colorBlue"].astype(np.uint32)
         rgb = (r << 16) | (g << 8) | b
-        color_mode = 'RGB'
     irgb = (intensity << 24) | rgb
     dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     cloud = np.rec.fromarrays(
         [np.stack([x, y, z], axis=1), irgb],
         dtype=dtype)
     e57.close()
-    return cloud, color_mode
+    return cloud
 
 
 def load_las(file):
@@ -151,27 +142,24 @@ def load_las(file):
         las = f.read()
         xyz = np.vstack((las.x, las.y, las.z)).transpose()
         dimensions = list(las.point_format.dimension_names)
-        color_mode = 'FLAT'
         rgb = np.zeros([las.x.shape[0]], dtype=np.uint32)
         intensity = np.zeros([las.x.shape[0]], dtype=np.uint32)
         if 'intensity' in dimensions:
             intensity = las.intensity.astype(np.uint32)
-            color_mode = 'I'
         if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
             red = las.red
             green = las.green
             blue = las.blue
             max_val = np.max([red, green, blue])
             if red.dtype == np.dtype('uint16') and max_val > 255:
-                red = (red / 65535.0 * 255).astype(np.uint32)
-                green = (green / 65535.0 * 255).astype(np.uint32)
-                blue = (blue / 65535.0 * 255).astype(np.uint32)
+                red = (red / 255).astype(np.uint32)
+                green = (green / 255).astype(np.uint32)
+                blue = (blue / 255).astype(np.uint32)
             rgb = (red << 16) | (green << 8) | blue
-            color_mode = 'RGB'
-        color = (intensity << 24) | rgb
+        color = ((intensity / 255)<< 24) | rgb
         dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
         cloud = np.rec.fromarrays([xyz, color], dtype=dtype)
-    return cloud, color_mode
+    return cloud
 
 def save_las(cloud, save_path):
     header = laspy.LasHeader(point_format=3, version="1.2")
@@ -179,10 +167,10 @@ def save_las(cloud, save_path):
     las.x = cloud['xyz'][:, 0]
     las.y = cloud['xyz'][:, 1]
     las.z = cloud['xyz'][:, 2]
-    las.red = (cloud['irgb'] >> 16) & 0xFF
-    las.green = (cloud['irgb'] >> 8) & 0xFF
-    las.blue = cloud['irgb'] & 0xFF
-    las.intensity = cloud['irgb'] >> 24
+    las.red = ((cloud['irgb'] >> 16) & 0xFF) * 255
+    las.green = ((cloud['irgb'] >> 8) & 0xFF) * 255
+    las.blue = (cloud['irgb'] & 0xFF)
+    las.intensity = (cloud['irgb'] >> 24) * 255
     las.write(save_path)
 
 

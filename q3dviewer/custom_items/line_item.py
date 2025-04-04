@@ -15,6 +15,11 @@ from q3dviewer.utils.maths import hex_to_rgba
 
 class LineItem(BaseItem):
     def __init__(self, width=1, color='#00ff00', line_type='LINE_STRIP'):
+        """
+        line_type: 'LINE_STRIP' or 'LINES'
+          LINE_STRIP: draw a connected line strip
+          LINES: draw a series of unconnected lines
+        """
         super(LineItem, self).__init__()
         self.width = width
         self.buff = np.empty((0, 3), np.float32)

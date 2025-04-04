@@ -61,18 +61,28 @@ class CloudIOItem(CloudItem):
     def load(self, file, append=False):
         # print("Try to load %s ..." % file)
         if file.endswith(".pcd"):
-            cloud, color_mode = load_pcd(file)
+            cloud = load_pcd(file)
         elif file.endswith(".ply"):
-            cloud, color_mode = load_ply(file)
+            cloud = load_ply(file)
         elif file.endswith(".e57"):
-            cloud, color_mode = load_e57(file)
+            cloud = load_e57(file)
         elif file.endswith(".las"):
-            cloud, color_mode = load_las(file)
+            cloud = load_las(file)
         else:
             print("Not supported file type.")
             return
         self.set_data(data=cloud, append=append)
-        self.set_color_mode(color_mode)
+
+        has_intensity = cloud['irgb'][0] & 0xff000000 > 0
+        has_rgb = cloud['irgb'][0] & 0x00ffffff > 0
+
+        if has_rgb:
+            self.set_color_mode('RGB')
+        elif has_intensity:
+            self.set_color_mode('I')
+        else:
+            self.set_color_mode('FLAT')
+
         return cloud
 
     def set_path(self, path):
