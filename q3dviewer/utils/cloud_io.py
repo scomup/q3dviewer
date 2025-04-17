@@ -4,13 +4,10 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-import meshio
-from pypcd4 import PointCloud, MetaData
-from pye57 import E57
-import laspy
 
 
 def save_ply(cloud, save_path):
+    import meshio
     xyz = cloud['xyz']
     i = (cloud['irgb'] & 0xFF000000) >> 24
     rgb = cloud['irgb'] & 0x00FFFFFF
@@ -20,6 +17,7 @@ def save_ply(cloud, save_path):
 
 
 def load_ply(file):
+    import meshio
     mesh = meshio.read(file)
     xyz = mesh.points
     rgb = np.zeros([xyz.shape[0]], dtype=np.uint32)
@@ -35,6 +33,7 @@ def load_ply(file):
 
 
 def save_pcd(cloud, save_path):
+    from pypcd4 import PointCloud, MetaData
     fields = ('x', 'y', 'z', 'intensity', 'rgb')
     metadata = MetaData.model_validate(
         {
@@ -82,6 +81,7 @@ def save_pcd(cloud, save_path):
 
 
 def load_pcd(file):
+    from pypcd4 import PointCloud
     dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     pc = PointCloud.from_path(file).pc_data
     rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
@@ -97,6 +97,7 @@ def load_pcd(file):
 
 
 def save_e57(cloud, save_path):
+    from pye57 import E57
     e57 = E57(save_path, mode='w')
     x = cloud['xyz'][:, 0]
     y = cloud['xyz'][:, 1]
@@ -113,6 +114,7 @@ def save_e57(cloud, save_path):
 
 
 def load_e57(file_path):
+    from pye57 import E57
     e57 = E57(file_path, mode="r")
     scans = e57.read_scan(0, ignore_missing_fields=True,
                           intensity=True, colors=True)
@@ -138,6 +140,7 @@ def load_e57(file_path):
 
 
 def load_las(file):
+    import laspy
     with laspy.open(file) as f:
         las = f.read()
         xyz = np.vstack((las.x, las.y, las.z)).transpose()
@@ -162,6 +165,7 @@ def load_las(file):
     return cloud
 
 def save_las(cloud, save_path):
+    import laspy
     header = laspy.LasHeader(point_format=3, version="1.2")
     las = laspy.LasData(header)
     las.x = cloud['xyz'][:, 0]
@@ -229,6 +233,7 @@ def matrix_to_quaternion_wxyz(matrices):
 
 
 def load_gs_ply(path, T=None):
+    import meshio
     mesh = meshio.read(path)
     vertices = mesh.points
     pws = vertices[:, :3]

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.1.5',
+    version='1.1.6',
     author="Liu Yang",
     description="A library designed for quickly deploying a 3D viewer.",
     long_description=open("README.md").read(),
