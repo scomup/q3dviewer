@@ -16,12 +16,12 @@ class Text2DItem(BaseItem):
         """All keyword arguments are passed to set_data()"""
         BaseItem.__init__(self)
         self.pos = (20, 50)
-        try:
-            self.rgb = text_to_rgba(self.color)
-        except ValueError:
-            raise ValueError("Invalid color format. Use mathplotlib color format.")
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
+
+        self.rgb = text_to_rgba('w')
+        if 'pos' in kwds:
+            self.pos = kwds['pos']
         self.set_data(**kwds)
 
     def set_data(self, **kwds):
@@ -47,7 +47,6 @@ class Text2DItem(BaseItem):
     def set_color(self, color):
         try:
             self.rgb = text_to_rgba(color)
-            self.color = color
         except ValueError:
             print("Invalid color format. Use mathplotlib color format.")
 

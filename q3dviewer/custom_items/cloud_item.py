@@ -143,14 +143,15 @@ class CloudItem(BaseItem):
             self.box_size.setPrefix("Set size (pixel): ")
             self.box_size.setDecimals(0)
             self.box_size.setSingleStep(1)
-            self.box_size.setValue(1)
-            self.size = 1
+            self.size = np.ceil(self.size)
+            self.box_size.setValue(self.size)
         else:
             self.box_size.setPrefix("Set size (meter): ")
             self.box_size.setDecimals(2)
             self.box_size.setSingleStep(0.01)
-            self.box_size.setValue(0.01)
-            self.size = 0.01
+            if self.size >= 1:
+                self.size = self.size * 0.01
+            self.box_size.setValue(self.size)
         self.need_update_setting = True
 
     def set_alpha(self, alpha):
