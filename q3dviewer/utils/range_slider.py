@@ -5,7 +5,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QColor
-from PySide6.QtWidgets import QSlider
+from PySide6.QtWidgets import QSlider, QToolTip
 
 
 class RangeSlider(QSlider):
@@ -20,6 +20,10 @@ class RangeSlider(QSlider):
         self.lower_value = vmin
         self.upper_value = vmax
         self.active_handle = None
+        self.bar_color = QColor(200, 200, 200)  # Gray bar
+        self.highlight_color = QColor(100, 100, 255)  # Blue for selected range
+        self.handle_color = QColor(50, 50, 255)  # Blue handles
+
         self.setTickPosition(QSlider.NoTicks)  # Hide original ticks
         # Hide slider handle
         self.setStyleSheet("QSlider::handle { background: transparent; }")
@@ -41,35 +45,50 @@ class RangeSlider(QSlider):
         if self.active_handle == "lower":
             self.lower_value = max(
                 self.minimum(), min(pos, self.upper_value - 1))
+            QToolTip.showText(event.globalPos(), f"Lower: {self.lower_value:.1f}")
         elif self.active_handle == "upper":
             self.upper_value = min(
                 self.maximum(), max(pos, self.lower_value + 1))
+            QToolTip.showText(event.globalPos(), f"Upper: {self.upper_value:.1f}")
         self.rangeChanged.emit(self.lower_value, self.upper_value)
         self.update()
+
+    def mouseReleaseEvent(self, event):
+        """Override to hide tooltip when mouse stops."""
+        QToolTip.hideText()
+        super().mouseReleaseEvent(event)
+
+    def enterEvent(self, event):
+        """Show tooltips for lower and upper values when mouse enters."""
+        QToolTip.showText(self.mapToGlobal(self.rect().topLeft()), 
+                          f"Lower: {self.lower_value:.1f}, Upper: {self.upper_value:.1f}")
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Hide tooltips when mouse leaves."""
+        QToolTip.hideText()
+        super().leaveEvent(event)
 
     def paintEvent(self, event):
         """Override to paint custom range handles."""
         painter = QPainter(self)
 
         # Draw the range bar
-        bar_color = QColor(200, 200, 200)  # Gray bar
-        highlight_color = QColor(100, 100, 255)  # Blue for selected range
         painter.setPen(Qt.NoPen)
 
         bar_height = 6
         bar_y = self.height() // 2 - bar_height // 2
-        painter.setBrush(bar_color)
+        painter.setBrush(self.bar_color)
         painter.drawRect(0, bar_y, self.width(), bar_height)
 
         # Draw the selected range
         lower_x = int(self.valueToPixelPos(self.lower_value))
         upper_x = int(self.valueToPixelPos(self.upper_value))
-        painter.setBrush(highlight_color)
+        painter.setBrush(self.highlight_color)
         painter.drawRect(lower_x, bar_y, upper_x - lower_x, bar_height)
 
         # Draw the range handles
-        handle_color = QColor(50, 50, 255)  # Blue handles
-        painter.setBrush(handle_color)
+        painter.setBrush(self.handle_color)
         painter.drawEllipse(lower_x - 5, bar_y - 4, 12, 12)
         painter.drawEllipse(upper_x - 5, bar_y - 4, 12, 12)
 
