@@ -1,5 +1,9 @@
+import time
+t1 = time.time()
 from q3dviewer.custom_items.axis_item import AxisItem
+t2 = time.time()
 from q3dviewer.custom_items.cloud_item import CloudItem
+t3 = time.time()
 from q3dviewer.custom_items.cloud_io_item import CloudIOItem
 from q3dviewer.custom_items.gaussian_item import GaussianItem
 from q3dviewer.custom_items.frame_item import FrameItem
@@ -7,3 +11,7 @@ from q3dviewer.custom_items.grid_item import GridItem
 from q3dviewer.custom_items.text_item import Text2DItem
 from q3dviewer.custom_items.image_item import ImageItem
 from q3dviewer.custom_items.line_item import LineItem
+t4 = time.time()
+print("Import axis_item: ", t2 - t1)
+print("Import cloud_item: ", t3 - t2)
+print("Import cloud_io_item: ", t4 - t3)

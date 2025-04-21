@@ -5,7 +5,6 @@ Distributed under MIT license. See LICENSE for more information.
 
 from PySide6 import QtCore, QtGui
 from q3dviewer.base_item import BaseItem
-from OpenGL.GL import *
 from q3dviewer.utils.maths import text_to_rgba
 
 

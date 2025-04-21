@@ -7,13 +7,15 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
+from OpenGL.GL import shaders
+
 import threading
 import os
 from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QComboBox, QCheckBox
-from OpenGL.GL import shaders
-from q3dviewer.utils import *
 from q3dviewer.utils.range_slider import RangeSlider
+from q3dviewer.utils.gl_helper import set_uniform
+from q3dviewer.utils.maths import text_to_rgba
 
 
 # draw points with color (x, y, z, color)

@@ -16,6 +16,8 @@ import rospy
 import cv2
 import argparse
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
+from q3dviewer.utils.maths import euler_to_matrix, matrix_to_quaternion, matrix_to_euler
+
 
 clouds = []
 remap_info = None
@@ -42,7 +44,7 @@ class LidarCamViewer(q3d.Viewer):
         # c: camera image frame
         # l: lidar frame
         self.Rbl = np.eye(3)
-        self.Rbl = q3d.euler_to_matrix(np.array([0.0, 0.0, 0.0]))
+        self.Rbl = euler_to_matrix(np.array([0.0, 0.0, 0.0]))
         self.Rcb = np.array([[0, -1, 0],
                              [0, 0, -1],
                              [1, 0, 0]])
@@ -104,7 +106,7 @@ class LidarCamViewer(q3d.Viewer):
         self.box_roll.setRange(-np.pi, np.pi)
         self.box_pitch.setRange(-np.pi, np.pi)
         self.box_yaw.setRange(-np.pi, np.pi)
-        rpy = q3d.matrix_to_euler(self.Rbl)
+        rpy = matrix_to_euler(self.Rbl)
         self.box_roll.setValue(rpy[0])
         self.box_pitch.setValue(rpy[1])
         self.box_yaw.setValue(rpy[2])
@@ -136,7 +138,7 @@ class LidarCamViewer(q3d.Viewer):
 
         self.line_trans.setText(
             f"[{self.tcl[0]:.6f}, {self.tcl[1]:.6f}, {self.tcl[2]:.6f}]")
-        quat = q3d.matrix_to_quaternion(self.Rcl)
+        quat = matrix_to_quaternion(self.Rcl)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
@@ -170,9 +172,9 @@ class LidarCamViewer(q3d.Viewer):
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
-        self.Rbl = q3d.euler_to_matrix(np.array([roll, pitch, yaw]))
+        self.Rbl = euler_to_matrix(np.array([roll, pitch, yaw]))
         self.Rcl = self.Rcb @ self.Rbl
-        quat = q3d.matrix_to_quaternion(self.Rcl)
+        quat = matrix_to_quaternion(self.Rcl)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 

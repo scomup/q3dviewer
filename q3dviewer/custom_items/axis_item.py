@@ -2,11 +2,9 @@
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
-
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
-from PySide6.QtWidgets import QDoubleSpinBox
 
 
 class AxisItem(BaseItem):
@@ -35,6 +33,7 @@ class AxisItem(BaseItem):
 
 
     def add_setting(self, layout):
+        from PySide6.QtWidgets import QDoubleSpinBox
         spinbox_size = QDoubleSpinBox()
         spinbox_size.setPrefix("Size: ")
         spinbox_size.setSingleStep(0.1)

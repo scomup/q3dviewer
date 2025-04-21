@@ -38,12 +38,16 @@ class CloudIOItem(CloudItem):
         cloud = self.buff[:self.valid_buff_top]
         func = None
         if self.save_path.endswith(".pcd"):
+            from q3dviewer.utils.cloud_io import save_pcd
             func = save_pcd
         elif self.save_path.endswith(".ply"):
+            from q3dviewer.utils.cloud_io import save_ply
             func = save_ply
         elif self.save_path.endswith(".e57"):
+            from q3dviewer.utils.cloud_io import save_e57
             func = save_e57
         elif self.save_path.endswith(".las"):
+            from q3dviewer.utils.cloud_io import save_las
             func = save_las
         elif self.save_path.endswith(".tif") or self.save_path.endswith(".tiff"):
             print("Do not support save as tif type!")
@@ -61,12 +65,16 @@ class CloudIOItem(CloudItem):
     def load(self, file, append=False):
         # print("Try to load %s ..." % file)
         if file.endswith(".pcd"):
+            from q3dviewer.utils.cloud_io import load_pcd
             cloud = load_pcd(file)
         elif file.endswith(".ply"):
+            from q3dviewer.utils.cloud_io import load_ply
             cloud = load_ply(file)
         elif file.endswith(".e57"):
+            from q3dviewer.utils.cloud_io import load_e57
             cloud = load_e57(file)
         elif file.endswith(".las"):
+            from q3dviewer.utils.cloud_io import load_las
             cloud = load_las(file)
         else:
             print("Not supported file type.")

@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/liu/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/liu/catkin_ws/src/marker_test/apriltag_ros/apriltag_ros/include/**",
+        "/home/liu/catkin_ws/src/BALM/include/**",
+        "/home/liu/catkin_ws/src/FAST-LIVO/include/**",
+        "/home/liu/catkin_ws/src/grid2dlib/include/**",
+        "/home/liu/catkin_ws/src/lidar_cam_calib/include/**",
+        "/home/liu/catkin_ws/src/livox_laser_simulation/include/**",
+        "/home/liu/catkin_ws/src/usb_cam/include/**",
+        "/home/liu/catkin_ws/src/rpg_vikit/vikit_common/include/**",
+        "/home/liu/catkin_ws/src/rpg_vikit/vikit_ros/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

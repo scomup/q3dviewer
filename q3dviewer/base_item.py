@@ -2,11 +2,10 @@
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
+from PySide6.QtCore import QObject
 
-from PySide6 import QtCore
-import numpy as np
 
-class BaseItem(QtCore.QObject):
+class BaseItem(QObject):
     _next_id = 0
     
     def __init__(self):

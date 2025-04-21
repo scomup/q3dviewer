@@ -5,9 +5,10 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
+
 import numpy as np
 from OpenGL.GL import shaders
-from PySide6.QtWidgets import QLabel, QSpinBox, QCheckBox
+from PySide6.QtWidgets import QSpinBox, QCheckBox
 
 
 # Vertex and Fragment shader source code

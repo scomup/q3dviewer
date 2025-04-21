@@ -4,10 +4,8 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from PySide6 import QtCore
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
-from PySide6.QtGui import QKeyEvent, QVector3D
-from OpenGL.GL import *
-import numpy as np
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
+from PySide6.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils.maths import text_to_rgba
 

@@ -13,8 +13,9 @@ camera pose and intrinsic matrix
 import numpy as np
 import q3dviewer as q3d
 import cv2
+from q3dviewer.utils.cloud_io import load_pcd
 
-cloud, _ = q3d.load_pcd('/home/liu/lab.pcd')
+cloud, _ = load_pcd('/home/liu/lab.pcd')
 
 
 Tcw = np.array([[7.07106781e-01,  7.07106781e-01,  0.00000000e+00,

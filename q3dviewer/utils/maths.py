@@ -10,7 +10,6 @@ https://github.com/scomup/MathematicalRobotics.git
 
 
 import numpy as np
-from matplotlib.colors import to_rgba
 
 
 _epsilon_ = 1e-5
@@ -302,6 +301,8 @@ def text_to_rgba(color_text, flat=False):
                        'black', 'white', 'magenta', 'cyan', 'r', 'g', 'b', 'y', 'k', 'w', 'm', 'c'
     :return: RGBA tuple, e.g. (1.0, 0.0, 0.0, 1.0)
     """
+    from matplotlib.colors import to_rgba
+
     rgba = to_rgba(color_text)
     if flat:
         r, g, b, _ = (np.array(rgba)*255).astype(np.uint32)

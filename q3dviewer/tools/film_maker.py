@@ -15,14 +15,14 @@ from PySide6.QtGui import QKeyEvent
 from q3dviewer import GLWidget
 import imageio.v2 as imageio
 import os
-
+from q3dviewer.utils.maths import matrix_to_euler, interpolate_pose
 
 def recover_center_euler(Twc, dist):
     Rwc = Twc[:3, :3]  # Extract rotation
     twc = Twc[:3, 3]   # Extract translation
     tco = np.array([0, 0, dist])  # Camera frame origin
     two = twc - Rwc @ tco  # Compute center
-    euler = q3d.matrix_to_euler(Rwc)
+    euler = matrix_to_euler(Rwc)
     return two, euler
 
 
@@ -247,7 +247,7 @@ class CMMViewer(q3d.Viewer):
                 for j in range(num_steps):
                     self.frames.append([i, current_frame.Twc])
             next_frame = self.key_frames[i + 1]
-            Ts = q3d.interpolate_pose(current_frame.Twc, next_frame.Twc,
+            Ts = interpolate_pose(current_frame.Twc, next_frame.Twc,
                                       current_frame.lin_vel,
                                       current_frame.ang_vel,
                                       dt)
