@@ -154,16 +154,18 @@ def load_las(file):
         if 'intensity' in dimensions:
             intensity = las.intensity.astype(np.uint32)
         if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
-            red = las.red
-            green = las.green
-            blue = las.blue
-            max_val = np.max([red, green, blue])
-            if red.dtype == np.dtype('uint16') and max_val > 255:
+            red = las.red.astype(np.uint32)
+            green = las.green.astype(np.uint32)
+            blue = las.blue.astype(np.uint32)
+            if np.max([red, green, blue]) > 255:
                 red = (red / 255).astype(np.uint32)
                 green = (green / 255).astype(np.uint32)
                 blue = (blue / 255).astype(np.uint32)
             rgb = (red << 16) | (green << 8) | blue
-        color = ((intensity / 255)<< 24) | rgb
+        if np.max(intensity) > 255:
+            intensity = (intensity / 255).astype(np.uint32)
+            intensity = np.clip(intensity, 0, 255)
+        color = (intensity << 24) | rgb
         dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
         cloud = np.rec.fromarrays([xyz, color], dtype=dtype)
     return cloud
