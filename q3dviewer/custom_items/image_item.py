@@ -8,7 +8,7 @@ from OpenGL.GL import *
 
 import numpy as np
 from OpenGL.GL import shaders
-from PySide6.QtWidgets import QSpinBox, QCheckBox
+from q3dviewer.Qt.QtWidgets import QSpinBox, QCheckBox
 
 
 # Vertex and Fragment shader source code

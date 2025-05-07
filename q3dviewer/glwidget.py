@@ -3,11 +3,11 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PySide6 import QtCore
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
-from PySide6.QtGui import QKeyEvent
+from q3dviewer.Qt import QtCore
+from q3dviewer.Qt.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
+from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
-from q3dviewer.utils.maths import text_to_rgba
+from q3dviewer.utils import text_to_rgba
 
 class SettingWindow(QWidget):
     def __init__(self):

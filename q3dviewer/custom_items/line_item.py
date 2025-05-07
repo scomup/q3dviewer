@@ -7,8 +7,8 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 import threading
-from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
-from q3dviewer.utils.maths import text_to_rgba
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox
+from q3dviewer.utils import text_to_rgba
 
 
 class LineItem(BaseItem):

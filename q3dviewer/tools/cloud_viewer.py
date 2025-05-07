@@ -7,8 +7,8 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QVBoxLayout, QProgressBar, QDialog, QLabel
-from PySide6.QtCore import QThread, Signal
+from q3dviewer.Qt.QtWidgets import QVBoxLayout, QProgressBar, QDialog, QLabel
+from q3dviewer.Qt.QtCore import QThread, Signal
 
 
 class ProgressDialog(QDialog):

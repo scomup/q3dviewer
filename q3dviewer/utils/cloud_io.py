@@ -88,6 +88,10 @@ def load_pcd(file):
     intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
     if 'intensity' in pc.dtype.names:
         intensity = pc['intensity'].astype(np.uint32)
+        max_initensity = np.max(intensity)
+        # normalize the intensity to 0-255
+        if max_initensity > 255:
+            intensity = (intensity / max_initensity * 255).astype(np.uint32)
     if 'rgb' in pc.dtype.names:
         rgb = pc['rgb'].astype(np.uint32)
     irgb = (intensity << 24) | rgb

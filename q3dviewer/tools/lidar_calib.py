@@ -12,9 +12,8 @@ import rospy
 import numpy as np
 import argparse
 import q3dviewer as q3d
-from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
-from PySide6 import QtCore
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
+from q3dviewer.Qt import QtCore
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
 

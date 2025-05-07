@@ -3,9 +3,9 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PySide6 import QtCore, QtGui
+from q3dviewer.Qt import QtCore, QtGui
 from q3dviewer.base_item import BaseItem
-from q3dviewer.utils.maths import text_to_rgba
+from q3dviewer.utils import text_to_rgba
 
 
 class Text2DItem(BaseItem):

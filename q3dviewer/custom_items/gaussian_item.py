@@ -8,9 +8,9 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 import numpy as np
 import os
-from PySide6.QtWidgets import QComboBox, QLabel
+from q3dviewer.Qt.QtWidgets import QComboBox, QLabel
 from OpenGL.GL import shaders
-from q3dviewer.utils.gl_helper import set_uniform
+from q3dviewer.utils import set_uniform
 
 
 def div_round_up(x, y):

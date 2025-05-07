@@ -3,9 +3,9 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPainter, QColor
-from PySide6.QtWidgets import QSlider, QToolTip
+from q3dviewer.Qt.QtCore import Qt, Signal
+from q3dviewer.Qt.QtGui import QPainter, QColor
+from q3dviewer.Qt.QtWidgets import QSlider, QToolTip
 
 
 class RangeSlider(QSlider):

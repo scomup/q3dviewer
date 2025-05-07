@@ -7,11 +7,10 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox, QCheckBox, QLineEdit, QMessageBox, QLabel, QHBoxLayout, QDockWidget, QWidget, QComboBox
-from PySide6.QtCore import QTimer
-from q3dviewer.tools.cloud_viewer import ProgressDialog, FileLoaderThread
-from PySide6 import QtCore
-from PySide6.QtGui import QKeyEvent
+from q3dviewer.Qt.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox, QCheckBox, QLineEdit, QMessageBox, QLabel, QHBoxLayout, QDockWidget, QWidget, QComboBox
+from q3dviewer.Qt.QtCore import QTimer, Qt
+from q3dviewer.Qt.QtGui import QKeyEvent
+from q3dviewer.Qt import QtCore
 from q3dviewer import GLWidget
 import imageio.v2 as imageio
 import os

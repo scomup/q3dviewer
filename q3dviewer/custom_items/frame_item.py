@@ -6,8 +6,8 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.base_item import BaseItem
 import numpy as np
 from OpenGL.GL import shaders
-from q3dviewer.utils.gl_helper import set_uniform
-from q3dviewer.utils.maths import text_to_rgba
+from q3dviewer.utils import set_uniform
+from q3dviewer.utils import text_to_rgba
 
 # Vertex and Fragment shader source code
 vertex_shader_source = """

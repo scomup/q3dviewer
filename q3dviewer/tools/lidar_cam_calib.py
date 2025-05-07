@@ -9,9 +9,9 @@ from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 import rospy
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
-from PySide6 import QtCore
+from q3dviewer.Qt import QtCore
 import rospy
 import cv2
 import argparse

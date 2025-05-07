@@ -6,13 +6,14 @@ Distributed under MIT license. See LICENSE for more information.
 from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
-from PySide6 import QtCore, QtGui, QtOpenGLWidgets
+from q3dviewer.Qt import QtCore, QtGui
 from q3dviewer.utils.maths import frustum, euler_to_matrix, makeT
+from q3dviewer.Qt.QtWidgets import QOpenGLWidget
 
 
-class BaseGLWidget(QtOpenGLWidgets.QOpenGLWidget):
+class BaseGLWidget(QOpenGLWidget):
     def __init__(self, parent=None):
-        QtOpenGLWidgets.QOpenGLWidget.__init__(self, parent)
+        QOpenGLWidget.__init__(self, parent)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
         self.reset()
         self._fov = 60

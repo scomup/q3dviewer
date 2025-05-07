@@ -2,7 +2,7 @@
 
 import numpy as np
 import q3dviewer as q3d
-from PySide6.QtCore import QTimer
+from q3dviewer.Qt.QtCore import QTimer
 
 i = 0.0
 

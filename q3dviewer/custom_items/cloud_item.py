@@ -11,11 +11,11 @@ from OpenGL.GL import shaders
 
 import threading
 import os
-from PySide6.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
-    QComboBox, QCheckBox
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QComboBox, QCheckBox
 from q3dviewer.utils.range_slider import RangeSlider
-from q3dviewer.utils.gl_helper import set_uniform
-from q3dviewer.utils.maths import text_to_rgba
+from q3dviewer.utils import set_uniform
+from q3dviewer.utils import text_to_rgba
+from q3dviewer.Qt import Q3D_DEBUG
 
 
 # draw points with color (x, y, z, color)
@@ -240,7 +240,8 @@ class CloudItem(BaseItem):
             buff_capacity = self.buff.shape[0]
             while (new_buff_top > buff_capacity):
                 buff_capacity += self.CAPACITY
-            print("[Cloud Item] Update capacity to %d" % buff_capacity)
+            if Q3D_DEBUG is not None:
+                print("[Cloud Item] Update capacity to %d" % buff_capacity)
             new_buff = np.empty((buff_capacity), self.data_type)
             new_buff[:self.add_buff_loc] = self.buff[:self.add_buff_loc]
             new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
