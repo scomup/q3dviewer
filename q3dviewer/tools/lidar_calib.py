@@ -5,8 +5,6 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
-import time
-t1 = time.time()
 from sensor_msgs.msg import PointCloud2
 import rospy
 import numpy as np
@@ -16,10 +14,6 @@ from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, 
 from q3dviewer.Qt import QtCore
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
-
-
-t2 = time.time()
-print(f"Import time: {t2 - t1:.3f} s")
 
 
 try:
