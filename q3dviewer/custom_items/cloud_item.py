@@ -40,7 +40,7 @@ class CloudItem(BaseItem):
         except ValueError:
             print(f"Invalid color: {color}, please use matplotlib color format")
             exit(1)
-        self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2}
+        self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2, 'GRAY': 3}
         self.point_type_table = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
         self.color_mode = self.mode_table[color_mode]
         self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
@@ -89,6 +89,7 @@ class CloudItem(BaseItem):
         self.combo_color.addItem("flat color")
         self.combo_color.addItem("intensity")
         self.combo_color.addItem("RGB")
+        self.combo_color.addItem("gray")
         self.combo_color.setCurrentIndex(self.color_mode)
         self.combo_color.currentIndexChanged.connect(self._on_color_mode)
         layout.addWidget(self.combo_color)
@@ -127,10 +128,13 @@ class CloudItem(BaseItem):
             self.edit_rgb.show()
         elif (index == self.mode_table['I']):  # flat color
             self.slider_v.show()
+        elif (index == self.mode_table['GRAY']):  # flat color
+            self.slider_v.show()
+
         self.need_update_setting = True
 
     def set_color_mode(self, color_mode):
-        if color_mode in {'FLAT', 'RGB', 'I'}:
+        if color_mode in {'FLAT', 'RGB', 'I', 'GRAY'}:
             try:
                 self.combo_color.setCurrentIndex(self.mode_table[color_mode])
             except:

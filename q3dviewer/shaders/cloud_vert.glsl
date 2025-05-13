@@ -62,6 +62,15 @@ void main()
         c.y = float((value & uint(0x0000FF00)) >> 8)/255.;
         c.x = float((value & uint(0x00FF0000)) >> 16)/255.;
     }
+    else if(color_mode == 3)
+    {
+        uint intensity = value >> 24;
+        float range = vmax - vmin;
+        float value = 1.0 - (float(intensity) - vmin) / range;
+        c.z = value;
+        c.y = value;
+        c.x = value;
+    }
     else
     {
         c.z = float( uint(flat_rgb) & uint(0x000000FF))/255.;
