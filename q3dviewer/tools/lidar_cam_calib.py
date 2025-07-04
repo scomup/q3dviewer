@@ -17,8 +17,7 @@ import cv2
 import argparse
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
 from q3dviewer.utils.maths import euler_to_matrix, matrix_to_quaternion, matrix_to_euler
-
-
+from q3dviewer.utils.helpers import rainbow
 clouds = []
 remap_info = None
 K = None
@@ -254,7 +253,7 @@ def image_cb(data):
         intensity = cloud_local['irgb'][u_mask][valid_points] >> 24
         vmin = viewer['scan'].vmin
         vmax = viewer['scan'].vmax
-        intensity_color = q3d.rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
+        intensity_color = rainbow(intensity, scalar_min=vmin, scalar_max=vmax).astype(np.uint8)
         draw_image = image_un.copy()
         draw_image = draw_larger_points(draw_image, u, intensity_color, radius)
         rgb = image_un[u[:, 1], u[:, 0]]
