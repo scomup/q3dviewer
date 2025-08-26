@@ -1,3 +1,4 @@
+#version 430 core
 /*
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
@@ -8,7 +9,6 @@ opengl compute shader.
 sort guassian by depth using bitonic sorter
 */
 
-#version 430 core
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 

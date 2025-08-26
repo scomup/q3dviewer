@@ -1,9 +1,9 @@
+#version 330 core
 /*
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 */
 
-#version 330 core
 
 uniform int point_type;
 

@@ -4,12 +4,51 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 import numpy as np
-from pypcd4 import PointCloud
 from q3dviewer.utils.maths import make_transform
+
+def get_dtype(msg):
+    dtype_map = {
+        1: 'i1',   # INT8
+        2: 'u1',   # UINT8  
+        3: 'i2',   # INT16
+        4: 'u2',   # UINT16
+        5: 'i4',   # INT32
+        6: 'u4',   # UINT32
+        7: 'f4',   # FLOAT32
+        8: 'f8'    # FLOAT64
+    }
+    
+    point_step = msg.point_step
+    dtype_list = []
+    for field in msg.fields:
+        dtype_str = dtype_map.get(field.datatype, 'f4')
+        dtype_list.append((field.name, dtype_str, field.offset))
+    
+    dtype_list.sort(key=lambda x: x[2])
+    
+    structured_dtype = []
+    last_offset = 0
+    
+    for field_name, field_dtype, offset in dtype_list:
+        if offset > last_offset:
+            padding_size = offset - last_offset
+            if padding_size > 0:
+                structured_dtype.append((f'pad{last_offset}', f'u1', padding_size))
+        
+        structured_dtype.append((field_name, field_dtype))
+        last_offset = offset + np.dtype(field_dtype).itemsize
+    
+    if point_step > last_offset:
+        final_padding = point_step - last_offset
+        structured_dtype.append((f'pad{last_offset}', f'u1', final_padding))
+    return structured_dtype
 
 
 def convert_pointcloud2_msg(msg):
-    pc = PointCloud.from_msg(msg).pc_data
+    # Build dtype with proper offsets for PointCloud2 message
+    structured_dtype = get_dtype(msg)
+    pc = np.frombuffer(msg.data, dtype=structured_dtype)
+    # pc = PointCloud.from_msg(msg).pc_data
     data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
     intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
