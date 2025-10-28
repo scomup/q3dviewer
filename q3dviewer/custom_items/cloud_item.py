@@ -296,10 +296,12 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        if self.depth_test:
-            glEnable(GL_DEPTH_TEST)
+        glEnable(GL_DEPTH_TEST)
+        
+        if not self.depth_test:
+            glDepthFunc(GL_ALWAYS)  # Always pass depth test but still write depth
         else:
-            glDisable(GL_DEPTH_TEST)
+            glDepthFunc(GL_LESS)    # Normal depth testing
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
@@ -329,5 +331,3 @@ class CloudItem(BaseItem):
         glDisable(GL_POINT_SPRITE)
         glDisable(GL_PROGRAM_POINT_SIZE)
         glDisable(GL_BLEND)
-        if self.depth_test:
-            glDisable(GL_DEPTH_TEST)  # Disable depth testing if it was enabled

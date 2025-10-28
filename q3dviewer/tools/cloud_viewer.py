@@ -8,7 +8,9 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 import q3dviewer as q3d
 from q3dviewer.Qt.QtWidgets import QVBoxLayout, QProgressBar, QDialog, QLabel
-from q3dviewer.Qt.QtCore import QThread, Signal
+from q3dviewer.Qt.QtCore import QThread, Signal, Qt
+from q3dviewer.Qt.QtGui import QKeyEvent
+from q3dviewer import GLWidget
 
 
 class ProgressDialog(QDialog):
@@ -57,9 +59,21 @@ class FileLoaderThread(QThread):
         self.finished.emit()
 
 
+class CustomGLWidget(GLWidget):
+    def __init__(self):
+        super().__init__()
+
+    def mouseReleaseEvent(self, event):
+        if event.modifiers() & Qt.ShiftModifier:
+            x, y = event.x(), event.y()
+            self.capture_depth()
+        super().mouseReleaseEvent(event)
+
+
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):
-        super(CloudViewer, self).__init__(**kwargs)
+        super(CloudViewer, self).__init__(
+            **kwargs,  gl_widget_class=CustomGLWidget)
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):

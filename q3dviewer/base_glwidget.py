@@ -89,6 +89,9 @@ class BaseGLWidget(QOpenGLWidget):
         the method is herted from QOpenGLWidget, 
         and it is called when the widget is first shown.
         """
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+        
         for item in self.items:
             item.initialize()
         # initialize the projection matrix and model view matrix
@@ -349,3 +352,50 @@ class BaseGLWidget(QOpenGLWidget):
         frame = np.frombuffer(pixels, dtype=np.uint8).reshape(height, width, 3)
         frame = np.flip(frame, 0)
         return frame
+    
+    def depth_to_meters(self, depth_buffer):
+        """
+        Convert normalized depth buffer values [0,1] to actual distances in meters.
+        
+        Args:
+            depth_buffer: numpy array with depth values in range [0,1]
+            
+        Returns:
+            numpy array with distances in meters
+        """
+        # Get near and far clipping planes
+        near = self.dist * 0.001
+        far = self.dist * 10000.
+        
+        # Convert from normalized depth [0,1] to linear depth in meters
+        # OpenGL depth buffer formula: depth = (1/z - 1/near) / (1/far - 1/near)
+        # Solving for z: z = 1 / (depth * (1/far - 1/near) + 1/near)
+        
+        # Avoid division by zero for depth = 1.0 (far plane)
+        depth_clamped = np.clip(depth_buffer, 0.0, 0.999999)
+        
+        linear_depth = 1.0 / (depth_clamped * (1.0/far - 1.0/near) + 1.0/near)
+        
+        return linear_depth
+
+    def capture_depth(self):
+        from PIL import Image
+        self.makeCurrent()  # Ensure the OpenGL context is current
+        width = self.current_width()
+        height = self.current_height()
+        pixels = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+        depth = np.frombuffer(pixels, dtype=np.float32).reshape(height, width)
+        depth = np.flip(depth, 0)
+        # save png for debug
+        img = Image.fromarray((depth * 255).astype(np.uint8))
+        img.save("/home/liu/bag/naka/depth.png")
+        # print max and min depth values
+        print("Depth buffer stats - min:", np.min(depth), "max:", np.max(depth))
+        # Convert to meters and print some statistics
+        depth_meters = self.depth_to_meters(depth)
+        # save meter depth for debug
+        depth_meter_img = Image.fromarray((np.clip(depth_meters / 100.0, 0, 1) * 255).astype(np.uint8))
+        depth_meter_img.save("/home/liu/bag/naka/depth_meters.png")
+        print(f"Depth in meters - min: {np.min(depth_meters):.3f}m, max: {np.max(depth_meters):.3f}m")
+        
+        return depth

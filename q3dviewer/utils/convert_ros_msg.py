@@ -54,7 +54,9 @@ def convert_pointcloud2_msg(msg):
     intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
     fields = ['xyz']
     if 'intensity' in pc.dtype.names:
-        intensity = pc['intensity'].astype(np.uint32)
+        intensity = pc['intensity']
+        intensity = np.clip(intensity, 0, 255)
+        intensity = intensity.astype(np.uint32)
         fields.append('intensity')
     if 'rgb' in pc.dtype.names:
         rgb = pc['rgb'].view(np.uint32)
