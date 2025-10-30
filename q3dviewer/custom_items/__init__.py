@@ -7,3 +7,5 @@ from q3dviewer.custom_items.grid_item import GridItem
 from q3dviewer.custom_items.text_item import Text2DItem
 from q3dviewer.custom_items.image_item import ImageItem
 from q3dviewer.custom_items.line_item import LineItem
+from q3dviewer.custom_items.text3d_item import Text3DItem
+
