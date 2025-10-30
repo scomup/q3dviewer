@@ -86,9 +86,9 @@ def convert_odometry_msg(msg):
 def convert_image_msg(msg, bgr=False):
     image = np.frombuffer(msg.data, dtype=np.uint8).reshape(
         msg.height, msg.width, -1)
-    if (msg.encoding == 'bgr8' and not bgr):
-        image = image[:, :, ::-1]  # convert bgr to rgb
-    elif (msg.encoding == 'rgb8' and bgr):
-        image = image[:, :, ::-1]  # convert rgb to bgr
+    # if bgr is True return BGR image, else return RGB image
+    if (bgr and msg.encoding == 'rgb8') or (not bgr and msg.encoding == 'bgr8'):
+        image = image[:, :, ::-1]
+
     stamp = msg.header.stamp.to_sec()
     return image, stamp

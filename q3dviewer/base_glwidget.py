@@ -378,24 +378,30 @@ class BaseGLWidget(QOpenGLWidget):
         
         return linear_depth
 
-    def capture_depth(self):
-        from PIL import Image
+
+    def get_point(self, x, y):
         self.makeCurrent()  # Ensure the OpenGL context is current
         width = self.current_width()
-        height = self.current_height()
-        pixels = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
-        depth = np.frombuffer(pixels, dtype=np.float32).reshape(height, width)
-        depth = np.flip(depth, 0)
-        # save png for debug
-        img = Image.fromarray((depth * 255).astype(np.uint8))
-        img.save("/home/liu/bag/naka/depth.png")
-        # print max and min depth values
-        print("Depth buffer stats - min:", np.min(depth), "max:", np.max(depth))
-        # Convert to meters and print some statistics
-        depth_meters = self.depth_to_meters(depth)
-        # save meter depth for debug
-        depth_meter_img = Image.fromarray((np.clip(depth_meters / 100.0, 0, 1) * 255).astype(np.uint8))
-        depth_meter_img.save("/home/liu/bag/naka/depth_meters.png")
-        print(f"Depth in meters - min: {np.min(depth_meters):.3f}m, max: {np.max(depth_meters):.3f}m")
-        
-        return depth
+        height = self.current_height()  
+
+        gl_y = height - y - 1
+        z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
+        z = np.frombuffer(z, dtype=np.float32)[0]
+        if z == 1.0 or z == 0.0:
+            print("No object at this pixel or depth is invalid.")
+            return None 
+
+        # Retrieve OpenGL matrices (column-major), convert to numpy arrays and transpose
+        view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX), dtype=np.float32).reshape((4,4)).T
+        proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX), dtype=np.float32).reshape((4,4)).T   
+
+        # Convert screen (x, y, z) to normalized device coordinates (NDC)
+        ndc_x = (x / width) * 2.0 - 1.0
+        ndc_y = (gl_y / height) * 2.0 - 1.0
+        ndc_z = 2.0 * z - 1.0
+        ndc = np.array([ndc_x, ndc_y, ndc_z, 1.0], dtype=np.float32)    
+
+        inv_projview = np.linalg.inv(proj @ view)
+        world_p = inv_projview @ ndc
+        world_p /= world_p[3]
+        return world_p[:3]

@@ -11,7 +11,22 @@ from q3dviewer.utils.cloud_io import save_pcd, save_ply, save_e57, save_las, loa
 
 class CloudIOItem(CloudItem):
     """
-    add save/load function to CloudItem
+    A OpenGL point cloud item with input/output capabilities.
+    Attributes:
+        size (float): The size of each point. When `point_type` is 'PIXEL', this is the size in screen pixels.
+            When `point_type` is 'SQUARE' or 'SPHERE', this is the size in centimeters in 3D space.
+        alpha (float): The transparency of the points, in the range [0, 1], where 0 is fully transparent and 1 is fully opaque.
+        color_mode (str): The coloring mode for the points.
+            - 'FLAT': Single flat color for all points (uses the `color` attribute).
+            - 'I': Color by intensity.
+            - 'RGB': Per-point RGB color.
+            - 'GRAY': Per-point grayscale color.
+        color (str or tuple): The flat color to use when `color_mode` is 'FLAT'. Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
+        point_type (str): The type/rendering style of each point:
+            - 'PIXEL': Draw each point as a square pixel on the screen.
+            - 'SQUARE': Draw each point as a square in 3D space.
+            - 'SPHERE': Draw each point as a sphere in 3D space.
+        depth_test (bool): Whether to enable depth testing. If True, points closer to the camera will appear in front of farther ones.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

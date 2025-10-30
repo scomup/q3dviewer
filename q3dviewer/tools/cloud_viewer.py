@@ -60,20 +60,26 @@ class FileLoaderThread(QThread):
 
 
 class CustomGLWidget(GLWidget):
-    def __init__(self):
+    def __init__(self, viewer):
         super().__init__()
+        self.viewer = viewer
 
     def mouseReleaseEvent(self, event):
         if event.modifiers() & Qt.ShiftModifier:
             x, y = event.x(), event.y()
-            self.capture_depth()
+            p = self.get_point(x, y)
+            if p is not None:
+                # print(f"3D Point at ({x}, {y}): {p}")
+                self.viewer['marker'].set_data(data=p, append=False)
+                # print(self.viewer['marker'].buff[:self.viewer['marker'].valid_buff_top])
         super().mouseReleaseEvent(event)
 
 
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):
+        gl_widget_class=lambda: CustomGLWidget(self)
         super(CloudViewer, self).__init__(
-            **kwargs,  gl_widget_class=CustomGLWidget)
+            **kwargs,  gl_widget_class=gl_widget_class)
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
@@ -121,9 +127,11 @@ def main():
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
+    marker_item = q3d.CloudItem(size=10, alpha=1.0, color_mode='FLAT', 
+                                color='green', point_type='PIXEL')
 
     viewer.add_items(
-        {'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item})
+        {'cloud': cloud_item, 'grid': grid_item, 'axis': axis_item, 'marker': marker_item})
 
     if args.path:
         pcd_fn = args.path
