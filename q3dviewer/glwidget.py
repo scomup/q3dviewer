@@ -9,50 +9,6 @@ from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils import text_to_rgba
 
-import os, json
-import sys
-
-
-def save_config(file_name: str, data: dict):
-    # Cross-platform config directory
-    if sys.platform.startswith("win"):
-        base_dir = os.environ.get("APPDATA") or os.path.expanduser("~")
-        cfg_dir = os.path.join(base_dir, "q3dviewer")
-    else:
-        base_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-        cfg_dir = os.path.join(base_dir, "q3dviewer")
-    file_path = os.path.join(cfg_dir, file_name)
-    try:
-        os.makedirs(cfg_dir, exist_ok=True)
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        print(f"Saved {file_name} to {file_path}")
-    except Exception as e:
-        print(f"Failed to save {file_name} to {file_path}: {e}")
-
-
-def load_config(file_name: str):
-    # Cross-platform config directory
-    if sys.platform.startswith("win"):
-        base_dir = os.environ.get("APPDATA") or os.path.expanduser("~")
-        cfg_dir = os.path.join(base_dir, "q3dviewer")
-    else:
-        base_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-        cfg_dir = os.path.join(base_dir, "q3dviewer")
-    file_path = os.path.join(cfg_dir, file_name)
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            print(f"Loaded {file_name} from {file_path}")
-            return data
-        else:
-            print(f"No existing {file_name} found at {file_path}")
-            return None
-    except Exception as e:
-        print(f"Failed to load {file_name} from {file_path}: {e}")
-        return None
-
 
 class SettingWindow(QWidget):
     def __init__(self):
@@ -100,18 +56,11 @@ class GLWidget(BaseGLWidget):
         self.setting_window = SettingWindow()
         self.enable_show_center = True
         super(GLWidget, self).__init__()
-        # load default camera pose
-        config = load_config("camera_pose.json")
-        if config is not None:
-            self.set_camera_pose(config)
 
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.key() == QtCore.Qt.Key_M:  # setting menu
             print("Open setting windows")
-            self.open_setting_window()
-        elif ev.key() == QtCore.Qt.Key_S and ev.modifiers() == QtCore.Qt.ControlModifier:  # Ctrl+S
-            camera_pose = self.get_camera_pose()
-            save_config("camera_pose.json", camera_pose)
+            self.open_setting_window()            
         else:
             super().keyPressEvent(ev)
 

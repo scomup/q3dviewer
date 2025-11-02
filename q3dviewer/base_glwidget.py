@@ -305,7 +305,7 @@ class BaseGLWidget(QOpenGLWidget):
         near = dist * 0.001
         far = dist * 10000.
         r = near * tan(0.5 * radians(self._fov))
-        t = r * h / w
+        t = r * h / max(w, 1)
         matrix = frustum(-r, r, -t, t, near, far)
         return matrix
 
@@ -388,7 +388,6 @@ class BaseGLWidget(QOpenGLWidget):
         z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
         z = np.frombuffer(z, dtype=np.float32)[0]
         if z == 1.0 or z == 0.0:
-            print("No object at this pixel or depth is invalid.")
             return None 
 
         # Retrieve OpenGL matrices (column-major), convert to numpy arrays and transpose

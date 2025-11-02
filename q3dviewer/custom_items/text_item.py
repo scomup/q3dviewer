@@ -9,7 +9,16 @@ from q3dviewer.utils import text_to_rgba
 
 
 class Text2DItem(BaseItem):
-    """Draws text over opengl 3D."""
+    """
+    A OpenGL 2D text item.
+
+    Attributes:
+        pos: (x, y), the 2D position of the text in pixels
+        text: str, the text to display
+        font: QFont, the font of the text
+        color: str, the color of the text in matplotlib format
+        size: int, the font size of the text
+    """
 
     def __init__(self, **kwds):
         """All keyword arguments are passed to set_data()"""
@@ -17,11 +26,17 @@ class Text2DItem(BaseItem):
         self.pos = (20, 50)
         self.text = ''
         self.font = QtGui.QFont('Helvetica', 16)
-
-        self.rgb = text_to_rgba('w')
+        self.rgb = text_to_rgba('white')
         if 'pos' in kwds:
             self.pos = kwds['pos']
-        self.set_data(**kwds)
+        if 'text' in kwds:
+            self.text = kwds['text']
+        if 'font' in kwds:
+            self.font = kwds['font']
+        if 'color' in kwds:
+            self.set_color(kwds['color'])
+        if 'size' in kwds:
+            self.font.setPointSize(kwds['size'])
 
     def set_data(self, **kwds):
         args = ['pos', 'color', 'text', 'size', 'font']
