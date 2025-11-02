@@ -173,6 +173,7 @@ if __name__ == '__main__':
 - **GridItem**: Displays grids.
 - **ImageItem**: Displays 2D images.
 - **Text2DItem**: Displays 2D text.
+- **Text3DItem**: Displays 3D test and mark.
 - **LineItem**: Displays lines or trajectories.
 
 ### Developing Custom Items
