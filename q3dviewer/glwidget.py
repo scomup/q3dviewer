@@ -9,6 +9,7 @@ from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils import text_to_rgba
 
+
 class SettingWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -57,10 +58,11 @@ class GLWidget(BaseGLWidget):
         super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
-        if ev.key() == QtCore.Qt.Key_M:  # setting meun
+        if ev.key() == QtCore.Qt.Key_M:  # setting menu
             print("Open setting windows")
-            self.open_setting_window()
-        super().keyPressEvent(ev)
+            self.open_setting_window()            
+        else:
+            super().keyPressEvent(ev)
 
     def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]
@@ -126,3 +128,21 @@ class GLWidget(BaseGLWidget):
 
     def change_show_center(self, state):
         self.enable_show_center = state
+
+    def get_camera_pose(self):
+        """Get current camera pose parameters"""
+        camera_pose = {
+            'center': self.center.tolist() if hasattr(self.center, 'tolist') else list(self.center),
+            'euler': self.euler.tolist() if hasattr(self.euler, 'tolist') else list(self.euler),
+            'distance': float(self.dist),
+        }
+        return camera_pose
+
+    def set_camera_pose(self, config):
+        """Set camera pose from parameters"""
+        if 'center' in config and 'euler' in config and 'distance' in config:
+            self.set_center(config['center'])
+            self.set_euler(config['euler'])
+            self.set_dist(config['distance'])
+        else:
+            print("Invalid camera pose config")

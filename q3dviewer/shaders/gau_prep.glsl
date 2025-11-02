@@ -1,10 +1,10 @@
+#version 430 core
 /*
 We proprocess gaussian using compute shader.
 this file is modified from GaussianSplattingViewer licensed under the MIT License.
 see https://github.com/limacv/GaussianSplattingViewer/blob/main/shaders/gau_vert.glsl
 */
 
-#version 430 core
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 

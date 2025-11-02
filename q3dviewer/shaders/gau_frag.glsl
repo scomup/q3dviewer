@@ -1,9 +1,9 @@
+#version 430 core
 /*
 this file is modified from GaussianSplattingViewer licensed under the MIT License.
 see https://github.com/limacv/GaussianSplattingViewer/blob/main/shaders/gau_frag.glsl
 */
 
-#version 430 core
 
 in vec3 color;
 in float alpha;

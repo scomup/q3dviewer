@@ -187,11 +187,11 @@ class LidarCamViewer(q3d.Viewer):
 def camera_info_cb(data):
     global remap_info, K
     if remap_info is None:  # Initialize only once
-        K = np.array(data.K).reshape(3, 3)
-        D = np.array(data.D)
+        K = np.array([2.4480877131144061e+02, 0., 4.7808179466584482e+02, 0., 2.4540886113128877e+02, 2.8080868163348435e+02, 0., 0., 1.]).reshape(3, 3)
+        D = np.array([0,0,0,0,0])
         rospy.loginfo("Camera intrinsic parameters set")
-        height = data.height
-        width = data.width
+        height = 540
+        width = 960
         mapx, mapy = cv2.initUndistortRectifyMap(
             K, D, None, K, (width, height), cv2.CV_32FC1)
         remap_info = [mapx, mapy]
@@ -287,14 +287,14 @@ def main():
     scan_item = q3d.CloudItem(size=2, alpha=1, color_mode='I')
     img_item = q3d.ImageItem(pos=np.array([0, 0]), size=np.array([800, 600]))
     viewer.add_items({'scan': scan_item, 'grid': grid_item, 'img': img_item})
+    camera_info_cb(None)
 
     rospy.init_node('lidar_cam_calib', anonymous=True)
 
     # Use topic names from arguments
-    rospy.Subscriber(args.lidar, PointCloud2, scan_cb, queue_size=1)
-    rospy.Subscriber(args.camera, Image, image_cb, queue_size=1)
-    rospy.Subscriber(args.camera_info, CameraInfo,
-                     camera_info_cb, queue_size=1)
+    rospy.Subscriber("cloud", PointCloud2, scan_cb, queue_size=1)
+    rospy.Subscriber("/usb_cam/image_raw", Image, image_cb, queue_size=1)
+    # rospy.Subscriber(args.camera_info, CameraInfo, camera_info_cb, queue_size=1)
 
     viewer.show()
     app.exec()

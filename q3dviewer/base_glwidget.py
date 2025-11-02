@@ -89,6 +89,9 @@ class BaseGLWidget(QOpenGLWidget):
         the method is herted from QOpenGLWidget, 
         and it is called when the widget is first shown.
         """
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
+        
         for item in self.items:
             item.initialize()
         # initialize the projection matrix and model view matrix
@@ -302,7 +305,7 @@ class BaseGLWidget(QOpenGLWidget):
         near = dist * 0.001
         far = dist * 10000.
         r = near * tan(0.5 * radians(self._fov))
-        t = r * h / w
+        t = r * h / max(w, 1)
         matrix = frustum(-r, r, -t, t, near, far)
         return matrix
 
@@ -349,3 +352,55 @@ class BaseGLWidget(QOpenGLWidget):
         frame = np.frombuffer(pixels, dtype=np.uint8).reshape(height, width, 3)
         frame = np.flip(frame, 0)
         return frame
+    
+    def depth_to_meters(self, depth_buffer):
+        """
+        Convert normalized depth buffer values [0,1] to actual distances in meters.
+        
+        Args:
+            depth_buffer: numpy array with depth values in range [0,1]
+            
+        Returns:
+            numpy array with distances in meters
+        """
+        # Get near and far clipping planes
+        near = self.dist * 0.001
+        far = self.dist * 10000.
+        
+        # Convert from normalized depth [0,1] to linear depth in meters
+        # OpenGL depth buffer formula: depth = (1/z - 1/near) / (1/far - 1/near)
+        # Solving for z: z = 1 / (depth * (1/far - 1/near) + 1/near)
+        
+        # Avoid division by zero for depth = 1.0 (far plane)
+        depth_clamped = np.clip(depth_buffer, 0.0, 0.999999)
+        
+        linear_depth = 1.0 / (depth_clamped * (1.0/far - 1.0/near) + 1.0/near)
+        
+        return linear_depth
+
+
+    def get_point(self, x, y):
+        self.makeCurrent()  # Ensure the OpenGL context is current
+        width = self.current_width()
+        height = self.current_height()  
+
+        gl_y = height - y - 1
+        z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
+        z = np.frombuffer(z, dtype=np.float32)[0]
+        if z == 1.0 or z == 0.0:
+            return None 
+
+        # Retrieve OpenGL matrices (column-major), convert to numpy arrays and transpose
+        view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX), dtype=np.float32).reshape((4,4)).T
+        proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX), dtype=np.float32).reshape((4,4)).T   
+
+        # Convert screen (x, y, z) to normalized device coordinates (NDC)
+        ndc_x = (x / width) * 2.0 - 1.0
+        ndc_y = (gl_y / height) * 2.0 - 1.0
+        ndc_z = 2.0 * z - 1.0
+        ndc = np.array([ndc_x, ndc_y, ndc_z, 1.0], dtype=np.float32)    
+
+        inv_projview = np.linalg.inv(proj @ view)
+        world_p = inv_projview @ ndc
+        world_p /= world_p[3]
+        return world_p[:3]

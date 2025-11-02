@@ -11,7 +11,7 @@ from OpenGL.GL import shaders
 
 import threading
 import os
-from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QComboBox, QCheckBox
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QCheckBox
 from q3dviewer.utils.range_slider import RangeSlider
 from q3dviewer.utils import set_uniform
 from q3dviewer.utils import text_to_rgba
@@ -20,6 +20,25 @@ from q3dviewer.Qt import Q3D_DEBUG
 
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
+    """
+    A OpenGL point cloud item.
+
+    Attributes:
+        size (float): The size of each point. When `point_type` is 'PIXEL', this is the size in screen pixels.
+            When `point_type` is 'SQUARE' or 'SPHERE', this is the size in centimeters in 3D space.
+        alpha (float): The transparency of the points, in the range [0, 1], where 0 is fully transparent and 1 is fully opaque.
+        color_mode (str): The coloring mode for the points.
+            - 'FLAT': Single flat color for all points (uses the `color` attribute).
+            - 'I': Color by intensity.
+            - 'RGB': Per-point RGB color.
+            - 'GRAY': Per-point grayscale color.
+        color (str or tuple): The flat color to use when `color_mode` is 'FLAT'. Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
+        point_type (str): The type/rendering style of each point:
+            - 'PIXEL': Draw each point as a square pixel on the screen.
+            - 'SQUARE': Draw each point as a square in 3D space.
+            - 'SPHERE': Draw each point as a sphere in 3D space.
+        depth_test (bool): Whether to enable depth testing. If True, points closer to the camera will appear in front of farther ones.
+    """
     def __init__(self, size, alpha, 
                  color_mode='I', 
                  color='white', 
@@ -65,11 +84,10 @@ class CloudItem(BaseItem):
         combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
 
-        self.box_size = QDoubleSpinBox()
+        self.box_size = QSpinBox()
         self.box_size.setPrefix("Size: ")
         self.box_size.setSingleStep(1)
-        self.box_size.setDecimals(0)
-        self.box_size.setValue(self.size)
+        self.box_size.setValue(int(self.size))
         self.box_size.setRange(0, 100)
         self.box_size.valueChanged.connect(self.set_size)
         self._on_point_type_selection(self.point_type_table[self.point_type])
@@ -147,17 +165,10 @@ class CloudItem(BaseItem):
         self.point_type = list(self.point_type_table.keys())[index]
         if self.point_type == 'PIXEL':
             self.box_size.setPrefix("Set size (pixel): ")
-            self.box_size.setDecimals(0)
-            self.box_size.setSingleStep(1)
-            self.size = np.ceil(self.size)
-            self.box_size.setValue(self.size)
         else:
-            self.box_size.setPrefix("Set size (meter): ")
-            self.box_size.setDecimals(2)
-            self.box_size.setSingleStep(0.01)
-            if self.size >= 1:
-                self.size = self.size * 0.01
-            self.box_size.setValue(self.size)
+            self.box_size.setPrefix("Set size (cm): ")
+        # self.size = 1
+        # self.box_size.setValue(self.size)
         self.need_update_setting = True
 
     def set_alpha(self, alpha):
@@ -226,7 +237,7 @@ class CloudItem(BaseItem):
         set_uniform(self.program, float(self.vmax), 'vmax')
         set_uniform(self.program, float(self.vmin), 'vmin')
         set_uniform(self.program, float(self.alpha), 'alpha')
-        set_uniform(self.program, float(self.size), 'point_size')
+        set_uniform(self.program, int(self.size), 'point_size')
         set_uniform(self.program, int(self.point_type_table[self.point_type]), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
@@ -296,10 +307,12 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        if self.depth_test:
-            glEnable(GL_DEPTH_TEST)
+        glEnable(GL_DEPTH_TEST)
+        
+        if not self.depth_test:
+            glDepthFunc(GL_ALWAYS)  # Always pass depth test but still write depth
         else:
-            glDisable(GL_DEPTH_TEST)
+            glDepthFunc(GL_LESS)    # Normal depth testing
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
@@ -329,5 +342,3 @@ class CloudItem(BaseItem):
         glDisable(GL_POINT_SPRITE)
         glDisable(GL_PROGRAM_POINT_SIZE)
         glDisable(GL_BLEND)
-        if self.depth_test:
-            glDisable(GL_DEPTH_TEST)  # Disable depth testing if it was enabled

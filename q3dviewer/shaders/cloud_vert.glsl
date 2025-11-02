@@ -1,9 +1,9 @@
+#version 330 core
 /*
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 */
 
-#version 330 core
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in uint value;
@@ -17,7 +17,7 @@ uniform float vmin = 0;
 uniform float vmax = 255;
 uniform float focal = 1000;
 uniform int point_type = 0; // 0 pixel, 1 flat square, 2 sphere
-uniform float point_size = 0.01;  // World size for each point (meter)
+uniform int point_size = 1;  // World size for each point (pixel or cm)
 out vec4 color;
 
 vec3 getRainbowColor(uint value_raw) {
@@ -47,9 +47,9 @@ void main()
 
     // Calculate point size in pixels based on distance
     if (point_type == 0)
-        gl_PointSize = int(point_size);
+        gl_PointSize = float(point_size);
     else
-        gl_PointSize = point_size / gl_Position.w * focal;
+        gl_PointSize = (float(point_size) * 0.01) / gl_Position.w * focal;
     vec3 c = vec3(1.0, 1.0, 1.0);
     if (color_mode == 1)
     {
