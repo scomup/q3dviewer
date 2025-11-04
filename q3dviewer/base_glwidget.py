@@ -411,7 +411,6 @@ class BaseGLWidget(QOpenGLWidget):
             z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
             z = np.frombuffer(z, dtype=np.float32)[0]
             if z != 1.0 and z != 0.0:
-                print("dist to  p:", np.sqrt((x - x0)**2 + (y - y0)**2))
                 break
 
         if z == 1.0 or z == 0.0:
