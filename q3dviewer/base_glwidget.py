@@ -384,6 +384,11 @@ class BaseGLWidget(QOpenGLWidget):
         width = self.current_width()
         height = self.current_height()  
 
+        # Scale mouse coordinates by device pixel ratio for PySide6 compatibility
+        pixel_ratio = self.devicePixelRatioF()
+        x = int(x * pixel_ratio)
+        y = int(y * pixel_ratio)
+
         gl_y = height - y - 1
         z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
         z = np.frombuffer(z, dtype=np.float32)[0]

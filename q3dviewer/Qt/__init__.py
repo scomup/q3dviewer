@@ -44,6 +44,7 @@ def import_module(name):
 
 
 def load_qt():
+    global Q3D_QT_IMPL, Q3D_DEBUG
     if Q3D_DEBUG is not None:
         print(f'Using {Q3D_QT_IMPL} as Qt binding.')
 
