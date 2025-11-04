@@ -399,8 +399,6 @@ class BaseGLWidget(QOpenGLWidget):
                     points.append((x0 + dx, y0 + dy))
         points = sorted(points, key=lambda p: (p[0]-x0)**2 + (p[1]-y0)**2)
 
-        print("points to check:", len(points))
-
         gl_y0 = height - y0 - 1
         z = 1.0
         for x, y in points:
