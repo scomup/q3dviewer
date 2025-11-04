@@ -379,29 +379,51 @@ class BaseGLWidget(QOpenGLWidget):
         return linear_depth
 
 
-    def get_point(self, x, y):
+    def get_point(self, x0, y0, radius=5):
+        """
+        Get the 3D point in world coordinates corresponding to the given
+        screen coordinates (x0, y0). It searches within a radius around the
+        given pixel to find a valid depth value.
+        """
         self.makeCurrent()  # Ensure the OpenGL context is current
         width = self.current_width()
         height = self.current_height()  
 
         # Scale mouse coordinates by device pixel ratio for PySide6 compatibility
         pixel_ratio = self.devicePixelRatioF()
-        x = int(x * pixel_ratio)
-        y = int(y * pixel_ratio)
 
-        gl_y = height - y - 1
-        z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
-        z = np.frombuffer(z, dtype=np.float32)[0]
+        points = []
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                if dx * dx + dy * dy <= radius * radius:
+                    points.append((x0 + dx, y0 + dy))
+        points = sorted(points, key=lambda p: (p[0]-x0)**2 + (p[1]-y0)**2)
+
+        print("points to check:", len(points))
+
+        gl_y0 = height - y0 - 1
+        z = 1.0
+        for x, y in points:
+            x = int(x * pixel_ratio)
+            y = int(y * pixel_ratio)
+
+            gl_y = height - y - 1
+            z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
+            z = np.frombuffer(z, dtype=np.float32)[0]
+            if z != 1.0 and z != 0.0:
+                print("dist to  p:", np.sqrt((x - x0)**2 + (y - y0)**2))
+                break
+
         if z == 1.0 or z == 0.0:
-            return None 
+            return None
 
         # Retrieve OpenGL matrices (column-major), convert to numpy arrays and transpose
         view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX), dtype=np.float32).reshape((4,4)).T
         proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX), dtype=np.float32).reshape((4,4)).T   
 
         # Convert screen (x, y, z) to normalized device coordinates (NDC)
-        ndc_x = (x / width) * 2.0 - 1.0
-        ndc_y = (gl_y / height) * 2.0 - 1.0
+        ndc_x = (x0 / width) * 2.0 - 1.0
+        ndc_y = (gl_y0 / height) * 2.0 - 1.0
         ndc_z = 2.0 * z - 1.0
         ndc = np.array([ndc_x, ndc_y, ndc_z, 1.0], dtype=np.float32)    
 
