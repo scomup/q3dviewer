@@ -70,7 +70,6 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
         self.max_cloud_size = 300000000
         # Enable depth test when full opaque
-        self.depth_test = depth_test
         self.path = os.path.dirname(__file__)
 
     def add_setting(self, layout):
@@ -125,13 +124,6 @@ class CloudItem(BaseItem):
         self.slider_v.setRange(0, 255)
         self.slider_v.rangeChanged.connect(self._on_range)
         layout.addWidget(self.slider_v)
-
-        self.checkbox_depth_test = QCheckBox(
-            "Show front points first (Depth Test)")
-        self.checkbox_depth_test.setChecked(self.depth_test)
-        self.checkbox_depth_test.stateChanged.connect(self.set_depthtest)
-        self._on_color_mode(self.color_mode)
-        layout.addWidget(self.checkbox_depth_test)
 
     def _on_range(self, lower, upper):
         self.vmin = lower
@@ -191,9 +183,6 @@ class CloudItem(BaseItem):
     def set_size(self, size):
         self.size = size
         self.need_update_setting = True
-
-    def set_depthtest(self, state):
-        self.depth_test = state
 
     def clear(self):
         data = np.empty((0), self.data_type)
@@ -304,15 +293,16 @@ class CloudItem(BaseItem):
     def paint(self):
         self.update_render_buffer()
         self.update_setting()
+        
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
         glEnable(GL_DEPTH_TEST)
         
-        if not self.depth_test:
-            glDepthFunc(GL_ALWAYS)  # Always pass depth test but still write depth
+        if self.alpha < 0.9:
+            glDepthFunc(GL_ALWAYS)
         else:
-            glDepthFunc(GL_LESS)    # Normal depth testing
+            glDepthFunc(GL_LESS)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)
