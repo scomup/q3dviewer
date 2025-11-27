@@ -37,19 +37,21 @@ class RangeSlider(QSlider):
             self.active_handle = "upper"
 
     def mouseMoveEvent(self, event):
-        """Override to update handle positions."""
+        """Override to update handle positions, always clamp and int for cross-platform safety."""
         if event.buttons() != Qt.LeftButton:
             return
 
         pos = self.pixelPosToValue(event.pos())
+        minv, maxv = self.minimum(), self.maximum()
         if self.active_handle == "lower":
-            self.lower_value = max(
-                self.minimum(), min(pos, self.upper_value - 1))
+            self.lower_value = max(minv, min(pos, self.upper_value - 1))
+            self.lower_value = int(round(self.lower_value))
             QToolTip.showText(event.globalPos(), f"Lower: {self.lower_value:.1f}")
         elif self.active_handle == "upper":
-            self.upper_value = min(
-                self.maximum(), max(pos, self.lower_value + 1))
+            self.upper_value = min(maxv, max(pos, self.lower_value + 1))
+            self.upper_value = int(round(self.upper_value))
             QToolTip.showText(event.globalPos(), f"Upper: {self.upper_value:.1f}")
+        # Always emit clamped, int values
         self.rangeChanged.emit(self.lower_value, self.upper_value)
         self.update()
 
