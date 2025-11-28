@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.2.0',
+    version='1.2.1',
     author="Liu Yang",
     description="A library designed for quickly deploying a 3D viewer.",
     long_description=open("README.md").read(),
@@ -29,6 +29,7 @@ setup(
         'imageio',
         'imageio[ffmpeg]',
         'matplotlib',
+        'numpy-stl',
     ],
     entry_points={
         'console_scripts': [

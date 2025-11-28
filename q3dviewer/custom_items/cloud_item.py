@@ -42,8 +42,7 @@ class CloudItem(BaseItem):
     def __init__(self, size, alpha, 
                  color_mode='I', 
                  color='white', 
-                 point_type='PIXEL', 
-                 depth_test=False):
+                 point_type='PIXEL'):
         super().__init__()
         self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0

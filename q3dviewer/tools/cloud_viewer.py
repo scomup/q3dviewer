@@ -49,13 +49,21 @@ class FileLoaderThread(QThread):
 
     def run(self):
         cloud_item = self.viewer['cloud']
+        mesh_item = self.viewer['mesh']
         for i, url in enumerate(self.files):
+            # if the file is a mesh file, use mesh_item to load
+            file_path = url.toLocalFile()
             file_path = url.toLocalFile()
             self.viewer.progress_dialog.set_file_name(file_path)
-            cloud = cloud_item.load(file_path, append=(i > 0))
-            center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-            self.viewer.glwidget.set_cam_position(center=center)
-            self.progress.emit(int((i + 1) / len(self.files) * 100))
+            if url.toLocalFile().lower().endswith(('.stl')):
+                from q3dviewer.utils.cloud_io import load_stl
+                verts, faces = load_stl(file_path)
+                mesh_item.set_data(verts=verts, faces=faces)
+            else:
+                cloud = cloud_item.load(file_path, append=(i > 0))
+                center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+                self.viewer.glwidget.set_cam_position(center=center)
+                self.progress.emit(int((i + 1) / len(self.files) * 100))
         self.finished.emit()
 
 
@@ -157,6 +165,8 @@ def print_help():
     help_msg = f"""
 {BOLD}Cloud Viewer Help:{END}
 {GREEN}• Drag and drop cloud files into the viewer to load them.{END}
+    {BLUE}- support .pcd, .ply, .las, .e57, for point clouds.{END}
+    {BLUE}- support .stl for mesh files.{END}
 {GREEN}• Measure distance between points:{END}
     {BLUE}- Hold Ctrl and left-click to select points on the cloud.{END}
     {BLUE}- Hold Ctrl and right-click to remove the last selected point.{END}
@@ -179,13 +189,15 @@ def main():
     grid_item = q3d.GridItem(size=1000, spacing=20)
     marker_item = q3d.Text3DItem()  # Changed from CloudItem to Text3DItem
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
+    mesh_item = q3d.MeshItem()  # Added MeshIOItem for mesh support
 
     viewer.add_items(
         {'marker': marker_item, 
          'cloud': cloud_item, 
          'grid': grid_item, 
          'axis': axis_item, 
-         'text': text_item})
+         'text': text_item,
+         'mesh': mesh_item})
 
     if args.path:
         pcd_fn = args.path

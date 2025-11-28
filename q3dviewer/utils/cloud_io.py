@@ -6,6 +6,27 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 
 
+def load_stl(file_path):
+    from stl import mesh as stlmesh
+    m = stlmesh.Mesh.from_file(file_path)
+    verts = m.vectors.reshape(-1, 3).astype(np.float32)
+    faces = np.arange(len(verts), dtype=np.uint32).reshape(-1, 3)
+    return verts, faces
+
+
+def save_stl(verts, faces, save_path):
+    """Save the generated mesh as an STL file."""
+    from stl import mesh as stlmesh
+    from stl import Mode
+    verts = np.asarray(verts, dtype=np.float32)
+    faces = np.asarray(faces, dtype=np.uint32)
+    # Create the mesh
+    m = stlmesh.Mesh(np.zeros(faces.shape[0], dtype=stlmesh.Mesh.dtype))
+    m.vectors[:] = verts[faces].astype(np.float32)
+    # Save to file
+    m.save(save_path, mode=Mode.BINARY)
+
+
 def save_ply(cloud, save_path):
     import meshio
     xyz = cloud['xyz']
