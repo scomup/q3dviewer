@@ -58,7 +58,12 @@ class FileLoaderThread(QThread):
             if url.toLocalFile().lower().endswith(('.stl')):
                 from q3dviewer.utils.cloud_io import load_stl
                 verts, faces = load_stl(file_path)
-                mesh_item.set_data(verts=verts, faces=faces)
+                # create colors, N, array
+                color = np.zeros((verts.shape[0],), dtype=np.uint32)
+                # random uint32 colors in IRGB format
+                color = np.random.randint(0, 0xFFFFFFFF, size=(verts.shape[0],), dtype=np.uint32)
+                mesh_item.set_data(verts=verts, faces=faces, colors=color)
+                break
             else:
                 cloud = cloud_item.load(file_path, append=(i > 0))
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
@@ -186,18 +191,20 @@ def main():
     viewer = CloudViewer(name='Cloud Viewer')
     cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
+    axis_item.disable_setting()
     grid_item = q3d.GridItem(size=1000, spacing=20)
     marker_item = q3d.Text3DItem()  # Changed from CloudItem to Text3DItem
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
+    text_item.disable_setting()
     mesh_item = q3d.MeshItem()  # Added MeshIOItem for mesh support
 
     viewer.add_items(
         {'marker': marker_item, 
-         'cloud': cloud_item, 
+         'cloud': cloud_item,
+         'mesh': mesh_item,
          'grid': grid_item, 
          'axis': axis_item, 
-         'text': text_item,
-         'mesh': mesh_item})
+         'text': text_item,})
 
     if args.path:
         pcd_fn = args.path
