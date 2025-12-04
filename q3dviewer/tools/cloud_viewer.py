@@ -58,11 +58,7 @@ class FileLoaderThread(QThread):
             if url.toLocalFile().lower().endswith(('.stl')):
                 from q3dviewer.utils.cloud_io import load_stl
                 verts, faces = load_stl(file_path)
-                # create colors, N, array
-                color = np.zeros((verts.shape[0],), dtype=np.uint32)
-                # random uint32 colors in IRGB format
-                color = np.random.randint(0, 0xFFFFFFFF, size=(verts.shape[0],), dtype=np.uint32)
-                mesh_item.set_data(verts=verts, faces=faces, colors=color)
+                mesh_item.set_data(verts=verts, faces=faces)
                 break
             else:
                 cloud = cloud_item.load(file_path, append=(i > 0))

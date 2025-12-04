@@ -222,7 +222,6 @@ class MeshItem(BaseItem):
             pass
 
     def _on_color_mode(self, index):
-        print(f"Color mode1 : {index}")
         self.color_mode = index
         self.edit_rgb.setVisible(index == self.mode_table['FLAT'])
         self.need_update_setting = True
