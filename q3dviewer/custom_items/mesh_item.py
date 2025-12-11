@@ -10,148 +10,75 @@ import numpy as np
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GL import shaders
-from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit, QComboBox
-import matplotlib.colors as mcolors
+from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit
+
 import os
 from q3dviewer.utils import set_uniform, text_to_rgba
+import time
 
 
 
 class MeshItem(BaseItem):
     """
-    An OpenGL mesh item for rendering triangulated 3D surfaces.
-
+    A OpenGL mesh item for rendering 3D triangular meshes.
     Attributes:
-        color (str or tuple): The flat color to use when `color_mode` is 'FLAT'. 
-            Accepts any valid matplotlib color (e.g., 'lightblue', 'red', '#FF4500', (1.0, 0.5, 0.0)).
-        wireframe (bool): If True, render the mesh in wireframe mode (edges only). 
-            If False, render filled triangles. Default is False.
-        enable_lighting (bool): Whether to enable Phong lighting for the mesh. 
-            If True, the mesh will be shaded based on light direction and material properties.
-            If False, the mesh will use flat shading with object colors only. Default is True.
-        color_mode (str): The coloring mode for mesh vertices.
-            - 'FLAT': Single flat color for all vertices (uses the `color` attribute).
-            - 'I': Color by intensity channel from per-vertex colors (rainbow gradient).
-            - 'RGB': Per-vertex RGB color from per-vertex color data.
-        alpha (float): The transparency of the mesh, in the range [0, 1], 
-            where 0 is fully transparent and 1 is fully opaque. Default is 1.0.
-        line_width (float): The width of lines when rendering in wireframe mode. 
-            Range is typically 0.5 to 5.0. Default is 1.0.
-        
-    Material Properties (Phong Lighting):
-        ambient_strength (float): Ambient light contribution [0.0-1.0]. Default is 0.1.
-        diffuse_strength (float): Diffuse light contribution [0.0-2.0]. Default is 1.2.
-        specular_strength (float): Specular highlight contribution [0.0-2.0]. Default is 0.1.
-        shininess (float): Specular shininess exponent [1-256]. Higher values = smaller highlights. Default is 32.0.
-        
-    Methods:
-        set_data(verts, faces, colors=None): Set mesh geometry and optional per-vertex colors.
-            - verts: np.ndarray of shape (N, 3) - vertex positions
-            - faces: np.ndarray of shape (M, 3) with uint32 indices - triangle indices
-            - colors: np.ndarray of shape (N,) with uint32 IRGB format (optional)
-                     uint32 format: I (bits 24-31), R (bits 16-23), G (bits 8-15), B (bits 0-7)
-                     
-    Example:
-        # Create a simple triangle mesh with per-vertex colors
-        verts = np.array([[0,0,0], [1,0,0], [0,1,0]], dtype=np.float32)
-        faces = np.array([[0,1,2]], dtype=np.uint32)
-        colors = np.array([
-            (255 << 24) | (255 << 16) | (0 << 8) | 0,  # Red, intensity=255
-            (200 << 24) | (0 << 16) | (255 << 8) | 0,  # Green, intensity=200
-            (150 << 24) | (0 << 16) | (0 << 8) | 255   # Blue, intensity=150
-        ], dtype=np.uint32)
-        
-        mesh = q3d.MeshItem(color='lightblue', color_mode='RGB', enable_lighting=True)
-        mesh.set_data(verts, faces, colors)
+        color (str or tuple): Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
+        wireframe (bool): If True, renders the mesh in wireframe mode.
     """
-    def __init__(self, color='lightblue', wireframe=False, enable_lighting=True, color_mode='FLAT'):
+    def __init__(self, color='lightblue', wireframe=False):
         super(MeshItem, self).__init__()
+        self.wireframe = wireframe
         self.color = color
         self.flat_rgb = text_to_rgba(color, flat=True)
-        self.wireframe = wireframe
-        self.enable_lighting = enable_lighting
         
-        # Mesh data
-        self.triangles = None
-        self.normals = None
-        self.vertex_colors = None  # Per-vertex colors (uint32 IRGB format)
+        # Incremental buffer management
+        self.FACE_CAPACITY = 1000000    # Initial capacity for faces
         
-        self.mode_table = {'FLAT': 0, 'I': 1, 'RGB': 2}
-        self.color_mode = self.mode_table[color_mode]
-        self.vmin = 0
-        self.vmax = 255
+        # Faces buffer: N x 13 numpy array
+        # Each row: [v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good]
+        self.faces = np.zeros((self.FACE_CAPACITY, 13), dtype=np.float32)
+        
+        # valid_f_top: pointer to end of valid faces
+        self.valid_f_top = 0
+        
+        # key2index: mapping from face_key to face buffer index
+        self.key2index = {}  # {face_key: face_index}
         
         # OpenGL objects
         self.vao = None
-        self.vbo_vertices = None
-        self.vbo_normals = None
-        self.vbo_colors = None
+        self.vbo = None
         self.program = None
+        self._gpu_face_capacity = 0    # Track GPU buffer capacity
         
-        # Rendering parameters
+        # Fixed rendering parameters (not adjustable via UI)
+        self.enable_lighting = True
         self.line_width = 1.0
         self.light_pos = [1.0, 1.0, 1.0]
         self.light_color = [1.0, 1.0, 1.0]
-        
-        # Phong lighting material properties
         self.ambient_strength = 0.1
         self.diffuse_strength = 1.2
         self.specular_strength = 0.1
         self.shininess = 32.0
-        # Alpha (opacity)
         self.alpha = 1.0
         
-        # Buffer initialization flag
-        self.need_update_buffer = True
+        # Settings flag
         self.need_update_setting = True
         self.path = os.path.dirname(__file__)
     
         
     def add_setting(self, layout):
         """Add UI controls for mesh visualization"""
-        # Wireframe toggle
+        # Only keep wireframe toggle - all other parameters are fixed
         self.wireframe_box = QCheckBox("Wireframe Mode")
         self.wireframe_box.setChecked(self.wireframe)
         self.wireframe_box.toggled.connect(self.update_wireframe)
         layout.addWidget(self.wireframe_box)
-        
+
         # Enable lighting toggle
         self.lighting_box = QCheckBox("Enable Lighting")
         self.lighting_box.setChecked(self.enable_lighting)
         self.lighting_box.toggled.connect(self.update_enable_lighting)
         layout.addWidget(self.lighting_box)
-    
-        # Line width control
-        line_width_label = QLabel("Line Width:")
-        layout.addWidget(line_width_label)
-        self.line_width_box = QDoubleSpinBox()
-        self.line_width_box.setRange(0.5, 5.0)
-        self.line_width_box.setSingleStep(0.5)
-        self.line_width_box.setValue(self.line_width)
-        self.line_width_box.valueChanged.connect(self.update_line_width)
-        layout.addWidget(self.line_width_box)
-        
-        # Alpha control
-        alpha_label = QLabel("Alpha:")
-        layout.addWidget(alpha_label)
-        alpha_box = QDoubleSpinBox()
-        alpha_box.setRange(0.0, 1.0)
-        alpha_box.setSingleStep(0.05)
-        alpha_box.setValue(self.alpha)
-        alpha_box.valueChanged.connect(self.update_alpha)
-        layout.addWidget(alpha_box)
-        
-
-        # Color mode selection
-        label_color = QLabel("Color Mode:")
-        layout.addWidget(label_color)
-        self.combo_color = QComboBox()
-        self.combo_color.addItem("flat color")
-        self.combo_color.addItem("intensity")
-        self.combo_color.addItem("RGB")
-        self.combo_color.setCurrentIndex(self.color_mode)
-        self.combo_color.currentIndexChanged.connect(self._on_color_mode)
-        layout.addWidget(self.combo_color)
 
         label_rgb = QLabel("Color:")
         label_rgb.setToolTip("Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
@@ -161,7 +88,6 @@ class MeshItem(BaseItem):
         self.edit_rgb.setText(self.color)
         self.edit_rgb.textChanged.connect(self._on_color)
         layout.addWidget(self.edit_rgb)
-
 
         # Material property controls for Phong lighting
         if self.enable_lighting:
@@ -221,11 +147,6 @@ class MeshItem(BaseItem):
         except ValueError:
             pass
 
-    def _on_color_mode(self, index):
-        self.color_mode = index
-        self.edit_rgb.setVisible(index == self.mode_table['FLAT'])
-        self.need_update_setting = True
-
     def update_wireframe(self, value):
         self.wireframe = value
         
@@ -257,135 +178,233 @@ class MeshItem(BaseItem):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
         self.need_update_setting = True
-            
-    def set_data(self, verts, faces, colors=None):
-        """
-        verts: np.ndarray of shape (N, 3)
-        faces: np.ndarray of shape (M, 3) with uint32 indices
-        colors: np.ndarray of shape (N,) with uint32 IRGB format (optional)
-                uint32 contains: I (bits 24-31), R (bits 16-23), G (bits 8-15), B (bits 0-7)
-        """
-        verts = np.asarray(verts, dtype=np.float32)
-        faces = np.asarray(faces, dtype=np.uint32)
-        triangles = verts[faces.flatten()]
 
-        if colors is not None:
-            colors = np.asarray(colors, dtype=np.uint32)
-            if len(colors) == len(verts):
-                # Expand per-vertex colors to per-triangle-vertex
-                self.vertex_colors = colors[faces.flatten()]
+    def set_data(self, data):
+        """
+        Set complete mesh data at once.
+        
+        Args:
+            data: is Nx3 numpy array (N must be divisible by 3) or dict
+            if is dict, uses the dict format: 
+            [face_key: (v0.x, v0.y, v0.z, ..., v3.z, good)]
+        """
+        self.clear_mesh()
+
+        if isinstance(data, dict):
+            # Use dict format directly (from get_mesh_data/get_incremental_mesh_data)
+            self.set_incremental_data(data)
+            return
+                
+        # Check if Nx3 array
+
+        if not isinstance(data, np.ndarray):
+            raise ValueError("Invalid data type")
+
+        good_format = False
+        if data.ndim == 2 and \
+            data.shape[1] == 3 and \
+            data.shape[0] % 3 == 0:
+            good_format = True
+
+        if not good_format:
+            raise ValueError("Invalid data shape")
+
+        # Convert to Nx13 numpy array
+        N = data.shape[0] // 3
+        faces = np.zeros((N, 13), dtype=np.float32)
+        tmp = data.reshape(N, 9)
+        faces[:, 0:3]  = tmp[:, 0:3]   # copy v0
+        faces[:, 3:6]  = tmp[:, 3:6]   # copy v1
+        faces[:, 6:9]  = tmp[:, 6:9]   # copy v2
+        faces[:, 9:12] = tmp[:, 6:9]   # copy v3 from v2 (degenerate quad)
+        faces[:, 12] = 1.0             # set good=1.0
+        self.faces = faces
+        self.valid_f_top = N
+
+
+    def set_incremental_data(self, fs):
+        """
+        Incrementally update mesh with new face data.
+        Args:
+            fs: Dict {face_key: (v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, 
+                                  v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good), ...}
+                13-tuple with vertex positions and good flag (0.0 or 1.0)
+                If good==1:
+                    Triangle 1: (v0, v1, v3)
+                    Triangle 2: (v0, v3, v2)
+        Updates:
+            - faces: updates existing faces or appends new ones
+            - key2index: tracks face_key -> face_index mapping
+        """
+        if not fs:
+            return
+
+        # Ensure enough capacity in faces buffer
+        # wasted cases are better than frequent expansions
+        while self.valid_f_top + len(fs) > len(self.faces):
+            self._expand_face_buffer()
+
+        # Optimization: Separate updates from new insertions to avoid
+        # dictionary lookup performance degradation during growth
+        update_idxs = []   # [idx, ...]
+        update_data = []   # [face_data, ...]
+        new_keys = []      # [key, ...]
+        new_data = []      # [face_data, ...]
+
+        for face_key, face_data in fs.items():
+            face_idx = self.key2index.get(face_key)
+            if face_idx is not None:
+                update_idxs.append(face_idx)
+                update_data.append(face_data)
             else:
-                self.vertex_colors = None
-        else:
-            self.vertex_colors = None
+                new_keys.append(face_key)
+                new_data.append(face_data)
+
+        # Batch update existing faces
+        if update_data:
+            indices = np.array(update_idxs, dtype=np.int32)
+            data = np.array(update_data, dtype=np.float32)
+            self.faces[indices] = data
+        
+        # Batch insert new faces
+        if new_data:
+            n_new = len(new_data)
+            data = np.array(new_data, dtype=np.float32)
+            self.faces[self.valid_f_top: self.valid_f_top + n_new] = data
+
+            # Update key2index mapping for new faces
+            for i, face_key in enumerate(new_keys):
+                self.key2index[face_key] = self.valid_f_top + i
             
-        self.triangles = np.asarray(triangles, dtype=np.float32)
-        self.normals = self.calculate_normals()
-        self.need_update_buffer = True
-        
-    def calculate_normals(self):
-        if self.triangles is None or len(self.triangles) == 0:
-            return None
-            
-        # Ensure we have complete triangles
-        num_vertices = len(self.triangles)
-        num_triangles = num_vertices // 3
-        if num_triangles == 0:
-            return None
-            
-        # Reshape vertices into triangles (N, 3, 3) where N is number of triangles
-        vertices_reshaped = self.triangles[:num_triangles * 3].reshape(-1, 3, 3)
-        
-        v0 = vertices_reshaped[:, 0, :]
-        v1 = vertices_reshaped[:, 1, :]
-        v2 = vertices_reshaped[:, 2, :]
-        
-        # Calculate edges for all triangles at once
-        edge1 = v1 - v0
-        edge2 = v2 - v0
-        
-        face_normals = np.cross(edge1, edge2)
-        
-        norms = np.linalg.norm(face_normals, axis=1, keepdims=True)
-        norms[norms < 1e-6] = 1.0
-        face_normals = face_normals / norms
-        
-        normals_per_vertex = np.repeat(face_normals[:, np.newaxis, :], 3, axis=1)
-        normals = normals_per_vertex.reshape(-1, 3)        
-        return normals.astype(np.float32)
-            
+            self.valid_f_top += n_new
+    
+    def _expand_face_buffer(self):
+        """Expand the faces buffer when capacity is reached"""
+        new_capacity = len(self.faces) + self.FACE_CAPACITY
+        new_buffer = np.zeros((new_capacity, 13), dtype=np.float32)
+        new_buffer[:len(self.faces)] = self.faces
+        self.faces = new_buffer
+    
+    def clear_mesh(self):
+        """Clear all mesh data and reset buffers"""
+        self.valid_f_top = 0
+        self.key2index.clear()
+        if hasattr(self, 'indices_array'):
+            self.indices_array = np.array([], dtype=np.uint32)
+
     def initialize_gl(self):
         """OpenGL initialization"""
-        vertex_shader = open(self.path + '/../shaders/mesh_vert.glsl', 'r').read()
-        fragment_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r').read()
-
-        program = shaders.compileProgram(
-            shaders.compileShader(vertex_shader, GL_VERTEX_SHADER),
-            shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
-        )
-        self.program = program
+        # Use instanced mesh shaders with geometry shader for GPU-side triangle generation
+        vert_shader = open(self.path + '/../shaders/mesh_vert.glsl', 'r').read()
+        geom_shader = open(self.path + '/../shaders/mesh_geom.glsl', 'r').read()
+        frag_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r').read()
+        try:
+            program = shaders.compileProgram(
+                shaders.compileShader(vert_shader, GL_VERTEX_SHADER),
+                shaders.compileShader(geom_shader, GL_GEOMETRY_SHADER),
+                shaders.compileShader(frag_shader, GL_FRAGMENT_SHADER),
+            )
+            self.program = program
+        except Exception as e:
+            raise
 
     def update_render_buffer(self):
-        """Initialize OpenGL buffers"""
-        if not self.need_update_buffer:
+        """
+        Update GPU buffer with face data (no separate vertex buffer).
+        Each face contains embedded vertex positions (13 floats).
+        Geometry shader generates triangles on GPU from face vertices.
+        Dynamically resizes GPU buffer when Python buffer expands.
+        """
+        if self.valid_f_top == 0:
             return
-            
-        # Generate VAO and VBOs
+        
+        # Initialize buffers on first call
         if self.vao is None:
             self.vao = glGenVertexArrays(1)
-            self.vbo_vertices = glGenBuffers(1)
-            self.vbo_normals = glGenBuffers(1)
-            self.vbo_colors = glGenBuffers(1)
+            self.vbo = glGenBuffers(1)
+            self._gpu_face_capacity = 0
         
-        glBindVertexArray(self.vao)
-        
-        # Vertex buffer
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_vertices)
-        glBufferData(GL_ARRAY_BUFFER, self.triangles.nbytes, self.triangles, GL_STATIC_DRAW)
-        glEnableVertexAttribArray(0)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
-        
-        # Normal buffer
-        if self.normals is not None:
-            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_normals)
-            glBufferData(GL_ARRAY_BUFFER, self.normals.nbytes, self.normals, GL_STATIC_DRAW)
+        # Check if we need to reallocate VBO for faces
+        if self._gpu_face_capacity < len(self.faces):
+            glBindVertexArray(self.vao)
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+            glBufferData(GL_ARRAY_BUFFER,
+                        self.faces.nbytes,
+                        None,
+                        GL_DYNAMIC_DRAW)
+            
+            # Setup face attributes (per-instance)
+            # Face data: [v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good]
+            # 13 floats = 52 bytes stride
+            
+            # v0 (location 1) - vec3
             glEnableVertexAttribArray(1)
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
-        
-        # Color buffer (uint32 IRGB format)
-        if self.vertex_colors is not None:
-            glBindBuffer(GL_ARRAY_BUFFER, self.vbo_colors)
-            glBufferData(GL_ARRAY_BUFFER, self.vertex_colors.nbytes, self.vertex_colors, GL_STATIC_DRAW)
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(0))
+            glVertexAttribDivisor(1, 1)
+            
+            # v1 (location 2) - vec3
             glEnableVertexAttribArray(2)
-            glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, None)
+            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(12))
+            glVertexAttribDivisor(2, 1)
+            
+            # v2 (location 3) - vec3
+            glEnableVertexAttribArray(3)
+            glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(24))
+            glVertexAttribDivisor(3, 1)
+            
+            # v3 (location 4) - vec3
+            glEnableVertexAttribArray(4)
+            glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(36))
+            glVertexAttribDivisor(4, 1)
+            
+            # good flag (location 5) - float
+            glEnableVertexAttribArray(5)
+            glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(48))
+            glVertexAttribDivisor(5, 1)
+            
+            glBindVertexArray(0)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            self._gpu_face_capacity = len(self.faces)
         
-        glBindVertexArray(0)
-        self.need_update_buffer = False
+        # Upload faces to VBO
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferSubData(GL_ARRAY_BUFFER,
+                       0,
+                       self.valid_f_top * 13 * 4,  # 13 floats * 4 bytes per face
+                       self.faces[:self.valid_f_top])
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
         
     def update_setting(self):
-        if (self.need_update_setting is False):
+        """Set fixed rendering parameters (called once during initialization)"""
+        if not self.need_update_setting:
             return
+        # Set fixed uniforms for instanced shaders
         set_uniform(self.program, int(self.enable_lighting), 'if_light')
         set_uniform(self.program, 1, 'two_sided')
-        set_uniform(self.program, np.array(self.light_color), 'light_color')
+
+        set_uniform(self.program, np.array(self.light_color, dtype=np.float32), 'light_color')
         set_uniform(self.program, float(self.ambient_strength), 'ambient_strength')
         set_uniform(self.program, float(self.diffuse_strength), 'diffuse_strength')
         set_uniform(self.program, float(self.specular_strength), 'specular_strength')
         set_uniform(self.program, float(self.shininess), 'shininess')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.flat_rgb), 'flat_rgb')
-        set_uniform(self.program, int(self.color_mode), 'color_mode')
-        set_uniform(self.program, float(self.vmin), 'vmin')
-        set_uniform(self.program, float(self.vmax), 'vmax')
         self.need_update_setting = False
 
     def paint(self):
-        """Render the mesh using modern OpenGL with shaders"""
-        if self.triangles is None or len(self.triangles) == 0:
+        """
+        Render the mesh using instanced rendering with geometry shader.
+        Each face instance is rendered as a point, geometry shader generates 2 triangles.
+        GPU filters faces based on good flag.
+        """
+        if self.valid_f_top == 0:
             return
+        
         glUseProgram(self.program)
+    
         self.update_render_buffer()
         self.update_setting()
+        
         view_matrix = self.glwidget().view_matrix
         set_uniform(self.program, view_matrix, 'view')
         project_matrix = self.glwidget().projection_matrix
@@ -393,30 +412,29 @@ class MeshItem(BaseItem):
         view_pos = self.glwidget().center
         set_uniform(self.program, np.array(view_pos), 'view_pos')
             
-        
         # Enable blending and depth testing
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)  # two-sided rendering
-
+        
         # Set line width
         glLineWidth(self.line_width)
         
-        # Bind VAO and render
+        # Bind VAO (vertex positions are now in VBO attributes)
         glBindVertexArray(self.vao)
-        
-        if len(self.triangles) > 0:
-            # Render faces
-            if self.wireframe:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-            else:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
                 
-            # Draw triangles
-            glDrawArrays(GL_TRIANGLES, 0, len(self.triangles))
+        if self.wireframe:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-                
+        
+        # Draw using instanced rendering
+        # Input: POINTS (one per face instance)
+        # Geometry shader generates 2 triangles (6 vertices) per point
+        glDrawArraysInstanced(GL_POINTS, 0, 1, self.valid_f_top)
+            
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         glBindVertexArray(0)
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)

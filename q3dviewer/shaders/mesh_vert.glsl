@@ -1,65 +1,37 @@
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
-layout (location = 2) in uint aColor;
+#version 430 core
 
-out vec3 FragPos;
-out vec3 Normal;
-out vec3 objectColor;
+/*
+Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
+Distributed under MIT license. See LICENSE for more information.
+*/
 
+// Face attributes (per-instance) - vertex positions embedded in each face
+layout(location = 1) in vec3 v0;
+layout(location = 2) in vec3 v1;
+layout(location = 3) in vec3 v2;
+layout(location = 4) in vec3 v3;
+layout(location = 5) in float good;
+
+// Uniforms
 uniform mat4 view;
 uniform mat4 projection;
-uniform int flat_rgb;
-uniform int color_mode;  // 0: FLAT, 1: Intensity, 2: RGB
-uniform float vmin;
-uniform float vmax;
 
-vec3 getRainbowColor(uint value_raw) {
-    float range = vmax - vmin;
-    float value = 1.0 - (float(value_raw) - vmin) / range;
-    value = clamp(value, 0.0, 1.0);
-    float hue = value * 5.0 + 1.0;
-    int i = int(floor(hue));
-    float f = hue - float(i);
-    if (mod(i, 2) == 0) f = 1.0 - f;
-    float n = 1.0 - f;
-
-    vec3 color;
-    if (i <= 1) color = vec3(n, 0.0, 1.0);
-    else if (i == 2) color = vec3(0.0, n, 1.0);
-    else if (i == 3) color = vec3(0.0, 1.0, n);
-    else if (i == 4) color = vec3(n, 1.0, 0.0);
-    else color = vec3(1.0, n, 0.0);
-    return color;
-}
+// Outputs to fragment shader (via geometry shader)
+out VS_OUT {
+    vec3 v0, v1, v2, v3;
+    float good;
+} vs_out;
 
 void main()
 {
-    FragPos = aPos;
-    Normal = aNormal;
+    // Pass vertex positions directly (no SSBO lookup needed)
+    vs_out.v0 = v0;
+    vs_out.v1 = v1;
+    vs_out.v2 = v2;
+    vs_out.v3 = v3;
+    vs_out.good = good;
     
-    vec3 c = vec3(1.0, 1.0, 1.0);
-    
-    if (color_mode == 0) {
-        // FLAT: use uniform flat color
-        c.z = float( uint(flat_rgb) & uint(0x000000FF))/255.;
-        c.y = float((uint(flat_rgb) & uint(0x0000FF00)) >> 8)/255.;
-        c.x = float((uint(flat_rgb) & uint(0x00FF0000)) >> 16)/255.;
-    }
-    else if (color_mode == 1) {
-        // Intensity: use intensity channel (bits 24-31) for rainbow color
-        uint intensity = aColor >> 24;
-        c = getRainbowColor(intensity);
-    }
-    else if (color_mode == 2) {
-        // RGB: use RGB channels (bits 0-23)
-        c.z = float(aColor & uint(0x000000FF))/255.;
-        c.y = float((aColor & uint(0x0000FF00)) >> 8)/255.;
-        c.x = float((aColor & uint(0x00FF0000)) >> 16)/255.;
-    }
-    
-    objectColor = c;
-    
-    // Final vertex position (apply view/projection)
-    gl_Position = projection * view * vec4(aPos, 1.0);
+    // Output dummy point (geometry shader will generate triangles)
+    // Note: This position is not used; geometry shader generates actual triangles
+    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
 }

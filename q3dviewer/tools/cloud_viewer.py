@@ -57,8 +57,8 @@ class FileLoaderThread(QThread):
             self.viewer.progress_dialog.set_file_name(file_path)
             if url.toLocalFile().lower().endswith(('.stl')):
                 from q3dviewer.utils.cloud_io import load_stl
-                verts, faces = load_stl(file_path)
-                mesh_item.set_data(verts=verts, faces=faces)
+                mesh = load_stl(file_path)
+                mesh_item.set_data(mesh)
                 break
             else:
                 cloud = cloud_item.load(file_path, append=(i > 0))

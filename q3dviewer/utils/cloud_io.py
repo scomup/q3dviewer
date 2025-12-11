@@ -9,23 +9,20 @@ import numpy as np
 def load_stl(file_path):
     from stl import mesh as stlmesh
     m = stlmesh.Mesh.from_file(file_path)
-    verts = m.vectors.reshape(-1, 3).astype(np.float32)
-    faces = np.arange(len(verts), dtype=np.uint32).reshape(-1, 3)
-    return verts, faces
+    faces = m.vectors.reshape(-1, 3).astype(np.float32)
+    return faces
 
 
-def save_stl(verts, faces, save_path):
+def save_stl(faces, save_path):
     """Save the generated mesh as an STL file."""
     from stl import mesh as stlmesh
-    from stl import Mode
-    verts = np.asarray(verts, dtype=np.float32)
-    faces = np.asarray(faces, dtype=np.uint32)
-    # Create the mesh
-    m = stlmesh.Mesh(np.zeros(faces.shape[0], dtype=stlmesh.Mesh.dtype))
-    m.vectors[:] = verts[faces].astype(np.float32)
-    # Save to file
-    m.save(save_path, mode=Mode.BINARY)
-
+    faces = np.asarray(faces, dtype=np.float32)
+    if faces.shape[0] % 3 != 0:
+        raise ValueError(f"Invalid faces shape: {faces.shape}, must be (N*3, 3)")
+    num_triangles = faces.shape[0] // 3
+    m = stlmesh.Mesh(np.zeros(num_triangles, dtype=stlmesh.Mesh.dtype))
+    m.vectors = faces.reshape(num_triangles, 3, 3)
+    m.save(save_path)
 
 def save_ply(cloud, save_path):
     import meshio
