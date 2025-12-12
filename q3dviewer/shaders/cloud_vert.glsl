@@ -66,7 +66,7 @@ void main()
     {
         uint intensity = value >> 24;
         float range = vmax - vmin;
-        float value = 1.0 - (float(intensity) - vmin) / range;
+        float value = (float(intensity) - vmin) / range;
         c.z = value;
         c.y = value;
         c.x = value;

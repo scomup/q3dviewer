@@ -7,39 +7,29 @@ Distributed under MIT license. See LICENSE for more information.
 
 import numpy as np
 import q3dviewer as q3d
-from q3dviewer.Qt.QtWidgets import QVBoxLayout, QProgressBar, QDialog, QLabel
+from q3dviewer.Qt.QtWidgets import QVBoxLayout, QDialog, QLabel
 from q3dviewer.Qt.QtCore import QThread, Signal, Qt
-from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer import GLWidget
 
-
-class ProgressDialog(QDialog):
+class ProgressWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Loading Cloud File")
+        self.setWindowTitle("Loading")
         self.setModal(True)
-        self.progress_bar = QProgressBar(self)
-        self.file_label = QLabel(self)
+        self.setMinimumWidth(400)
+        self.label = QLabel(self)
+        self.label.setAlignment(Qt.AlignCenter)
         layout = QVBoxLayout()
-        layout.addWidget(self.file_label)
-        layout.addWidget(self.progress_bar)
+        layout.addWidget(self.label)
         self.setLayout(layout)
 
-    def set_value(self, value):
-        self.progress_bar.setValue(value)
-
-    def set_file_name(self, file_name):
-        self.file_label.setText(f"Loading: {file_name}")
-
-    def closeEvent(self, event):
-        if self.parent().progress_thread and self.parent().progress_thread.isRunning():
-            event.ignore()
-        else:
-            event.accept()
+    def update_progress(self, current, total, file_name):
+        text = f"[{current}/{total}] loading file: {file_name}"
+        self.label.setText(text)
 
 
 class FileLoaderThread(QThread):
-    progress = Signal(int)
+    progress = Signal(int, int, str)  # current, total, filename
     finished = Signal()
 
     def __init__(self, viewer, files):
@@ -50,21 +40,22 @@ class FileLoaderThread(QThread):
     def run(self):
         cloud_item = self.viewer['cloud']
         mesh_item = self.viewer['mesh']
+        total = len(self.files)
         for i, url in enumerate(self.files):
             # if the file is a mesh file, use mesh_item to load
             file_path = url.toLocalFile()
-            file_path = url.toLocalFile()
-            self.viewer.progress_dialog.set_file_name(file_path)
+            import os
+            file_name = os.path.basename(file_path)
+            self.progress.emit(i + 1, total, file_name)
+            
             if url.toLocalFile().lower().endswith(('.stl')):
                 from q3dviewer.utils.cloud_io import load_stl
                 mesh = load_stl(file_path)
                 mesh_item.set_data(mesh)
-                break
             else:
                 cloud = cloud_item.load(file_path, append=(i > 0))
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
                 self.viewer.glwidget.set_cam_position(center=center)
-                self.progress.emit(int((i + 1) / len(self.files) * 100))
         self.finished.emit()
 
 
@@ -131,20 +122,19 @@ class CloudViewer(q3d.Viewer):
         """
         Overwrite the drop event to open the cloud file.
         """
-        self.progress_dialog = ProgressDialog(self)
-        self.progress_dialog.show()
+        self.progress_window = ProgressWindow(self)
+        self.progress_window.show()
         files = event.mimeData().urls()
         self.progress_thread = FileLoaderThread(self, files)
-        self['cloud'].load(files[0].toLocalFile(), append=False)
         self.progress_thread.progress.connect(self.file_loading_progress)
         self.progress_thread.finished.connect(self.file_loading_finished)
         self.progress_thread.start()
 
-    def file_loading_progress(self, value):
-        self.progress_dialog.set_value(value)
+    def file_loading_progress(self, current, total, file_name):
+        self.progress_window.update_progress(current, total, file_name)
 
     def file_loading_finished(self):
-        self.progress_dialog.close()
+        self.progress_window.close()
 
     def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
@@ -155,27 +145,50 @@ class CloudViewer(q3d.Viewer):
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
         self.glwidget.set_cam_position(center=center)
 
-# print a quick help message
+# print a quick help message using rich
 def print_help():
-    # ANSI color codes
-    GREEN = '\033[92m'
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
     
-    help_msg = f"""
-{BOLD}Cloud Viewer Help:{END}
-{GREEN}• Drag and drop cloud files into the viewer to load them.{END}
-    {BLUE}- support .pcd, .ply, .las, .e57, for point clouds.{END}
-    {BLUE}- support .stl for mesh files.{END}
-{GREEN}• Measure distance between points:{END}
-    {BLUE}- Hold Ctrl and left-click to select points on the cloud.{END}
-    {BLUE}- Hold Ctrl and right-click to remove the last selected point.{END}
-    {BLUE}- The total distance between selected points will be displayed.{END}
-{GREEN}• Press 'M' to open the settings window.{END}
-    {BLUE}- Use the settings window to adjust item properties.{END}
-    """
-    print(help_msg)
+    console = Console()
+    
+    # Create a table for better organization
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column(style="bold cyan", width=30)
+    table.add_column(style="white")
+    
+    # File loading section
+    table.add_row("📁 Load Files","Drag and drop files into the viewer")
+    table.add_row("","[dim]• Point clouds: .pcd, .ply, .las, .e57[/dim]")
+    table.add_row("","[dim]• Mesh files: .stl[/dim]")
+    table.add_row("", "")
+    
+    # Measurement section
+    table.add_row("📏 Measure Distance", "Interactive point measurement")
+    table.add_row("","[dim]• Ctrl + Left Click: Add measurement point[/dim]")
+    table.add_row("","[dim]• Ctrl + Right Click: Remove last point[/dim]")
+    table.add_row("","[dim]• Total distance displayed automatically[/dim]")
+    table.add_row("", "")
+    
+    # Camera controls
+    table.add_row("🎥 Camera Controls","Navigate the 3D scene")
+    table.add_row("","[dim]• Double Click: Set camera center to point[/dim]")
+    table.add_row("","[dim]• Right Drag: Rotate view[/dim]")
+    table.add_row("","[dim]• Left Drag: Pan view[/dim]")
+    table.add_row("","[dim]• Mouse Wheel: Zoom in/out[/dim]")
+    table.add_row("", "")
+    
+    # Settings section
+    table.add_row("⚙️  Settings","Press [bold green]'M'[/bold green] to open settings window")
+    table.add_row("","[dim]Adjust visualization properties[/dim]")
+    
+    # Print title and table without border
+    console.print()
+    console.print("[bold magenta]☁️  Cloud Viewer Help[/bold magenta]\n")
+    console.print(table)
+    console.print()
 
 def main():
     print_help()

@@ -7,22 +7,52 @@ import numpy as np
 
 
 def load_stl(file_path):
-    from stl import mesh as stlmesh
-    m = stlmesh.Mesh.from_file(file_path)
-    faces = m.vectors.reshape(-1, 3).astype(np.float32)
+    import meshio
+    mesh = meshio.read(file_path)
+    # meshio returns cells as a list of (cell_type, cell_data) tuples
+    # For STL, we expect 'triangle' cells
+    vertices = mesh.points.astype(np.float32)
+    
+    # Find triangle cells
+    triangles = None
+    for cell_block in mesh.cells:
+        if cell_block.type == 'triangle':
+            triangles = cell_block.data
+            break
+    
+    if triangles is None:
+        raise ValueError(f"No triangle cells found in STL file: {file_path}")
+    
+    # Convert indexed triangles to flat vertex array (N*3, 3)
+    faces = vertices[triangles.flatten()].astype(np.float32)
     return faces
 
 
-def save_stl(faces, save_path):
-    """Save the generated mesh as an STL file."""
-    from stl import mesh as stlmesh
+def save_stl(faces, save_path, binary=True):
+    import meshio
     faces = np.asarray(faces, dtype=np.float32)
     if faces.shape[0] % 3 != 0:
         raise ValueError(f"Invalid faces shape: {faces.shape}, must be (N*3, 3)")
+    
+    # Reshape to (num_triangles, 3, 3)
     num_triangles = faces.shape[0] // 3
-    m = stlmesh.Mesh(np.zeros(num_triangles, dtype=stlmesh.Mesh.dtype))
-    m.vectors = faces.reshape(num_triangles, 3, 3)
-    m.save(save_path)
+    triangles = faces.reshape(num_triangles, 3, 3)
+    
+    # Get unique vertices and create index array
+    vertices, indices = np.unique(triangles.reshape(-1, 3), axis=0, return_inverse=True)
+    triangle_indices = indices.reshape(num_triangles, 3)
+    
+    # Create meshio mesh object
+    mesh = meshio.Mesh(
+        points=vertices,
+        cells=[("triangle", triangle_indices)]
+    )
+    # meshio automatically saves STL as binary by default
+    # Use file_format="stl-ascii" for ASCII format
+    if binary:
+        mesh.write(save_path, binary=True)
+    else:
+        mesh.write(save_path, binary=False)
 
 def save_ply(cloud, save_path):
     import meshio

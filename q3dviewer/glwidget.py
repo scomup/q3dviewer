@@ -55,6 +55,7 @@ class GLWidget(BaseGLWidget):
         self.followable_item_name = None
         self.setting_window = SettingWindow()
         self.enable_show_center = True
+        self.old_center = None
         super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
@@ -63,14 +64,38 @@ class GLWidget(BaseGLWidget):
             self.open_setting_window()            
         else:
             super().keyPressEvent(ev)
+        if ev.key() == QtCore.Qt.Key_F:  # reset follow
+            if self.followable_item_name is None:
+                self.initial_followable()
+
+            if self.followed_name != 'none':
+                self.followed_name = 'none'
+                print("Reset follow.")
+            elif len(self.followable_item_name) > 1:
+                self.followed_name = self.followable_item_name[1]
+                print("Set follow to ", self.followed_name)
+            else:
+                pass # do nothing
 
     def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]
 
+    def mouseDoubleClickEvent(self, event):
+        """Double click to set center."""
+        p = self.get_point(event.x(), event.y())
+        if p is not None:
+            self.set_center(p)
+        super().mouseDoubleClickEvent(event)
+
     def update(self):
         if self.followed_name != 'none':
             new_center = self.named_items[self.followed_name].T[:3, 3]
-            self.set_center(new_center)
+            if self.old_center is None:
+                self.old_center = self.center
+                return
+            delta = new_center - self.old_center
+            self.set_center(self.center + delta)
+            self.old_center = new_center
         super().update()
 
     def add_setting(self, layout):
