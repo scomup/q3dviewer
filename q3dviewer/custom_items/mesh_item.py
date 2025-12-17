@@ -63,6 +63,7 @@ class MeshItem(BaseItem):
         
         # Settings flag
         self.need_update_setting = True
+        self.need_update_buffer = True
         self.path = os.path.dirname(__file__)
     
         
@@ -220,6 +221,7 @@ class MeshItem(BaseItem):
         faces[:, 12] = 1.0             # set good=1.0
         self.faces = faces
         self.valid_f_top = N
+        self.need_update_buffer = True
 
 
     def set_incremental_data(self, fs):
@@ -271,12 +273,11 @@ class MeshItem(BaseItem):
             n_new = len(new_data)
             data = np.array(new_data, dtype=np.float32)
             self.faces[self.valid_f_top: self.valid_f_top + n_new] = data
-
             # Update key2index mapping for new faces
             for i, face_key in enumerate(new_keys):
                 self.key2index[face_key] = self.valid_f_top + i
-            
             self.valid_f_top += n_new
+            self.need_update_buffer = True
     
     def _expand_face_buffer(self):
         """Expand the faces buffer when capacity is reached"""
@@ -367,12 +368,15 @@ class MeshItem(BaseItem):
             self._gpu_face_capacity = len(self.faces)
         
         # Upload faces to VBO
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        glBufferSubData(GL_ARRAY_BUFFER,
-                       0,
-                       self.valid_f_top * 13 * 4,  # 13 floats * 4 bytes per face
-                       self.faces[:self.valid_f_top])
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        if self.need_update_buffer:
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+            glBufferSubData(GL_ARRAY_BUFFER,
+                           0,
+                           self.valid_f_top * 13 * 4,  # 13 floats * 4 bytes per face
+                           self.faces[:self.valid_f_top])
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            self.need_update_buffer = False
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
         
     def update_setting(self):
         """Set fixed rendering parameters (called once during initialization)"""
