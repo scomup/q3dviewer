@@ -7,6 +7,18 @@ import numpy as np
 from OpenGL.GL import *
 
 
+def get_version():
+    """
+    Get the version of q3dviewer package.
+    """
+    try:
+        from importlib.metadata import version
+        return version('q3dviewer')
+    except Exception:
+        # Fallback if package is not installed
+        return 'unknown'
+
+
 def rainbow(scalars, scalar_min=0, scalar_max=255):
     range = scalar_max - scalar_min
     values = 1.0 - (scalars - scalar_min) / range

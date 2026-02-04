@@ -51,22 +51,34 @@ python3 -m q3dviewer.tools.cloud_viewer
 ```
 
 **Basic Operations**
-* Load files: Drag and drop point cloud files onto the window (multiple files are OK).
-* `M` key: Display the visualization settings screen for point clouds, background color, etc.
-* `Left mouse button` & `W, A, S, D` keys: Move the viewpoint on the horizontal plane.
-* `Z, X` keys: Move in the direction the screen is facing.
-* `Right mouse button` & `Arrow` keys: Rotate the viewpoint while keeping the screen center unchanged.
-* `Shift` + `Right mouse button` & `Arrow` keys: Rotate the viewpoint while keeping the camera position unchanged.
+
+📁 **Load Files** - Drag and drop files into the viewer
+* Point clouds: .pcd, .ply, .las, .e57
+* Mesh files: .stl
+
+📏 **Measure Distance** - Interactive point measurement
+* `Ctrl + Left Click`: Add measurement point
+* `Ctrl + Right Click`: Remove last point
+* Total distance displayed automatically
+
+🎥 **Camera Controls** - Navigate the 3D scene
+* `Double Click`: Set camera center to point
+* `Right Drag`: Rotate view
+* `Left Drag`: Pan view
+* `Mouse Wheel`: Zoom in/out
+
+⚙️ **Settings** - Press `M` to open settings window
+* Adjust visualization properties
 
 For example, you can download and view point clouds of Tokyo in LAS format from the following link:
 
 [Tokyo Point Clouds](https://www.geospatial.jp/ckan/dataset/tokyopc-23ku-2024/resource/7807d6d1-29f3-4b36-b0c8-f7aa0ea2cff3)
 
-![Cloud Viewer Screenshot](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/03c981c6-1aec-e5b9-4536-e07e1e56ff29.png)
+![Cloud Viewer Screenshot](imgs/tokyo.png)
 
-Press `M` on your keyboard to display a menu on the screen, where you can modify visualization settings for each item. For example, you can adjust various settings such as shape, size, color, and transparency for `CloudItem`.
+**Mesh Support** - Starting from version 1.2.4, mesh files (.stl) are now supported.
 
-![Cloud Viewer Settings](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/deeb996a-e419-58f4-6bc2-535099b1b73a.png)
+![Screenshot from 2026-02-04 18-32-04.png](imgs/mesh.png)
 
 ### 2. ROS Viewer
 

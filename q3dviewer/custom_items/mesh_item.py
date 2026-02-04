@@ -17,31 +17,6 @@ from q3dviewer.utils import set_uniform, text_to_rgba
 import time
 
 
-def numpy_to_face_dict(fs):
-    temp = {}
-    auto_key = 0
-    for rec in fs:
-        # extract key if present
-        try:
-            face_key = int(rec['key'])
-        except Exception:
-            face_key = auto_key
-            auto_key += 1
-        verts = np.array(rec['vertices'], dtype=np.float32).flatten()
-        # verts length may be 12 (quad) or 9 (triangle)
-        v = verts.reshape(4, 3)
-        face = np.zeros(13, dtype=np.float32)
-        face[0:3] = v[0]
-        face[3:6] = v[1]
-        face[6:9] = v[2]
-        face[9:12] = v[3]
-        try:
-            face[12] = float(rec['good'])
-        except Exception:
-            face[12] = 1.0
-        temp[face_key] = tuple(face.tolist())
-    return temp
-
 class MeshItem(BaseItem):
     """
     A OpenGL mesh item for rendering 3D triangular meshes.
@@ -206,45 +181,81 @@ class MeshItem(BaseItem):
 
     def set_data(self, data):
         """
-        Set complete mesh data at once.
-        
         Args:
-            data: is Nx3 numpy array (N must be divisible by 3) or dict
-            if is dict, uses the dict format: 
-            [face_key: (v0.x, v0.y, v0.z, ..., v3.z, good)]
+            data: One of the following formats:
+                  - Nx3 numpy array (N must be divisible by 3): vertex list -> static
+                  - Nx9 numpy array: triangle list -> static
+                  - Structured array with dtype [('key', int64), ('vertices', float32, (12,)), ('good', uint32)] -> incremental
         """
-        self.clear_mesh()
-
-        if isinstance(data, dict):
-            # Use dict format directly (from get_mesh_data/get_incremental_mesh_data)
+        if not isinstance(data, np.ndarray):
+            raise ValueError("Data must be a numpy array")
+        
+        want_dtype = np.dtype([
+            ('key', np.int64),
+            ('vertices', np.float32, (12,)),
+            ('good', np.uint32)
+        ])
+        
+        # Structured array format -> use incremental path (has keys for updates)
+        if data.dtype == want_dtype:
             self.set_incremental_data(data)
             return
-                
-        # Check if Nx3 array
+        
+        # Nx3 or Nx9 format -> use static path (more efficient, no key overhead)
+        if data.ndim == 2 and data.shape[1] in [3, 9]:
+            self.set_static_data(data)
+            return
+        
+        raise ValueError("Data must be Nx3, Nx9, or structured array format")
 
+    def set_static_data(self, data):
+        """
+        Efficiently set static mesh data without key2index overhead.
+        For static meshes that don't need incremental updates.
+        
+        Args:
+            data: numpy array in one of these formats:
+                  - Nx3: vertex list (N must be divisible by 3)
+                  - Nx9: triangle list
+        """
         if not isinstance(data, np.ndarray):
-            raise ValueError("Invalid data type")
-
-        good_format = False
-        if data.ndim == 2 and \
-            data.shape[1] == 3 and \
-            data.shape[0] % 3 == 0:
-            good_format = True
-
-        if not good_format:
-            raise ValueError("Invalid data shape")
-
-        # Convert to Nx13 numpy array
-        N = data.shape[0] // 3
-        faces = np.zeros((N, 13), dtype=np.float32)
-        tmp = data.reshape(N, 9)
-        faces[:, 0:3]  = tmp[:, 0:3]   # copy v0
-        faces[:, 3:6]  = tmp[:, 3:6]   # copy v1
-        faces[:, 6:9]  = tmp[:, 6:9]   # copy v2
-        faces[:, 9:12] = tmp[:, 6:9]   # copy v3 from v2 (degenerate quad)
-        faces[:, 12] = 1.0             # set good=1.0
+            raise ValueError("Data must be a numpy array")
+        
+        if data.ndim != 2:
+            raise ValueError(f"Data must be 2D array, got {data.ndim}D")
+        self.clear_mesh()
+        # Handle Nx3 format
+        if data.shape[1] == 3:
+            if data.shape[0] % 3 != 0:
+                raise ValueError(f"Nx3 format requires N divisible by 3, got N={data.shape[0]}")
+            
+            num_faces = data.shape[0] // 3
+            faces = np.zeros((num_faces, 13), dtype=np.float32)
+            
+            # Reshape to (num_faces, 9) for efficient copying
+            tmp = data.reshape(num_faces, 9)
+            faces[:, 0:3]  = tmp[:, 0:3]   # v0
+            faces[:, 3:6]  = tmp[:, 3:6]   # v1
+            faces[:, 6:9]  = tmp[:, 6:9]   # v2
+            faces[:, 9:12] = tmp[:, 6:9]   # v3 = v2 (degenerate)
+            faces[:, 12] = 1.0             # good=1.0
+            
+        # Handle Nx9 format
+        elif data.shape[1] == 9:
+            num_faces = data.shape[0]
+            faces = np.zeros((num_faces, 13), dtype=np.float32)
+            
+            faces[:, 0:9] = data           # Copy all 9 vertices
+            faces[:, 9:12] = data[:, 6:9]  # v3 = v2 (degenerate)
+            faces[:, 12] = 1.0             # good=1.0
+            
+        else:
+            raise ValueError(f"Data shape must be Nx3 or Nx9, got Nx{data.shape[1]}")
+        
+        # Replace faces buffer (static data, no key management)
+        self.clear_mesh()
         self.faces = faces
-        self.valid_f_top = N
+        self.valid_f_top = num_faces
         self.need_update_buffer = True
 
 
@@ -252,51 +263,57 @@ class MeshItem(BaseItem):
         """
         Incrementally update mesh with new face data.
         Args:
-            fs: Dict {face_key: (v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, 
-                                  v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good), ...}
-                13-tuple with vertex positions and good flag (0.0 or 1.0)
-                If good==1:
-                    Triangle 1: (v0, v1, v3)
-                    Triangle 2: (v0, v3, v2)
+            fs: Structured numpy array with dtype:
+                [('key', np.int64), ('vertices', np.float32, (12,)), ('good', np.uint32)]
+                - key: unique identifier for the face
+                - vertices: 12 floats representing 4 vertices (v0, v1, v2, v3)
+                - good: 0 or 1, whether to render this face
         Updates:
             - faces: updates existing faces or appends new ones
             - key2index: tracks face_key -> face_index mapping
         """
-        if not fs:
+        if fs is None or len(fs) == 0:
             return
+        
+        if not isinstance(fs, np.ndarray) or fs.dtype.names is None:
+            raise ValueError("fs must be a structured numpy array with fields: key, vertices, good")
 
         # Ensure enough capacity in faces buffer
-        # wasted cases are better than frequent expansions
         while self.valid_f_top + len(fs) > len(self.faces):
             self._expand_face_buffer()
 
-        # Optimization: Separate updates from new insertions to avoid
-        # dictionary lookup performance degradation during growth
-        update_idxs = []   # [idx, ...]
-        update_data = []   # [face_data, ...]
-        new_keys = []      # [key, ...]
-        new_data = []      # [face_data, ...]
-
-        for face_key, face_data in fs.items():
-            face_idx = self.key2index.get(face_key)
-            if face_idx is not None:
-                update_idxs.append(face_idx)
-                update_data.append(face_data)
-            else:
-                new_keys.append(face_key)
-                new_data.append(face_data)
-
+        # Prepare face data: convert structured array to Nx13 format
+        n_faces = len(fs)
+        face_data = np.zeros((n_faces, 13), dtype=np.float32)
+        
+        # Copy vertices (12 floats -> positions 0:12)
+        face_data[:, :12] = fs['vertices']
+        
+        # Copy good flag (position 12)
+        face_data[:, 12] = fs['good'].astype(np.float32)
+        
+        # Extract keys
+        keys = fs['key']
+        
+        # Optimization: Separate updates from new insertions
+        update_mask = np.array([key in self.key2index for key in keys], dtype=bool)
+        new_mask = ~update_mask
+        
         # Batch update existing faces
-        if update_data:
-            indices = np.array(update_idxs, dtype=np.int32)
-            data = np.array(update_data, dtype=np.float32)
-            self.faces[indices] = data
+        if np.any(update_mask):
+            update_keys = keys[update_mask]
+            update_indices = np.array([self.key2index[key] for key in update_keys], dtype=np.int32)
+            self.faces[update_indices] = face_data[update_mask]
         
         # Batch insert new faces
-        if new_data:
-            n_new = len(new_data)
-            data = np.array(new_data, dtype=np.float32)
-            self.faces[self.valid_f_top: self.valid_f_top + n_new] = data
+        if np.any(new_mask):
+            new_keys = keys[new_mask]
+            new_face_data = face_data[new_mask]
+            n_new = len(new_keys)
+            
+            # Insert data
+            self.faces[self.valid_f_top: self.valid_f_top + n_new] = new_face_data
+            
             # Update key2index mapping for new faces
             for i, face_key in enumerate(new_keys):
                 self.key2index[face_key] = self.valid_f_top + i

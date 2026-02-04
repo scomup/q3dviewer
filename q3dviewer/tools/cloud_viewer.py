@@ -10,6 +10,7 @@ import q3dviewer as q3d
 from q3dviewer.Qt.QtWidgets import QVBoxLayout, QDialog, QLabel
 from q3dviewer.Qt.QtCore import QThread, Signal, Qt
 from q3dviewer import GLWidget
+from q3dviewer.utils.helpers import get_version
 
 class ProgressWindow(QDialog):
     def __init__(self, parent=None):
@@ -186,7 +187,7 @@ def print_help():
     
     # Print title and table without border
     console.print()
-    console.print("[bold magenta]☁️  Cloud Viewer Help[/bold magenta]\n")
+    console.print(f"[bold magenta]☁️  Cloud Viewer ({get_version()}) Help[/bold magenta]\n")
     console.print(table)
     console.print()
 
