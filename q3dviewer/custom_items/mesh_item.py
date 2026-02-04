@@ -17,6 +17,30 @@ from q3dviewer.utils import set_uniform, text_to_rgba
 import time
 
 
+def numpy_to_face_dict(fs):
+    temp = {}
+    auto_key = 0
+    for rec in fs:
+        # extract key if present
+        try:
+            face_key = int(rec['key'])
+        except Exception:
+            face_key = auto_key
+            auto_key += 1
+        verts = np.array(rec['vertices'], dtype=np.float32).flatten()
+        # verts length may be 12 (quad) or 9 (triangle)
+        v = verts.reshape(4, 3)
+        face = np.zeros(13, dtype=np.float32)
+        face[0:3] = v[0]
+        face[3:6] = v[1]
+        face[6:9] = v[2]
+        face[9:12] = v[3]
+        try:
+            face[12] = float(rec['good'])
+        except Exception:
+            face[12] = 1.0
+        temp[face_key] = tuple(face.tolist())
+    return temp
 
 class MeshItem(BaseItem):
     """

@@ -205,7 +205,7 @@ def main():
     marker_item = q3d.Text3DItem()  # Changed from CloudItem to Text3DItem
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
     text_item.disable_setting()
-    mesh_item = q3d.MeshItem()  # Added MeshIOItem for mesh support
+    mesh_item = q3d.StaticMeshItem()
 
     viewer.add_items(
         {'marker': marker_item, 

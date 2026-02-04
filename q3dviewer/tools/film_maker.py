@@ -12,7 +12,7 @@ from q3dviewer.Qt.QtCore import QTimer
 from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.Qt import QtCore
 from q3dviewer import GLWidget
-from q3dviewer.tools.cloud_viewer import ProgressDialog, FileLoaderThread
+from q3dviewer.tools.cloud_viewer import FileLoaderThread, ProgressWindow
 
 import imageio.v2 as imageio
 import os
@@ -386,20 +386,19 @@ class CMMViewer(q3d.Viewer):
         """
         Overwrite the drop event to open the cloud file.
         """
-        self.progress_dialog = ProgressDialog(self)
-        self.progress_dialog.show()
+        self.progress_window = ProgressWindow(self)
+        self.progress_window.show()
         files = event.mimeData().urls()
         self.progress_thread = FileLoaderThread(self, files)
-        self['cloud'].load(files[0].toLocalFile(), append=False)
         self.progress_thread.progress.connect(self.file_loading_progress)
         self.progress_thread.finished.connect(self.file_loading_finished)
         self.progress_thread.start()
 
-    def file_loading_progress(self, value):
-        self.progress_dialog.set_value(value)
+    def file_loading_progress(self, current, total, file_name):
+        self.progress_window.update_progress(current, total, file_name)
 
     def file_loading_finished(self):
-        self.progress_dialog.close()
+        self.progress_window.close()
 
     def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
@@ -417,7 +416,7 @@ def main():
     args = parser.parse_args()
     app = q3d.QApplication(['Film Maker'])
     viewer = CMMViewer(name='Film Maker', update_interval=30)
-    cloud_item = q3d.CloudIOItem(size=1, point_type='SPHERE', alpha=0.5, depth_test=True)
+    cloud_item = q3d.CloudIOItem(size=1, point_type='SPHERE', alpha=0.5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
 
     viewer.add_items(
