@@ -24,14 +24,20 @@ class MeshItem(BaseItem):
         color (str or tuple): Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
         wireframe (bool): If True, renders the mesh in wireframe mode.
     """
+    # Class-level constants
+    FACE_CAPACITY = 1000000    # Initial capacity for faces
+    BIG_INT = 2**31 - 1         # Sentinel value for dirty region tracking
+    FACE_INPUT_DTYPE = np.dtype([
+        ('key', np.int64),
+        ('vertices', np.float32, (12,)),
+        ('good', np.uint8)
+    ])
+    
     def __init__(self, color='lightblue', wireframe=False):
         super(MeshItem, self).__init__()
         self.wireframe = wireframe
         self.color = color
         self.flat_rgb = text_to_rgba(color, flat=True)
-        
-        # Incremental buffer management
-        self.FACE_CAPACITY = 1000000    # Initial capacity for faces
         
         # Faces buffer: N x 13 numpy array
         # Each row: [v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good]
@@ -39,6 +45,12 @@ class MeshItem(BaseItem):
         
         # valid_f_top: pointer to end of valid faces
         self.valid_f_top = 0
+        
+        # Dirty region tracking for efficient GPU updates
+        # dirty_min: start index of modified region (inclusive)
+        # dirty_max: end index of modified region (exclusive)
+        self.dirty_min = self.BIG_INT
+        self.dirty_max = 0
         
         # key2index: mapping from face_key to face buffer index
         self.key2index = {}  # {face_key: face_index}
@@ -190,14 +202,8 @@ class MeshItem(BaseItem):
         if not isinstance(data, np.ndarray):
             raise ValueError("Data must be a numpy array")
         
-        want_dtype = np.dtype([
-            ('key', np.int64),
-            ('vertices', np.float32, (12,)),
-            ('good', np.uint32)
-        ])
-        
         # Structured array format -> use incremental path (has keys for updates)
-        if data.dtype == want_dtype:
+        if data.dtype == self.FACE_INPUT_DTYPE:
             self.set_incremental_data(data)
             return
         
@@ -256,6 +262,10 @@ class MeshItem(BaseItem):
         self.clear_mesh()
         self.faces = faces
         self.valid_f_top = num_faces
+        
+        # Mark entire buffer as dirty
+        self.dirty_min = 0
+        self.dirty_max = self.valid_f_top
         self.need_update_buffer = True
 
 
@@ -304,6 +314,11 @@ class MeshItem(BaseItem):
             update_keys = keys[update_mask]
             update_indices = np.array([self.key2index[key] for key in update_keys], dtype=np.int32)
             self.faces[update_indices] = face_data[update_mask]
+            
+            # Update dirty region for modified faces
+            self.dirty_min = min(self.dirty_min, int(np.min(update_indices)))
+            self.dirty_max = max(self.dirty_max, int(np.max(update_indices) + 1))
+            self.need_update_buffer = True
         
         # Batch insert new faces
         if np.any(new_mask):
@@ -311,13 +326,17 @@ class MeshItem(BaseItem):
             new_face_data = face_data[new_mask]
             n_new = len(new_keys)
             
+            # Update dirty region for new faces
+            start_index = self.valid_f_top            
             # Insert data
-            self.faces[self.valid_f_top: self.valid_f_top + n_new] = new_face_data
+            self.faces[start_index: start_index + n_new] = new_face_data
             
             # Update key2index mapping for new faces
             for i, face_key in enumerate(new_keys):
-                self.key2index[face_key] = self.valid_f_top + i
+                self.key2index[face_key] = start_index + i
             self.valid_f_top += n_new
+            self.dirty_min = min(self.dirty_min, start_index)
+            self.dirty_max = max(self.dirty_max, start_index + n_new)
             self.need_update_buffer = True
     
     def _expand_face_buffer(self):
@@ -330,6 +349,8 @@ class MeshItem(BaseItem):
     def clear_mesh(self):
         """Clear all mesh data and reset buffers"""
         self.valid_f_top = 0
+        self.dirty_min = self.BIG_INT
+        self.dirty_max = 0
         self.key2index.clear()
         if hasattr(self, 'indices_array'):
             self.indices_array = np.array([], dtype=np.uint32)
@@ -408,16 +429,27 @@ class MeshItem(BaseItem):
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self._gpu_face_capacity = len(self.faces)
         
-        # Upload faces to VBO
+        # Upload faces to VBO (only dirty region)
         if self.need_update_buffer:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+            
+            # Calculate the range to upload [dirty_min, dirty_max)
+            start_index = int(self.dirty_min)
+            end_index = int(self.dirty_max)
+            count = end_index - start_index
+            
+            # Upload only the modified region
             glBufferSubData(GL_ARRAY_BUFFER,
-                           0,
-                           self.valid_f_top * 13 * 4,  # 13 floats * 4 bytes per face
-                           self.faces[:self.valid_f_top])
+                           start_index * 13 * 4,  # offset in bytes
+                           count * 13 * 4,         # size in bytes
+                           self.faces[start_index:end_index])
+            
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self.need_update_buffer = False
-            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            
+            # Reset dirty region
+            self.dirty_min = self.BIG_INT
+            self.dirty_max = 0
         
     def update_setting(self):
         """Set fixed rendering parameters (called once during initialization)"""

@@ -39,32 +39,34 @@ class CloudItem(BaseItem):
             - 'SPHERE': Draw each point as a sphere in 3D space.
         depth_test (bool): Whether to enable depth testing. If True, points closer to the camera will appear in front of farther ones.
     """
+    # Class-level constants
+    STRIDE = 16  # Stride of cloud array in bytes
+    CAPACITY = 10000000  # Initial buffer capacity (10M points)
+    DATA_TYPE = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
+    MODE_TABLE = {'FLAT': 0, 'I': 1, 'RGB': 2, 'GRAY': 3}
+    POINT_TYPE_TABLE = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
+    
     def __init__(self, size, alpha, 
                  color_mode='I', 
                  color='white', 
                  point_type='PIXEL'):
         super().__init__()
-        self.STRIDE = 16  # stride of cloud array
         self.valid_buff_top = 0
         self.add_buff_loc = 0
         self.alpha = alpha
         self.size = size
         self.point_type = point_type
         self.mutex = threading.Lock()
-        self.data_type = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
         self.color = color
         try:
             self.flat_rgb = text_to_rgba(color, flat=True)
         except ValueError:
             print(f"Invalid color: {color}, please use matplotlib color format")
             exit(1)
-        self.mode_table = {'FLAT': 0,  'I': 1,  'RGB': 2, 'GRAY': 3}
-        self.point_type_table = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
-        self.color_mode = self.mode_table[color_mode]
-        self.CAPACITY = 10000000  # 10MB * 3 (x,y,z, color) * 4
+        self.color_mode = self.MODE_TABLE[color_mode]
         self.vmin = 0
         self.vmax = 255
-        self.buff = np.empty((0), self.data_type)
+        self.buff = np.empty((0), self.DATA_TYPE)
         self.wait_add_data = None
         self.need_update_setting = True
         self.max_cloud_size = 300000000
@@ -78,7 +80,7 @@ class CloudItem(BaseItem):
         combo_ptype.addItem("pixels")
         combo_ptype.addItem("flat squares")
         combo_ptype.addItem("spheres")
-        combo_ptype.setCurrentIndex(self.point_type_table[self.point_type])
+        combo_ptype.setCurrentIndex(self.POINT_TYPE_TABLE[self.point_type])
         combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
         layout.addWidget(combo_ptype)
 
@@ -88,7 +90,7 @@ class CloudItem(BaseItem):
         self.box_size.setValue(int(self.size))
         self.box_size.setRange(0, 100)
         self.box_size.valueChanged.connect(self.set_size)
-        self._on_point_type_selection(self.point_type_table[self.point_type])
+        self._on_point_type_selection(self.POINT_TYPE_TABLE[self.point_type])
         layout.addWidget(self.box_size)
 
         box_alpha = QDoubleSpinBox()
@@ -133,11 +135,11 @@ class CloudItem(BaseItem):
         self.color_mode = index
         self.edit_rgb.hide()
         self.slider_v.hide()
-        if (index == self.mode_table['FLAT']):  # flat color
+        if (index == self.MODE_TABLE['FLAT']):  # flat color
             self.edit_rgb.show()
-        elif (index == self.mode_table['I']):  # flat color
+        elif (index == self.MODE_TABLE['I']):  # intensity
             self.slider_v.show()
-        elif (index == self.mode_table['GRAY']):  # flat color
+        elif (index == self.MODE_TABLE['GRAY']):  # grayscale
             self.slider_v.show()
 
         self.need_update_setting = True
@@ -145,15 +147,15 @@ class CloudItem(BaseItem):
     def set_color_mode(self, color_mode):
         if color_mode in {'FLAT', 'RGB', 'I', 'GRAY'}:
             try:
-                self.combo_color.setCurrentIndex(self.mode_table[color_mode])
+                self.combo_color.setCurrentIndex(self.MODE_TABLE[color_mode])
             except:
-                self.color_mode = self.mode_table[color_mode]
+                self.color_mode = self.MODE_TABLE[color_mode]
                 self.need_update_setting = True
         else:
             print(f"Invalid color mode: {color_mode}")
 
     def _on_point_type_selection(self, index):
-        self.point_type = list(self.point_type_table.keys())[index]
+        self.point_type = list(self.POINT_TYPE_TABLE.keys())[index]
         if self.point_type == 'PIXEL':
             self.box_size.setPrefix("Set size (pixel): ")
         else:
@@ -184,7 +186,7 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
 
     def clear(self):
-        data = np.empty((0), self.data_type)
+        data = np.empty((0), self.DATA_TYPE)
         self.set_data(data)
 
     def set_data(self, data, append=False):
@@ -193,7 +195,7 @@ class CloudItem(BaseItem):
 
         if data.dtype in {np.dtype('float32'), np.dtype('float64')}:
             if data.size == 0:
-                data = np.empty((0), self.data_type)
+                data = np.empty((0), self.DATA_TYPE)
             elif data.ndim == 2 and data.shape[1] >= 3:
                 xyz = data[:, :3]
                 if data.shape[1] >= 4:
@@ -201,7 +203,7 @@ class CloudItem(BaseItem):
                 else:
                     color = np.zeros(data.shape[0], dtype=np.uint32)
                 data = np.rec.fromarrays(
-                    [xyz, color[:data.shape[0]]], dtype=self.data_type)
+                    [xyz, color[:data.shape[0]]], dtype=self.DATA_TYPE)
 
         with self.mutex:
             if append:
@@ -226,7 +228,7 @@ class CloudItem(BaseItem):
         set_uniform(self.program, float(self.vmin), 'vmin')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.size), 'point_size')
-        set_uniform(self.program, int(self.point_type_table[self.point_type]), 'point_type')
+        set_uniform(self.program, int(self.POINT_TYPE_TABLE[self.point_type]), 'point_type')
         glUseProgram(0)
         self.need_update_setting = False
 
@@ -245,7 +247,7 @@ class CloudItem(BaseItem):
                 buff_capacity += self.CAPACITY
             if Q3D_DEBUG is not None:
                 print("[Cloud Item] Update capacity to %d" % buff_capacity)
-            new_buff = np.empty((buff_capacity), self.data_type)
+            new_buff = np.empty((buff_capacity), self.DATA_TYPE)
             new_buff[:self.add_buff_loc] = self.buff[:self.add_buff_loc]
             new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
             self.buff = new_buff
