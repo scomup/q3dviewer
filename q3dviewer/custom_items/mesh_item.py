@@ -207,8 +207,8 @@ class MeshItem(BaseItem):
             self.set_incremental_data(data)
             return
         
-        # Nx3 or Nx9 format -> use static path (more efficient, no key overhead)
-        if data.ndim == 2 and data.shape[1] in [3, 9]:
+        # Nx3 , Nx9, Nx12 format -> use static path (more efficient, no key overhead)
+        if data.ndim == 2 and data.shape[1] in [3, 9, 12]:
             self.set_static_data(data)
             return
         
@@ -223,6 +223,7 @@ class MeshItem(BaseItem):
             data: numpy array in one of these formats:
                   - Nx3: vertex list (N must be divisible by 3)
                   - Nx9: triangle list
+                  - Nx12: quad list
         """
         if not isinstance(data, np.ndarray):
             raise ValueError("Data must be a numpy array")
@@ -254,9 +255,13 @@ class MeshItem(BaseItem):
             faces[:, 0:9] = data           # Copy all 9 vertices
             faces[:, 9:12] = data[:, 6:9]  # v3 = v2 (degenerate)
             faces[:, 12] = 1.0             # good=1.0
-            
+        elif data.shape[1] == 12:
+            num_faces = data.shape[0]
+            faces = np.zeros((num_faces, 13), dtype=np.float32)
+            faces[:, 0:12] = data          # Copy all 12 vertices
+            faces[:, 12] = 1.0             # good=1.0
         else:
-            raise ValueError(f"Data shape must be Nx3 or Nx9, got Nx{data.shape[1]}")
+            raise ValueError(f"Data shape must be Nx3, Nx9, or Nx12, got Nx{data.shape[1]}")
         
         # Replace faces buffer (static data, no key management)
         self.clear_mesh()
