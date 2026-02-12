@@ -101,6 +101,18 @@ class MeshItem(BaseItem):
         self.edit_rgb.textChanged.connect(self._on_color)
         layout.addWidget(self.edit_rgb)
 
+        # Alpha transparency control
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Alpha:")
+        alpha_layout.addWidget(alpha_label)
+        self.alpha_slider = QSlider()
+        self.alpha_slider.setOrientation(1)  # Qt.Horizontal
+        self.alpha_slider.setRange(0, 100)
+        self.alpha_slider.setValue(int(self.alpha * 100))
+        self.alpha_slider.valueChanged.connect(lambda v: self.set_alpha(v / 100.0))
+        alpha_layout.addWidget(self.alpha_slider)
+        layout.addLayout(alpha_layout)
+
         # Material property controls for Phong lighting
         if self.enable_lighting:
             # Ambient strength control (slider 0-100 mapped to 0.0-1.0)
@@ -186,7 +198,7 @@ class MeshItem(BaseItem):
         self.shininess = value
         self.need_update_setting = True
 
-    def update_alpha(self, value):
+    def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
         self.need_update_setting = True
@@ -498,6 +510,13 @@ class MeshItem(BaseItem):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_DEPTH_TEST)
+        
+        # Adjust depth test based on alpha transparency
+        if self.alpha < 0.95:
+            glDepthFunc(GL_ALWAYS)
+        else:
+            glDepthFunc(GL_LESS)
+        
         glDisable(GL_CULL_FACE)  # two-sided rendering
         
         # Set line width
