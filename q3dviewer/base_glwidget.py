@@ -30,17 +30,29 @@ class BaseGLWidget(QOpenGLWidget):
         self.view_matrix = self.get_view_matrix()
         self.projection_matrix = self.get_projection_matrix()
 
+        # Pre-calculate candidate offsets for depth picking, sorted by distance
+        radius = 3
+        offset = []
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                dist_sq = dx * dx + dy * dy
+                if dist_sq <= radius * radius:
+                    offset.append((dist_sq, dx, dy))
+        offset.sort(key=lambda c: c[0])
+        self.offset = [(dx, dy) for _, dx, dy in offset]
+        self.offset = np.array(self.offset)
+
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
         if ev.key() == QtCore.Qt.Key_Up or  \
-            ev.key() == QtCore.Qt.Key_Down or \
-            ev.key() == QtCore.Qt.Key_Left or \
-            ev.key() == QtCore.Qt.Key_Right or \
-            ev.key() == QtCore.Qt.Key_Z or \
-            ev.key() == QtCore.Qt.Key_X or \
-            ev.key() == QtCore.Qt.Key_A or \
-            ev.key() == QtCore.Qt.Key_D or \
-            ev.key() == QtCore.Qt.Key_W or \
-            ev.key() == QtCore.Qt.Key_S:
+                ev.key() == QtCore.Qt.Key_Down or \
+                ev.key() == QtCore.Qt.Key_Left or \
+                ev.key() == QtCore.Qt.Key_Right or \
+                ev.key() == QtCore.Qt.Key_Z or \
+                ev.key() == QtCore.Qt.Key_X or \
+                ev.key() == QtCore.Qt.Key_A or \
+                ev.key() == QtCore.Qt.Key_D or \
+                ev.key() == QtCore.Qt.Key_W or \
+                ev.key() == QtCore.Qt.Key_S:
             self.active_keys.add(ev.key())
         self.active_keys.add(ev.key())
 
@@ -68,7 +80,7 @@ class BaseGLWidget(QOpenGLWidget):
         """
         self.items.append(item)
         item.set_glwidget(self)
-        
+
     def remove_item(self, item):
         """
         Remove the item from the glwidget.
@@ -83,7 +95,7 @@ class BaseGLWidget(QOpenGLWidget):
         for item in self.items:
             item.set_glwidget(None)
         self.items = []
-        
+
     def initializeGL(self):
         """
         the method is herted from QOpenGLWidget, 
@@ -91,7 +103,7 @@ class BaseGLWidget(QOpenGLWidget):
         """
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-        
+
         for item in self.items:
             item.initialize()
         # initialize the projection matrix and model view matrix
@@ -125,7 +137,6 @@ class BaseGLWidget(QOpenGLWidget):
         self.update_dist(-delta * self.dist * 0.001)
         self.show_center = True
 
-
     def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
         """
         Rotate the camera while keeping the current camera position. 
@@ -133,11 +144,11 @@ class BaseGLWidget(QOpenGLWidget):
         """
         new_euler = self.euler + np.array([rx, ry, rz])
         new_euler = (new_euler + np.pi) % (2 * np.pi) - np.pi
-        
+
         Rwc_old = euler_to_matrix(self.euler)
         tco = np.array([0, 0, self.dist])
         twc = self.center + Rwc_old @ tco
-        
+
         Rwc_new = euler_to_matrix(new_euler)
         self.center = twc - Rwc_new @ tco
         self.euler = new_euler
@@ -161,7 +172,8 @@ class BaseGLWidget(QOpenGLWidget):
             Rwc = euler_to_matrix(self.euler)
             Kinv = np.linalg.inv(self.get_K())
             dist = max(self.dist, 0.5)
-            self.translate(Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist)
+            self.translate(
+                Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist)
         self.show_center = True
 
     def set_center(self, center):
@@ -197,7 +209,7 @@ class BaseGLWidget(QOpenGLWidget):
                 glPopAttrib()
                 glMatrixMode(GL_MODELVIEW)
                 glPopMatrix()
-        
+
         # Show center as a point if updated by mouse move event
         if self.enable_show_center and self.show_center:
             point_size = np.clip((self.get_K()[0, 0] / self.dist), 10, 100)
@@ -207,7 +219,7 @@ class BaseGLWidget(QOpenGLWidget):
             glVertex3f(*self.center)
             glEnd()
             self.show_center = False
-    
+
     def update_movement(self):
         """
         Update the movement of the camera based on the active keys.
@@ -247,7 +259,8 @@ class BaseGLWidget(QOpenGLWidget):
             if QtCore.Qt.Key_X in self.active_keys:
                 self.translate(Rwc @ np.array([0, 0, trans_speed]))
         # Handle translation keys on the z plane
-        dir_keys = {QtCore.Qt.Key_W, QtCore.Qt.Key_S, QtCore.Qt.Key_A, QtCore.Qt.Key_D}
+        dir_keys = {QtCore.Qt.Key_W, QtCore.Qt.Key_S,
+                    QtCore.Qt.Key_A, QtCore.Qt.Key_D}
         if self.active_keys & dir_keys:
             Rz = euler_to_matrix([0, 0, self.euler[2]])
             if QtCore.Qt.Key_W in self.active_keys:
@@ -262,10 +275,10 @@ class BaseGLWidget(QOpenGLWidget):
     def update_model_view(self):
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(self.view_matrix.T)
-        
+
     def get_view_matrix(self):
-        two = self.center # the origin(center) in the world frame
-        tco = np.array([0, 0, self.dist]) # the origin(center) in camera frame
+        two = self.center  # the origin(center) in the world frame
+        tco = np.array([0, 0, self.dist])  # the origin(center) in camera frame
         Rwc = euler_to_matrix(self.euler)
         twc = two + Rwc @ tco
         Rcw = Rwc.T
@@ -283,7 +296,7 @@ class BaseGLWidget(QOpenGLWidget):
             self.set_dist(distance)
         if euler is not None:
             self.set_euler(euler)
-    
+
     def set_euler(self, euler):
         self.euler = euler
         self.need_recalc_view = True
@@ -323,7 +336,7 @@ class BaseGLWidget(QOpenGLWidget):
             [0, 0, 1]
         ])
         return K
-            
+
     def rotate(self, rx=0, ry=0, rz=0):
         # update the euler angles
         self.euler += np.array([rx, ry, rz])
@@ -352,79 +365,71 @@ class BaseGLWidget(QOpenGLWidget):
         frame = np.frombuffer(pixels, dtype=np.uint8).reshape(height, width, 3)
         frame = np.flip(frame, 0)
         return frame
-    
-    def depth_to_meters(self, depth_buffer):
-        """
-        Convert normalized depth buffer values [0,1] to actual distances in meters.
-        
-        Args:
-            depth_buffer: numpy array with depth values in range [0,1]
-            
-        Returns:
-            numpy array with distances in meters
-        """
-        # Get near and far clipping planes
+
+    def depth_buffer_to_image(self, depth_buffer):
         near = self.dist * 0.001
         far = self.dist * 10000.
-        
-        # Convert from normalized depth [0,1] to linear depth in meters
-        # OpenGL depth buffer formula: depth = (1/z - 1/near) / (1/far - 1/near)
-        # Solving for z: z = 1 / (depth * (1/far - 1/near) + 1/near)
-        
-        # Avoid division by zero for depth = 1.0 (far plane)
-        depth_clamped = np.clip(depth_buffer, 0.0, 0.999999)
-        
-        linear_depth = 1.0 / (depth_clamped * (1.0/far - 1.0/near) + 1.0/near)
-        
-        return linear_depth
+        z_ndc = depth_buffer * 2.0 - 1.0
+        depth_in_meters = (2.0 * near * far) / \
+            (far + near - z_ndc * (far - near))
+        return depth_in_meters
 
-
-    def get_point(self, x0, y0, radius=5):
-        """
-        Get the 3D point in world coordinates corresponding to the given
-        screen coordinates (x0, y0). It searches within a radius around the
-        given pixel to find a valid depth value.
-        """
-        self.makeCurrent()  # Ensure the OpenGL context is current
+    def opengl_to_world(self, p):
         width = self.current_width()
-        height = self.current_height()  
-
-        # Scale mouse coordinates by device pixel ratio for PySide6 compatibility
-        pixel_ratio = self.devicePixelRatioF()
-
-        points = []
-        for dx in range(-radius, radius + 1):
-            for dy in range(-radius, radius + 1):
-                if dx * dx + dy * dy <= radius * radius:
-                    points.append((x0 + dx, y0 + dy))
-        points = sorted(points, key=lambda p: (p[0]-x0)**2 + (p[1]-y0)**2)
-
-        gl_y0 = height - y0 - 1
-        z = 1.0
-        for x, y in points:
-            x = int(x * pixel_ratio)
-            y = int(y * pixel_ratio)
-
-            gl_y = height - y - 1
-            z = glReadPixels(x, gl_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
-            z = np.frombuffer(z, dtype=np.float32)[0]
-            if z != 1.0 and z != 0.0:
-                break
-
-        if z == 1.0 or z == 0.0:
-            return None
-
+        height = self.current_height()
+        x, y, z = p
+        gl_y = height - y - 1
         # Retrieve OpenGL matrices (column-major), convert to numpy arrays and transpose
-        view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX), dtype=np.float32).reshape((4,4)).T
-        proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX), dtype=np.float32).reshape((4,4)).T   
-
+        view = np.array(glGetFloatv(GL_MODELVIEW_MATRIX),
+                        dtype=np.float32).reshape((4, 4)).T
+        proj = np.array(glGetFloatv(GL_PROJECTION_MATRIX),
+                        dtype=np.float32).reshape((4, 4)).T
         # Convert screen (x, y, z) to normalized device coordinates (NDC)
-        ndc_x = (x0 / width) * 2.0 - 1.0
-        ndc_y = (gl_y0 / height) * 2.0 - 1.0
+        ndc_x = (x / width) * 2.0 - 1.0
+        ndc_y = (gl_y / height) * 2.0 - 1.0
         ndc_z = 2.0 * z - 1.0
-        ndc = np.array([ndc_x, ndc_y, ndc_z, 1.0], dtype=np.float32)    
-
+        ndc = np.array([ndc_x, ndc_y, ndc_z, 1.0], dtype=np.float32)
+        # Transform from NDC to world coordinates
         inv_projview = np.linalg.inv(proj @ view)
         world_p = inv_projview @ ndc
         world_p /= world_p[3]
         return world_p[:3]
+
+    def get_point(self, x0, y0):
+        """
+        Get the 3D point in world coordinates corresponding to the given
+        screen coordinates (x0, y0).
+        """
+        self.makeCurrent()  # Ensure the OpenGL context is current
+        width = self.current_width()
+        height = self.current_height()
+
+        # Scale mouse coordinates by device pixel ratio
+        pixel_ratio = self.devicePixelRatioF()
+        x = int(x0 * pixel_ratio)
+        y = int(y0 * pixel_ratio)
+
+        # Read entire depth buffer (raw values [0,1])
+        depth_buffer = glReadPixels(
+            0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+        depth_buffer = np.frombuffer(
+            depth_buffer, dtype=np.float32).reshape((height, width))
+        depth_buffer = np.flip(depth_buffer, 0)
+
+        # debug: print depth value at the clicked pixel
+        # import imageio
+        # depth_image = self.depth_buffer_to_image(depth_buffer)
+        # depth_image_uint16 = (depth_image * 1000).astype(np.uint16)
+        # imageio.imwrite('/home/liu/depth_debug.png', depth_image_uint16)
+
+        depth_values = depth_buffer[y +
+                                    self.offset[:, 1], x + self.offset[:, 0]]
+        depth_valid_mask = (depth_values > 0) & (depth_values < 1)
+        if not np.any(depth_valid_mask):
+            return None
+
+        z = depth_values[depth_valid_mask][0]
+
+        world_p = self.opengl_to_world((x, y, z))
+
+        return world_p

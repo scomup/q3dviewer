@@ -134,7 +134,8 @@ class ImageItem(BaseItem):
             glBindTexture(GL_TEXTURE_2D, 0)
             self.image = None
 
-        glEnable(GL_DEPTH_TEST)
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(GL_FALSE)  # Disable writing to depth buffer
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -146,8 +147,9 @@ class ImageItem(BaseItem):
         glBindVertexArray(0)
         glUseProgram(0)
 
-        glDisable(GL_DEPTH_TEST)
         glDisable(GL_BLEND)
+        glDepthMask(GL_TRUE)
+        glEnable(GL_DEPTH_TEST)
 
     def add_setting(self, layout):
         spinbox_alpha = QSpinBox()
