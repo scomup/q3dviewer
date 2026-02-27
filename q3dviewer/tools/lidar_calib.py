@@ -14,6 +14,7 @@ from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, 
 from q3dviewer.Qt import QtCore
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
+from q3dviewer.utils.cloud_registration import matching
 
 
 try:
@@ -129,12 +130,12 @@ class LiDARCalibViewer(q3d.Viewer):
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
 
         # Connect spin boxes to methods
-        self.box_x.valueChanged.connect(self.update_xyz)
-        self.box_y.valueChanged.connect(self.update_xyz)
-        self.box_z.valueChanged.connect(self.update_xyz)
-        self.box_roll.valueChanged.connect(self.update_rpy)
-        self.box_pitch.valueChanged.connect(self.update_rpy)
-        self.box_yaw.valueChanged.connect(self.update_rpy)
+        self.box_x.valueChanged.connect(self.apply_transform)
+        self.box_y.valueChanged.connect(self.apply_transform)
+        self.box_z.valueChanged.connect(self.apply_transform)
+        self.box_roll.valueChanged.connect(self.apply_transform)
+        self.box_pitch.valueChanged.connect(self.apply_transform)
+        self.box_yaw.valueChanged.connect(self.apply_transform)
 
         main_layout.addLayout(setting_layout)
         
@@ -145,14 +146,16 @@ class LiDARCalibViewer(q3d.Viewer):
     def update_cloud_num(self):
         self.cloud_num = self.box_cloud_num.value()
 
-    def update_xyz(self):
+    def apply_transform(self):
+        """Update transformation parameters and apply to scan1 using set_transform."""
+        # Update translation
         x = self.box_x.value()
         y = self.box_y.value()
         z = self.box_z.value()
         self.t01 = np.array([x, y, z])
         self.line_trans.setText(f"[{x:.6f}, {y:.6f}, {z:.6f}]")
-
-    def update_rpy(self):
+        
+        # Update rotation
         roll = self.box_roll.value()
         pitch = self.box_pitch.value()
         yaw = self.box_yaw.value()
@@ -160,6 +163,12 @@ class LiDARCalibViewer(q3d.Viewer):
         quat = matrix_to_quaternion(self.R01)
         self.line_quat.setText(
             f"[{quat[0]:.6f}, {quat[1]:.6f}, {quat[2]:.6f}, {quat[3]:.6f}]")
+        
+        # Apply transformation
+        T = np.eye(4, dtype=np.float32)
+        T[:3, :3] = self.R01
+        T[:3, 3] = self.t01
+        self['scan1'].set_transform(T)
 
     def perform_matching(self):
         global cloud0_accum, cloud1_accum
@@ -169,48 +178,49 @@ class LiDARCalibViewer(q3d.Viewer):
             return
 
         if cloud0_accum is not None and cloud1_accum is not None:
-            # Convert to Open3D point clouds
-            cloud0_o3d = o3d.geometry.PointCloud()
-            cloud0_o3d.points = o3d.utility.Vector3dVector(cloud0_accum['xyz'])
-            cloud1_o3d = o3d.geometry.PointCloud()
-            cloud1_o3d.points = o3d.utility.Vector3dVector(cloud1_accum['xyz'])
-            voxel_size = 0.1
-            cloud0_o3d = cloud0_o3d.voxel_down_sample(voxel_size)
-            cloud1_o3d = cloud1_o3d.voxel_down_sample(voxel_size)
-            cloud0_o3d.estimate_normals(
-                search_param=o3d.geometry.KDTreeSearchParamHybrid
-                (radius=self.radius, max_nn=30))
-            trans_init = np.eye(4)
-            trans_init[:3, :3] = self.R01
-            trans_init[:3, 3] = self.t01
+            # Initial transformation
+            T_init = np.eye(4)
+            T_init[:3, :3] = self.R01
+            T_init[:3, 3] = self.t01
 
-            criteria = o3d.pipelines.registration.ICPConvergenceCriteria(
-                relative_fitness=1e-4,
-                max_iteration=50)
-
-            # Auto Scan Matching
-            reg_p2p = o3d.pipelines.registration.registration_icp(
-                cloud1_o3d, cloud0_o3d, self.radius, trans_init,
-                o3d.pipelines.registration.
-                TransformationEstimationPointToPlane(),
-                criteria)
-
-            transformation_icp = reg_p2p.transformation
-            # print("ICP Transformation:", transformation_icp)
+            # Perform ICP registration using cloud_registration.matching
+            transformation_icp, result = matching(
+                cloud0_accum, cloud1_accum,
+                down_sampling_size=0.1,
+                radius=self.radius,
+                T_init=T_init,
+                icp_model="p2plane"
+            )
+            
+            print(f"Matching fitness: {result.fitness:.6f}")
 
             # Update R01 and t01 with ICP result
             R01 = transformation_icp[:3, :3]
             t01 = transformation_icp[:3, 3]
 
-            # Update the UI with new values
+            # Update the UI with new values (block signals to prevent multiple intermediate updates)
             quat = matrix_to_quaternion(R01)
             rpy = matrix_to_euler(R01)
+            self.box_roll.blockSignals(True)
+            self.box_pitch.blockSignals(True)
+            self.box_yaw.blockSignals(True)
+            self.box_x.blockSignals(True)
+            self.box_y.blockSignals(True)
+            self.box_z.blockSignals(True)
+            
             self.box_roll.setValue(rpy[0])
             self.box_pitch.setValue(rpy[1])
             self.box_yaw.setValue(rpy[2])
             self.box_x.setValue(t01[0])
             self.box_y.setValue(t01[1])
             self.box_z.setValue(t01[2])
+            
+            self.box_roll.blockSignals(False)
+            self.box_pitch.blockSignals(False)
+            self.box_yaw.blockSignals(False)
+            self.box_x.blockSignals(False)
+            self.box_y.blockSignals(False)
+            self.box_z.blockSignals(False)
             self.line_trans.setText(
                 f"[{t01[0]:.6f}, {t01[1]:.6f}, {t01[2]:.6f}]")
             self.line_quat.setText(
@@ -223,6 +233,9 @@ class LiDARCalibViewer(q3d.Viewer):
                 f"Roll-Pitch-Yaw: [{rpy[0]:.6f}, {rpy[1]:.6f}, {rpy[2]:.6f}]")
             print(
                 f"Quaternion: [{quat[0]: .6f}, {quat[1]: .6f}, {quat[2]: .6f}, {quat[3]: .6f}]")
+            
+            # Update visualization with final result
+            self.apply_transform()
 
 
 def scan0_cb(data):
@@ -242,23 +255,21 @@ def scan1_cb(data):
         clouds1.pop(0)
     clouds1.append(cloud)
     cloud1_accum = np.concatenate(clouds1)
-    cloud0_accum_new = cloud1_accum.copy()
-    cloud0_accum_new['xyz'] = (
-        viewer.R01 @ cloud1_accum['xyz'].T + viewer.t01[:, np.newaxis]).T
-
-    viewer['scan1'].set_data(data=cloud0_accum_new)
+    viewer['scan1'].set_data(data=cloud1_accum)
 
 
 def main():
     global viewer
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description="Configure topic names for LiDAR, image, and camera info.")
-    parser.add_argument('--lidar0', type=str, default='/lidar0',
-                        help="Topic name for LiDAR data")
-    parser.add_argument('--lidar1', type=str, default='/lidar1',
-                        help="Topic name for camera image data")
+        description="Find a T let T * scan1 = LiDAR0")
+    parser.add_argument('--lidar0', type=str,
+                        help="Topic name for LiDAR0 data")
+    parser.add_argument('--lidar1', type=str,
+                        help="Topic name for LiDAR1 data")
     args = parser.parse_args()
+    if not args.lidar0 or not args.lidar1:
+        parser.error("Both --lidar0 and --lidar1 must be provided")
 
     app = q3d.QApplication(["LiDAR Calib"])
     viewer = LiDARCalibViewer(name='LiDAR Calib')

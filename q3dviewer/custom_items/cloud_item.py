@@ -70,6 +70,7 @@ class CloudItem(BaseItem):
         self.wait_add_data = None
         self.need_update_setting = True
         self.max_cloud_size = 300000000
+        self.T = np.eye(4, dtype=np.float32)
         # Enable depth test when full opaque
         self.path = os.path.dirname(__file__)
 
@@ -185,6 +186,10 @@ class CloudItem(BaseItem):
         self.size = size
         self.need_update_setting = True
 
+    def set_transform(self, transform):
+        self.T = transform
+        self.need_update_setting = True
+
     def clear(self):
         data = np.empty((0), self.DATA_TYPE)
         self.set_data(data)
@@ -229,6 +234,7 @@ class CloudItem(BaseItem):
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.size), 'point_size')
         set_uniform(self.program, int(self.POINT_TYPE_TABLE[self.point_type]), 'point_type')
+        set_uniform(self.program, self.T, 'model_matrix')
         glUseProgram(0)
         self.need_update_setting = False
 

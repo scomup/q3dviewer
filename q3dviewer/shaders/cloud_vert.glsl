@@ -10,6 +10,7 @@ layout (location = 1) in uint value;
 
 uniform mat4 view_matrix;
 uniform mat4 projection_matrix;
+uniform mat4 model_matrix = mat4(1.0);
 uniform float alpha = 1;
 uniform int color_mode = 0;
 uniform int flat_rgb = 0;
@@ -41,7 +42,7 @@ vec3 getRainbowColor(uint value_raw) {
 
 void main()
 {
-    vec4 pw = vec4(position, 1.0);
+    vec4 pw = model_matrix * vec4(position, 1.0);
     vec4 pc = view_matrix * pw;
     gl_Position = projection_matrix * pc;
 

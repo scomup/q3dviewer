@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='q3dviewer',
-    version='1.2.5',
+    version='1.2.6',
     author="Liu Yang",
     author_email="liu.yang@jp.panasonic.com",
     license="MIT",
