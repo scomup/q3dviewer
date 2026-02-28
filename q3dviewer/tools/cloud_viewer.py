@@ -207,6 +207,8 @@ def main():
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
     text_item.disable_setting()
     mesh_item = q3d.StaticMeshItem()
+    satellite_map_item = q3d.SatelliteMapItem()
+
 
     viewer.add_items(
         {'marker': marker_item, 
@@ -214,8 +216,8 @@ def main():
          'mesh': mesh_item,
          'grid': grid_item, 
          'axis': axis_item, 
-         'text': text_item,})
-
+         'text': text_item,
+         'satellite_map': satellite_map_item})
     if args.path:
         pcd_fn = args.path
         viewer.open_cloud_file(pcd_fn)

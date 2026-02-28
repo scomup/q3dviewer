@@ -10,4 +10,5 @@ from q3dviewer.custom_items.line_item import LineItem
 from q3dviewer.custom_items.text3d_item import Text3DItem
 from q3dviewer.custom_items.static_mesh_item import StaticMeshItem
 from q3dviewer.custom_items.mesh_item import MeshItem
+from q3dviewer.custom_items.satellite_map_item import SatelliteMapItem
 

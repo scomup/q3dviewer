@@ -11,7 +11,7 @@ from OpenGL.GL import shaders
 
 import threading
 import os
-from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QCheckBox
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QCheckBox, QSlider, QHBoxLayout
 from q3dviewer.utils.range_slider import RangeSlider
 from q3dviewer.utils import set_uniform
 from q3dviewer.utils import text_to_rgba
@@ -93,13 +93,16 @@ class CloudItem(BaseItem):
         self._on_point_type_selection(self.POINT_TYPE_TABLE[self.point_type])
         layout.addWidget(self.box_size)
 
-        box_alpha = QDoubleSpinBox()
-        box_alpha.setPrefix("Alpha: ")
-        box_alpha.setSingleStep(0.01)
-        box_alpha.setValue(self.alpha)
-        box_alpha.setRange(0, 1)
-        box_alpha.valueChanged.connect(self.set_alpha)
-        layout.addWidget(box_alpha)
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Alpha:")
+        alpha_layout.addWidget(alpha_label)
+        self.alpha_slider = QSlider()
+        self.alpha_slider.setOrientation(1)  # Qt.Horizontal
+        self.alpha_slider.setRange(0, 100)
+        self.alpha_slider.setValue(int(self.alpha * 100))
+        self.alpha_slider.valueChanged.connect(lambda v: self.set_alpha(v / 100.0))
+        alpha_layout.addWidget(self.alpha_slider)
+        layout.addLayout(alpha_layout)
 
         label_color = QLabel("Color Mode:")
         layout.addWidget(label_color)

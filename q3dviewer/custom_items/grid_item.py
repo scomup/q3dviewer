@@ -123,8 +123,10 @@ class GridItem(BaseItem):
             self.initialize_gl()
             self.need_update_grid = False
         
-        glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(GL_FALSE)
+        glEnable(GL_BLEND)
 
         glLineWidth(1)
         glColor4f(*self.rgba)
@@ -133,5 +135,7 @@ class GridItem(BaseItem):
         glBindVertexArray(0)
         glLineWidth(1)
         glDisable(GL_BLEND)
+        glDepthMask(GL_TRUE)
+        glEnable(GL_DEPTH_TEST)
 
 
