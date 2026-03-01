@@ -8,35 +8,24 @@ Show satellite map tiles from OpenStreetMap on the XY ground plane in ENU (East-
 Inspired by the ROS rviz_satellite plugin:
 https://github.com/nobleo/rviz_satellite (distributed under Apache-2.0)
 """
-
-import ctypes
 import math
+import ctypes
 import threading
 from io import BytesIO
 from pathlib import Path
-
 import numpy as np
 import requests
 from PIL import Image
-
+from pyproj import CRS, Transformer
 from OpenGL.GL import *
 from OpenGL.GL import shaders
-from q3dviewer.base_item import BaseItem
 from q3dviewer.utils import set_uniform
-from q3dviewer.Qt.QtWidgets import (
-    QDoubleSpinBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSlider,
-    QSpinBox,
-    QVBoxLayout,
-)
+from q3dviewer.base_item import BaseItem
+from q3dviewer.Qt.QtWidgets import QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QSlider, QSpinBox, QVBoxLayout
 
 
-def _wgs_to_tile_xy(lat_deg, lon_deg, zoom):
-    """WGS-84 (lat, lon) in degrees → fractional Slippy-Map tile (x, y).
+def lonlat_to_tile(lon_deg, lat_deg, zoom):
+    """WGS-84 (lon, lat) in degrees → fractional Slippy-Map tile (x, y).
 
     See https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
     """
@@ -47,9 +36,15 @@ def _wgs_to_tile_xy(lat_deg, lon_deg, zoom):
     return x, y
 
 
-def _tile_size_meters(lat_deg, zoom):
-    """Ground-truth size of one 256-px tile in metres."""
-    return 156543.034 * math.cos(math.radians(lat_deg)) * 256 / (1 << zoom)
+def tile_bounds_lonlat(tx, ty, zoom):
+    """Return (west_lon, south_lat, east_lon, north_lat) in WGS-84 degrees for a Slippy-Map tile."""
+    n = 1 << zoom
+    west_lon = tx / n * 360.0 - 180.0
+    east_lon = (tx + 1) / n * 360.0 - 180.0
+    north_lat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * ty / n))))
+    south_lat = math.degrees(
+        math.atan(math.sinh(math.pi * (1 - 2 * (ty + 1) / n))))
+    return west_lon, south_lat, east_lon, north_lat
 
 
 _VERT_SRC = """
@@ -84,23 +79,35 @@ void main() {
 }
 """
 
+
 class SatelliteMapItem(BaseItem):
-    """Render satellite / OSM map tiles on the XY ground plane in ENU."""
+    """Render satellite / OSM map tiles aligned with point cloud data.
+
+    Supports both local ENU coordinates and projected CRS (JPRCS, UTM, etc.).
+    Uses pyproj transformers to convert OSM tile boundaries to the target
+    coordinate system for accurate alignment.
+    """
 
     DEFAULT_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
-    def __init__(self, zoom=19, blocks=2, alpha=0.7, height=0.0, tile_url=None):
+    def __init__(self, zoom=18, blocks=2, alpha=0.7, height=0.0, tile_url=None):
         super().__init__()
         self._zoom = int(zoom)
         self._blocks = int(blocks)
         self._alpha = float(alpha)
-        self._height = float(height)         # Z offset of the map plane
+        self._height = float(height)
         self._tile_url = tile_url or self.DEFAULT_TILE_URL
 
-        # WGS-84 origin (set via set_origin)
-        self._origin_lat = None
-        self._origin_lon = None
+        # Map origin in local coordinate system (x, y)
+        # For ENU mode: (0, 0) at lat/lon origin
+        # For CRS mode: projected coordinates (easting, northing)
+        self._origin_x = None
+        self._origin_y = None
         self._origin_alt = 0.0
+
+        # Coordinate system transformers (always set after calling set_origin)
+        self.xy_2_lonlat = None   # target CRS → WGS-84
+        self.lonlat_2_xy = None  # WGS-84 → target CRS
 
         # GL resources --  (tx, ty) → {tex, vao, vbo, ebo}
         self._gl_tiles = {}
@@ -109,7 +116,7 @@ class SatelliteMapItem(BaseItem):
 
         # Threading / pending uploads
         self._lock = threading.Lock()
-        self._pending = {}          # (tx, ty) → PIL.Image (RGBA)
+        self._pending_img = {}          # (tx, ty) → PIL.Image (RGBA)
         self._needed_keys = set()   # set of (tx, ty) that should be displayed
         self._need_sync = False     # True when paint() must reconcile GL tiles
         self._build_epoch = 0       # bumped on every rebuild request
@@ -118,40 +125,170 @@ class SatelliteMapItem(BaseItem):
         self._cache_dir = Path.home() / ".cache" / "q3dviewer_satellite"
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def set_origin(self, lat, lon, alt=0.0):
-        """Set the ENU origin (degrees) and begin downloading tiles."""
-        self._origin_lat = float(lat)
-        self._origin_lon = float(lon)
+    def set_origin(self, lat=None, lon=None, alt=0.0, *,
+                   x=None, y=None, crs=None):
+        """Set the map origin and begin downloading tiles.
+
+        Two modes:
+          1) WGS-84 (ENU):  set_origin(lat=35.0, lon=139.8)
+          2) Projected CRS: set_origin(x=-12345, y=67890, crs=6677)
+             lat/lon are computed automatically; tiles are placed in
+             source-CRS coordinates so they align with raw point clouds.
+
+        Parameters
+        ----------
+        lat, lon : float | None
+            WGS-84 degrees.  Required when *crs* is not given.
+        alt : float
+            Altitude / Z offset (metres).
+        x, y : float | None
+            Easting / northing in *crs*.  Required when *crs* is given.
+        crs : pyproj.CRS | int (EPSG) | str (WKT / proj-string) | None
+            Projected CRS of the point-cloud data.
+        """
+        # Setup CRS and transformers first
+        if crs is not None:
+            # CRS mode: use provided projected coordinates
+            if x is None or y is None:
+                raise ValueError("x and y are required when crs is given")
+            self._setup_crs(crs)
+            self._origin_x = float(x)
+            self._origin_y = float(y)
+        else:
+            # ENU mode: create local tangent plane at lat/lon
+            if lat is None or lon is None:
+                raise ValueError(
+                    "lat and lon are required, or provide x, y and crs")
+            enu_crs = CRS.from_proj4(
+                f"+proj=aeqd +lat_0={lat} +lon_0={lon} "
+                f"+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs")
+            self._setup_crs(enu_crs)
+            self._origin_x = 0.0  # ENU origin is at (0, 0)
+            self._origin_y = 0.0
+
         self._origin_alt = float(alt)
-        self._request_rebuild()
+        self.request_download()
+
+    # ------------------------------------------------------------------ #
+    #  Projected-CRS helpers (JPRCS, UTM, etc.)                          #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _extract_crs_from_vlrs(vlrs):
+        """Try to build a *pyproj.CRS* from LAS GeoTIFF VLR records."""
+        # 1) ESRI PE String (WKT) inside GeoAsciiParams
+        for vlr in vlrs:
+            for s in getattr(vlr, 'strings', []):
+                if 'ESRI PE String' in s:
+                    wkt = s.split('=', 1)[1].strip()
+                    if wkt:
+                        try:
+                            return CRS.from_wkt(wkt)
+                        except Exception:
+                            pass
+        # 2) ProjectedCSTypeGeoKey (3072) in GeoKeyDirectory
+        for vlr in vlrs:
+            for gk in getattr(vlr, 'geo_keys', []):
+                gk_id = getattr(gk, 'id', None)
+                val = getattr(gk, 'value_offset', None)
+                if gk_id == 3072 and val and val not in (0, 32767):
+                    try:
+                        return CRS.from_epsg(val)
+                    except Exception:
+                        pass
+        # 3) GeographicTypeGeoKey (2048)
+        for vlr in vlrs:
+            for gk in getattr(vlr, 'geo_keys', []):
+                gk_id = getattr(gk, 'id', None)
+                val = getattr(gk, 'value_offset', None)
+                if gk_id == 2048 and val and val not in (0, 32767):
+                    try:
+                        return CRS.from_epsg(val)
+                    except Exception:
+                        pass
+        return None
+
+    def _setup_crs(self, crs):
+        """Configure pyproj transformers for the given CRS."""
+        if not isinstance(crs, CRS):
+            crs = CRS(crs)
+        self.xy_2_lonlat = Transformer.from_crs(
+            crs, CRS.from_epsg(4326), always_xy=True)
+        self.lonlat_2_xy = Transformer.from_crs(
+            CRS.from_epsg(4326), crs, always_xy=True)
 
     def add_setting(self, layout):
-        # Origin group (Latitude & Longitude)
-        origin_group = QGroupBox("Origin")
+        # ---- Manual origin input ----
+        origin_group = QGroupBox("Set Origin")
         origin_layout = QVBoxLayout()
-        
-        # Latitude
-        self._lat_spin = QDoubleSpinBox()
-        self._lat_spin.setPrefix("Lat: ")
-        self._lat_spin.setRange(-90.0, 90.0)
-        self._lat_spin.setDecimals(6)
-        self._lat_spin.setSingleStep(0.0001)
-        if self._origin_lat is not None:
-            self._lat_spin.setValue(self._origin_lat)
-        self._lat_spin.valueChanged.connect(self._on_origin_changed)
-        origin_layout.addWidget(self._lat_spin)
 
-        # Longitude
+        # Load from LAS file button
+        self._load_las_btn = QPushButton("Load from LAS File \u2026")
+        self._load_las_btn.clicked.connect(self._on_load_las_crs)
+        origin_layout.addWidget(self._load_las_btn)
+
+        # Mode selector
+        mode_layout = QHBoxLayout()
+        mode_layout.addWidget(QLabel("Mode:"))
+        self._mode_combo = QComboBox()
+        self._mode_combo.addItem("ENU")
+        self._mode_combo.addItem("CRS")
+        self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        mode_layout.addWidget(self._mode_combo)
+        origin_layout.addLayout(mode_layout)
+
+        # ENU mode inputs (lon, lat)
+        self._enu_widget = QGroupBox("ENU Mode")
+        enu_layout = QVBoxLayout()
+
         self._lon_spin = QDoubleSpinBox()
         self._lon_spin.setPrefix("Lon: ")
         self._lon_spin.setRange(-180.0, 180.0)
         self._lon_spin.setDecimals(6)
         self._lon_spin.setSingleStep(0.0001)
-        if self._origin_lon is not None:
-            self._lon_spin.setValue(self._origin_lon)
-        self._lon_spin.valueChanged.connect(self._on_origin_changed)
-        origin_layout.addWidget(self._lon_spin)
-        
+        self._lon_spin.setValue(0.0)
+        enu_layout.addWidget(self._lon_spin)
+
+        self._lat_spin = QDoubleSpinBox()
+        self._lat_spin.setPrefix("Lat: ")
+        self._lat_spin.setRange(-90.0, 90.0)
+        self._lat_spin.setDecimals(6)
+        self._lat_spin.setSingleStep(0.0001)
+        self._lat_spin.setValue(0.0)
+        enu_layout.addWidget(self._lat_spin)
+
+        self._enu_widget.setLayout(enu_layout)
+        origin_layout.addWidget(self._enu_widget)
+
+        # CRS mode inputs (EPSG code, x, y)
+        self._crs_widget = QGroupBox("CRS Mode")
+        crs_layout = QVBoxLayout()
+
+        self._epsg_spin = QSpinBox()
+        self._epsg_spin.setPrefix("EPSG: ")
+        self._epsg_spin.setRange(1000, 99999)
+        self._epsg_spin.setValue(6677)
+        crs_layout.addWidget(self._epsg_spin)
+
+        self._x_spin = QDoubleSpinBox()
+        self._x_spin.setPrefix("X: ")
+        self._x_spin.setRange(-1e8, 1e8)
+        self._x_spin.setDecimals(2)
+        self._x_spin.setSingleStep(100.0)
+        self._x_spin.setValue(0.0)
+        crs_layout.addWidget(self._x_spin)
+
+        self._y_spin = QDoubleSpinBox()
+        self._y_spin.setPrefix("Y: ")
+        self._y_spin.setRange(-1e8, 1e8)
+        self._y_spin.setDecimals(2)
+        self._y_spin.setSingleStep(100.0)
+        self._y_spin.setValue(0.0)
+        crs_layout.addWidget(self._y_spin)
+
+        self._crs_widget.setLayout(crs_layout)
+        origin_layout.addWidget(self._crs_widget)
+
         # Load button
         self._load_btn = QPushButton("Load Map")
         self._load_btn.clicked.connect(self._on_load)
@@ -159,6 +296,9 @@ class SatelliteMapItem(BaseItem):
 
         origin_group.setLayout(origin_layout)
         layout.addWidget(origin_group)
+
+        # Set initial mode visibility
+        self._on_mode_changed(0)
 
         # Zoom level
         self._zoom_spin = QSpinBox()
@@ -199,50 +339,115 @@ class SatelliteMapItem(BaseItem):
             lambda v: setattr(self, '_height', v))
         layout.addWidget(self._height_spin)
 
-    def _on_origin_changed(self):
-        self._origin_lat = self._lat_spin.value()
-        self._origin_lon = self._lon_spin.value()
+    def _on_mode_changed(self, index):
+        """Toggle visibility between ENU and CRS input widgets."""
+        is_enu = (index == 0)
+        self._enu_widget.setVisible(is_enu)
+        self._crs_widget.setVisible(not is_enu)
+
+    def _on_load_las_crs(self):
+        """Open a file dialog, parse LAS VLRs, and configure the CRS."""
+        path, _ = QFileDialog.getOpenFileName(
+            None, "Select LAS File", "",
+            "LAS Files (*.las *.laz);;All Files (*)")
+        if not path:
+            return
+        try:
+            import laspy
+            with laspy.open(path) as reader:
+                header = reader.header
+                vlrs = header.vlrs
+                try:
+                    bbox_cx = (header.x_min + header.x_max) / 2
+                    bbox_cy = (header.y_min + header.y_max) / 2
+                except Exception:
+                    bbox_cx = bbox_cy = None
+
+            crs = self._extract_crs_from_vlrs(vlrs)
+            if crs is None:
+                print("[SatelliteMap] CRS not found in LAS VLRs")
+                return
+
+            self._setup_crs(crs)
+
+            if bbox_cx is not None:
+                # Switch to CRS mode
+                self._mode_combo.setCurrentIndex(1)
+
+                # Set CRS input fields
+                if crs.is_projected and crs.to_epsg():
+                    self._epsg_spin.setValue(crs.to_epsg())
+                self._x_spin.setValue(bbox_cx)
+                self._y_spin.setValue(bbox_cy)
+
+                # Auto-load map with LAS center
+                self.set_origin(x=bbox_cx, y=bbox_cy,
+                                crs=crs, alt=self._origin_alt)
+
+                # Update lon/lat display in ENU mode fields
+                lon, lat = self.xy_2_lonlat.transform(
+                    self._origin_x, self._origin_y)
+                self._lon_spin.setValue(lon)
+                self._lat_spin.setValue(lat)
+
+                print(f"[SatelliteMap] Loaded CRS: {crs.name}")
+        except Exception as e:
+            print(f"[SatelliteMap] Failed to load LAS file: {e}")
 
     def _on_load(self):
         """Load / reload the map tiles with the current origin, zoom and blocks."""
-        if self._origin_lat is not None and self._origin_lon is not None:
-            self._request_rebuild()
+        if self._mode_combo.currentIndex() == 0:
+            # ENU mode
+            lat = self._lat_spin.value()
+            lon = self._lon_spin.value()
+            self.set_origin(lat=lat, lon=lon, alt=self._origin_alt)
+        else:
+            # CRS mode
+            epsg = self._epsg_spin.value()
+            x = self._x_spin.value()
+            y = self._y_spin.value()
+            try:
+                self.set_origin(x=x, y=y, crs=epsg, alt=self._origin_alt)
+            except Exception as e:
+                print(f"Failed to set origin: {e}")
 
     def _on_zoom(self, v):
         if v != self._zoom:
             self._zoom = v
-            self._request_rebuild()
+            self.request_download()
 
     def _on_blocks(self, v):
         if v != self._blocks:
             self._blocks = v
-            self._request_rebuild()
+            self.request_download()
 
-    def _request_rebuild(self):
+    def request_download(self):
         """Compute the needed tile set and download only missing tiles."""
         self._build_epoch += 1
         with self._lock:
-            self._pending.clear()
-        if self._origin_lat is None:
+            self._pending_img.clear()
+        if self._origin_x is None or self.xy_2_lonlat is None:
             return
+
+        # get the center tile coordinates from the current origin
+        center_lon, center_lat = self.xy_2_lonlat.transform(
+            self._origin_x, self._origin_y)
+
         # Compute which tiles are needed at current zoom / blocks
-        cx_f, cy_f = _wgs_to_tile_xy(
-            self._origin_lat, self._origin_lon, self._zoom)
+        cx_f, cy_f = lonlat_to_tile(center_lon, center_lat, self._zoom)
         cx, cy = int(cx_f), int(cy_f)
         self._needed_keys = {
             (cx + dx, cy + dy)
             for dx in range(-self._blocks, self._blocks + 1)
             for dy in range(-self._blocks, self._blocks + 1)
         }
+        self.start_background_download()
         self._need_sync = True
-        self._start_download()
 
-    def _tile_cache_path(self, tx, ty, z):
-        return self._cache_dir / f"{z}_{tx}_{ty}.png"
-
-    def _fetch_tile_image(self, tx, ty, z):
+    def fetch_tile_image(self, tx, ty, z):
         """Return PIL.Image (RGBA) from cache or network.  *None* on error."""
-        p = self._tile_cache_path(tx, ty, z)
+        p = self._cache_dir / f"{z}_{tx}_{ty}.png"
+
         if p.exists():
             try:
                 return Image.open(p).convert("RGBA")
@@ -256,7 +461,8 @@ class SatelliteMapItem(BaseItem):
         try:
             r = requests.get(
                 url,
-                headers={"User-Agent": "q3dviewer-satellite/1.0 (cloud_forge)"},
+                headers={
+                    "User-Agent": "q3dviewer-satellite/1.0 (cloud_forge)"},
                 timeout=15)
             r.raise_for_status()
             img = Image.open(BytesIO(r.content)).convert("RGBA")
@@ -266,26 +472,28 @@ class SatelliteMapItem(BaseItem):
             print(f"[SatelliteMap] tile z={z} x={tx} y={ty}: {e}")
             return None
 
-    def _start_download(self):
+    def start_background_download(self):
         epoch = self._build_epoch
         zoom = self._zoom
         needed = set(self._needed_keys)          # snapshot
+        # Tiles already on GPU that can be reused (same zoom only)
+        existing = set(self._gl_tiles.keys())
         zoom_changed = (self._active_zoom is not None
                         and self._active_zoom != zoom)
-        # Tiles already on GPU that can be reused (same zoom only)
-        existing = set() if zoom_changed else set(self._gl_tiles.keys())
+        if zoom_changed:
+            existing = set()  # Zoom changed → all existing tiles are invalid
 
         def _worker():
             for key in needed:
                 if self._build_epoch != epoch:
-                    return                              # superseded
+                    return
                 if key in existing:
-                    continue                            # already on GPU
+                    continue
                 tx, ty = key
-                img = self._fetch_tile_image(tx, ty, zoom)
+                img = self.fetch_tile_image(tx, ty, zoom)
                 if img is not None and self._build_epoch == epoch:
                     with self._lock:
-                        self._pending[key] = img
+                        self._pending_img[key] = img
 
         t = threading.Thread(target=_worker, daemon=True)
         t.start()
@@ -295,37 +503,28 @@ class SatelliteMapItem(BaseItem):
         fs = shaders.compileShader(_FRAG_SRC, GL_FRAGMENT_SHADER)
         self._program = shaders.compileProgram(vs, fs)
 
-    def _make_tile_gl(self, tx, ty, pil_img):
-        """Create textured quad for one tile in ENU world space."""
-        lat = self._origin_lat
-        lon = self._origin_lon
+    def make_tile_gl(self, tx, ty, pil_img):
+        """Create textured quad for one tile in world space."""
         zoom = self._zoom
-
-        cx_f, cy_f = _wgs_to_tile_xy(lat, lon, zoom)
-        frac_x = cx_f - math.floor(cx_f)
-        frac_y = cy_f - math.floor(cy_f)
-        cx, cy = int(cx_f), int(cy_f)
-
-        dx = tx - cx
-        dy = ty - cy
-        ts = _tile_size_meters(lat, zoom)
-
-        # Quad corners in ENU  (East = +X,  North = +Y)
-        # OSM tile-y increases southward → flip for North axis.
-        x0 = (dx - frac_x) * ts                   # west  edge
-        x1 = (dx + 1 - frac_x) * ts               # east  edge
-        y0 = -((dy + 1) - frac_y) * ts             # south edge
-        y1 = -(dy - frac_y) * ts                   # north edge
         z = 0.0
 
-        # Vertices: position(3) + texcoord(2)
-        # Image is np.flipud'd before upload so tex (0,0) = SW.
+        # 1. Get tile boundary in lon/lat
+        west_lon, south_lat, east_lon, north_lat = tile_bounds_lonlat(
+            tx, ty, zoom)
+
+        # 2. Transform to target coordinate system
+        x_sw, y_sw = self.lonlat_2_xy.transform(west_lon, south_lat)
+        x_se, y_se = self.lonlat_2_xy.transform(east_lon, south_lat)
+        x_ne, y_ne = self.lonlat_2_xy.transform(east_lon, north_lat)
+        x_nw, y_nw = self.lonlat_2_xy.transform(west_lon, north_lat)
+
         verts = np.array([
-            x0, y0, z, 0, 0,   # SW
-            x1, y0, z, 1, 0,   # SE
-            x1, y1, z, 1, 1,   # NE
-            x0, y1, z, 0, 1,   # NW
+            x_sw, y_sw, z, 0, 0,   # SW
+            x_se, y_se, z, 1, 0,   # SE
+            x_ne, y_ne, z, 1, 1,   # NE
+            x_nw, y_nw, z, 0, 1,   # NW
         ], dtype=np.float32)
+
         idx = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
 
         # ---- texture ----
@@ -392,13 +591,15 @@ class SatelliteMapItem(BaseItem):
     # ---- main render entry point ----
 
     def paint(self):
-        if self._program is None or self._origin_lat is None:
+        if self._program is None or self._origin_x is None:
             return
 
         # Synchronise GL tiles with the needed set
         if self._need_sync:
             self._need_sync = False
-            if self._active_zoom is not None and self._active_zoom != self._zoom:
+            zoom_changed = (self._active_zoom is not None
+                            and self._active_zoom != self._zoom)
+            if zoom_changed:
                 # Zoom changed → all old tiles are invalid
                 self._delete_all_gl_tiles()
             else:
@@ -410,11 +611,11 @@ class SatelliteMapItem(BaseItem):
 
         # Upload freshly downloaded tiles that arrived from the worker thread
         with self._lock:
-            batch = dict(self._pending)
-            self._pending.clear()
+            batch = dict(self._pending_img)
+            self._pending_img.clear()
         for (tx, ty), img in batch.items():
             if (tx, ty) not in self._gl_tiles:
-                self._make_tile_gl(tx, ty, img)
+                self.make_tile_gl(tx, ty, img)
 
         if not self._gl_tiles:
             return
