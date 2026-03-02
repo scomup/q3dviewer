@@ -409,6 +409,16 @@ class SatelliteMapItem(BaseItem):
         self._height_spin.valueChanged.connect(
             lambda v: setattr(self, '_height', v))
         layout.addWidget(self._height_spin)
+        
+        # Copyright notice for OpenStreetMap
+        copyright_label = QLabel("© OpenStreetMap contributors")
+        copyright_label.setStyleSheet("color: gray; font-size: 10px;")
+        copyright_label.setOpenExternalLinks(True)
+        copyright_label.setTextFormat(0x0002)  # Qt.RichText
+        copyright_label.setText(
+            '<a href="https://www.openstreetmap.org/copyright" style="color: gray; text-decoration: none;">'
+            '© OpenStreetMap contributors</a>')
+        layout.addWidget(copyright_label)
 
     def _on_mode_changed(self, index):
         """Toggle visibility between ENU and CRS input widgets."""
