@@ -21,7 +21,7 @@ from OpenGL.GL import *
 from OpenGL.GL import shaders
 from q3dviewer.utils import set_uniform
 from q3dviewer.base_item import BaseItem
-from q3dviewer.Qt.QtWidgets import QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QSlider, QSpinBox, QVBoxLayout
+from q3dviewer.Qt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QSlider, QSpinBox, QVBoxLayout
 
 
 def lonlat_to_tile(lon_deg, lat_deg, zoom):
@@ -217,7 +217,78 @@ class SatelliteMapItem(BaseItem):
         self.lonlat_2_xy = Transformer.from_crs(
             CRS.from_epsg(4326), crs, always_xy=True)
 
+    def set_crs_from_file(self, file_path, center=None):
+        crs, bbox_cx, bbox_cy = self.read_crs_from_file(file_path)
+        
+        if crs is None:
+            return False
+        
+        # Use provided center or fall back to bbox center from file
+        if center is not None:
+            x, y = center[0], center[1]
+        elif bbox_cx is not None and bbox_cy is not None:
+            x, y = bbox_cx, bbox_cy
+        else:
+            return False
+        
+        # Set origin using the extracted CRS and coordinates
+        self.set_origin(x=x, y=y, crs=crs, alt=self._origin_alt)
+        
+        # Switch to CRS mode
+        if hasattr(self, '_mode_combo'):
+            self._mode_combo.setCurrentIndex(1)
+        
+        # Set CRS input fields for UI
+        if hasattr(self, '_epsg_spin') and crs.is_projected and crs.to_epsg():
+            self._epsg_spin.setValue(crs.to_epsg())
+        if hasattr(self, '_x_spin') and bbox_cx is not None:
+            self._x_spin.setValue(bbox_cx if center is None else center[0])
+        if hasattr(self, '_y_spin') and bbox_cy is not None:
+            self._y_spin.setValue(bbox_cy if center is None else center[1])
+        
+        # Update lon/lat display in ENU mode fields
+        if hasattr(self, '_lon_spin') and hasattr(self, '_lat_spin') and self.xy_2_lonlat is not None:
+            lon, lat = self.xy_2_lonlat.transform(
+                self._origin_x, self._origin_y)
+            self._lon_spin.setValue(lon)
+            self._lat_spin.setValue(lat)
+        return True
+                
+    @staticmethod
+    def read_crs_from_file(file_path):
+        file_path = str(file_path)
+        
+        # Handle LAS/LAZ files
+        if file_path.lower().endswith(('.las', '.laz')):
+            import laspy
+            with laspy.open(file_path) as reader:
+                header = reader.header
+                vlrs = header.vlrs
+                
+                # Extract bounding box center
+                try:
+                    bbox_cx = (header.x_min + header.x_max) / 2
+                    bbox_cy = (header.y_min + header.y_max) / 2
+                except Exception:
+                    bbox_cx = bbox_cy = None
+                
+                # Extract CRS from VLRs
+                crs = SatelliteMapItem._extract_crs_from_vlrs(vlrs)
+                return crs, bbox_cx, bbox_cy
+        # Add support for other file formats here in the future
+        # elif file_path.lower().endswith('.shp'):
+        #     ...
+        else:
+            return None, None, None
+
     def add_setting(self, layout):
+        # ---- Visibility checkbox ----
+        self._visible_checkbox = QCheckBox("Show Satellite Map")
+        self._visible_checkbox.setChecked(self.visible())
+        self._visible_checkbox.stateChanged.connect(
+            lambda state: self.set_visible(bool(state)))
+        layout.addWidget(self._visible_checkbox)
+
         # ---- Manual origin input ----
         origin_group = QGroupBox("Set Origin")
         origin_layout = QVBoxLayout()
@@ -352,47 +423,8 @@ class SatelliteMapItem(BaseItem):
             "LAS Files (*.las *.laz);;All Files (*)")
         if not path:
             return
-        try:
-            import laspy
-            with laspy.open(path) as reader:
-                header = reader.header
-                vlrs = header.vlrs
-                try:
-                    bbox_cx = (header.x_min + header.x_max) / 2
-                    bbox_cy = (header.y_min + header.y_max) / 2
-                except Exception:
-                    bbox_cx = bbox_cy = None
-
-            crs = self._extract_crs_from_vlrs(vlrs)
-            if crs is None:
-                print("[SatelliteMap] CRS not found in LAS VLRs")
-                return
-
-            self._setup_crs(crs)
-
-            if bbox_cx is not None:
-                # Switch to CRS mode
-                self._mode_combo.setCurrentIndex(1)
-
-                # Set CRS input fields
-                if crs.is_projected and crs.to_epsg():
-                    self._epsg_spin.setValue(crs.to_epsg())
-                self._x_spin.setValue(bbox_cx)
-                self._y_spin.setValue(bbox_cy)
-
-                # Auto-load map with LAS center
-                self.set_origin(x=bbox_cx, y=bbox_cy,
-                                crs=crs, alt=self._origin_alt)
-
-                # Update lon/lat display in ENU mode fields
-                lon, lat = self.xy_2_lonlat.transform(
-                    self._origin_x, self._origin_y)
-                self._lon_spin.setValue(lon)
-                self._lat_spin.setValue(lat)
-
-                print(f"[SatelliteMap] Loaded CRS: {crs.name}")
-        except Exception as e:
-            print(f"[SatelliteMap] Failed to load LAS file: {e}")
+        
+        self.set_crs_from_file(path)
 
     def _on_load(self):
         """Load / reload the map tiles with the current origin, zoom and blocks."""

@@ -42,6 +42,7 @@ class FileLoaderThread(QThread):
     def run(self):
         cloud_item = self.viewer['cloud']
         mesh_item = self.viewer['mesh']
+        satellite_map_item = self.viewer['satellite_map']
         total = len(self.files)
         for i, url in enumerate(self.files):
             # if the file is a mesh file, use mesh_item to load
@@ -58,22 +59,15 @@ class FileLoaderThread(QThread):
                 cloud = cloud_item.load(file_path, append=(i > 0))
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
                 self.viewer.glwidget.set_cam_position(center=center)
-                # Auto-configure satellite map origin from LAS CRS
-                # if file_path.lower().endswith(('.las', '.laz')):
-                #     self._try_set_satellite_origin(file_path, center)
+                
+                # Auto-configure satellite map origin from LAS/LAZ CRS
+                if file_path.lower().endswith(('.las', '.laz')):
+                    try:
+                        if satellite_map_item.set_crs_from_file(file_path, center=(center[0], center[1])):
+                            print(f"[CloudViewer] Satellite map configured from {file_name}")
+                    except Exception as e:
+                        print(f"[CloudViewer] Could not configure satellite map: {e}")
         self.finished.emit()
-
-    # def _try_set_satellite_origin(self, file_path, center):
-    #     sat = self.viewer['satellite_map']
-    #     if sat is None:
-    #         return
-    #     try:
-    #         import laspy
-    #         with laspy.open(file_path) as reader:
-    #             header = reader.header
-    #             sat.set_origin_from_las(header, x=center[0], y=center[1])
-    #     except Exception as e:
-    #         print(f'[CloudViewer] satellite map CRS: {e}')
 
 
 class CustomGLWidget(GLWidget):
