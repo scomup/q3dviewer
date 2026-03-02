@@ -17,7 +17,7 @@ except ImportError:
     o3d = None
 
 
-def matching(cloud0, cloud1, down_sampling_size=0.1, radius=0.2, T_init=None, icp_model="gicp"):
+def matching(cloud0, cloud1, down_sampling_size=0.1, normal_radius=0.2, icp_distance=0.2, T_init=None, icp_model="gicp"):
     """
     Perform ICP registration between two point clouds.
     
@@ -27,7 +27,8 @@ def matching(cloud0, cloud1, down_sampling_size=0.1, radius=0.2, T_init=None, ic
         cloud0: Target point cloud (numpy structured array with 'xyz' field)
         cloud1: Source point cloud to be transformed (numpy structured array with 'xyz' field)
         down_sampling_size: Voxel size for downsampling (default: 0.1)
-        radius: Search radius for normal estimation and ICP matching (default: 0.2)
+        normal_radius: Search radius for normal estimation (default: 0.2)
+        icp_distance: Maximum correspondence distance for ICP matching (default: 0.2)
         T_init: Initial transformation matrix (4x4 numpy array), defaults to identity
         icp_model: ICP algorithm to use, either "gicp" or "p2plane" (default: "gicp")
     
@@ -56,10 +57,10 @@ def matching(cloud0, cloud1, down_sampling_size=0.1, radius=0.2, T_init=None, ic
     # Estimate normals
     cloud0_o3d.estimate_normals(
         search_param=o3d.geometry.KDTreeSearchParamHybrid(
-            radius=radius, max_nn=30))
+            radius=normal_radius, max_nn=30))
     cloud1_o3d.estimate_normals(
         search_param=o3d.geometry.KDTreeSearchParamHybrid(
-            radius=radius, max_nn=30))
+            radius=normal_radius, max_nn=30))
     
     # Initial transformation
     if T_init is None:
@@ -74,7 +75,7 @@ def matching(cloud0, cloud1, down_sampling_size=0.1, radius=0.2, T_init=None, ic
     if icp_model == "p2plane":
         # Point-to-plane ICP
         result = o3d.pipelines.registration.registration_icp(
-            cloud1_o3d, cloud0_o3d, radius, T_init,
+            cloud1_o3d, cloud0_o3d, icp_distance, T_init,
             o3d.pipelines.registration.TransformationEstimationPointToPlane(),
             criteria)
     elif icp_model == "gicp":
@@ -82,19 +83,19 @@ def matching(cloud0, cloud1, down_sampling_size=0.1, radius=0.2, T_init=None, ic
         if o3d.__version__ < "0.15.0":
             print("\033[93mWarning: Open3D version is older than 0.15.0. Falling back to point-to-plane ICP.\033[0m")
             result = o3d.pipelines.registration.registration_icp(
-                cloud1_o3d, cloud0_o3d, radius, T_init,
+                cloud1_o3d, cloud0_o3d, icp_distance, T_init,
                 o3d.pipelines.registration.TransformationEstimationPointToPlane(),
                 criteria)
         else:
             # GICP - need Covariances
             cloud0_o3d.estimate_covariances(
                 search_param=o3d.geometry.KDTreeSearchParamHybrid(
-                    radius=radius, max_nn=30))
+                    radius=normal_radius, max_nn=30))
             cloud1_o3d.estimate_covariances(
                 search_param=o3d.geometry.KDTreeSearchParamHybrid(
-                    radius=radius, max_nn=30))
+                    radius=normal_radius, max_nn=30))
             result = o3d.pipelines.registration.registration_generalized_icp(
-                cloud1_o3d, cloud0_o3d, radius, T_init,
+                cloud1_o3d, cloud0_o3d, icp_distance, T_init,
                 o3d.pipelines.registration.TransformationEstimationForGeneralizedICP(),
                 criteria)
     else:

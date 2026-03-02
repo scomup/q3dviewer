@@ -3,15 +3,12 @@
 """
 Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
-
-Match two PCD files using Open3D GICP (Generalized Iterative Closest Point)
-with interactive transformation adjustment
 """
 
 import numpy as np
 import argparse
 import q3dviewer as q3d
-from q3dviewer.Qt.QtWidgets import QLabel, QDoubleSpinBox, QVBoxLayout, QPushButton, QFileDialog
+from q3dviewer.Qt.QtWidgets import QLabel, QDoubleSpinBox, QVBoxLayout, QPushButton, QFileDialog, QGroupBox
 from q3dviewer.Qt import QtCore
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
 from q3dviewer.utils.cloud_io import load_pcd, save_pcd
@@ -36,6 +33,8 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return f"{value:.{self.decimals}f}"
 
     def valueFromText(self, text):
+        # Remove prefix and suffix to extract the numeric value
+        text = text.replace(self.prefix(), '').replace(self.suffix(), '').strip()
         return float(text)
 
 
@@ -45,7 +44,8 @@ class GICPMatchingViewer(q3d.Viewer):
         self.target_cloud = target_cloud  # For display and ICP
         self.source_cloud_full = source_cloud_full  # Full resolution for saving
         self.voxel_size = voxel_size
-        self.radius = 0.2
+        self.normal_radius = 0.1  # Radius for normal estimation
+        self.icp_distance = 0.5  # Max correspondence distance for ICP
         self.t_init = np.array([0, 0, 0])
         self.R_init = np.eye(3)
         super().__init__(**kwargs)
@@ -90,15 +90,39 @@ class GICPMatchingViewer(q3d.Viewer):
         self.box_yaw.setRange(-np.pi, np.pi)
         setting_layout.addWidget(self.box_yaw)
 
-        # Radius control
-        label_radius = QLabel("Set ICP matching radius:")
-        setting_layout.addWidget(label_radius)
-        self.box_radius = CustomDoubleSpinBox(decimals=2)
-        self.box_radius.setSingleStep(0.1)
-        self.box_radius.setRange(0.1, 3.0)
-        self.box_radius.setValue(self.radius)
-        self.box_radius.valueChanged.connect(self.update_radius)
-        setting_layout.addWidget(self.box_radius)
+        # ICP configuration group
+        icp_group = QGroupBox("ICP Configuration")
+        icp_layout = QVBoxLayout()
+
+        # Voxel size control
+        self.box_voxel_size = CustomDoubleSpinBox(decimals=2)
+        self.box_voxel_size.setPrefix("Voxel Size: ")
+        self.box_voxel_size.setSingleStep(0.01)
+        self.box_voxel_size.setRange(0.01, 1.0)
+        self.box_voxel_size.setValue(self.voxel_size)
+        self.box_voxel_size.valueChanged.connect(self.update_voxel_size)
+        icp_layout.addWidget(self.box_voxel_size)
+
+        # Normal radius control
+        self.box_normal_radius = CustomDoubleSpinBox(decimals=2)
+        self.box_normal_radius.setPrefix("Normal Radius: ")
+        self.box_normal_radius.setSingleStep(0.01)
+        self.box_normal_radius.setRange(0.01, 1.0)
+        self.box_normal_radius.setValue(self.normal_radius)
+        self.box_normal_radius.valueChanged.connect(self.update_normal_radius)
+        icp_layout.addWidget(self.box_normal_radius)
+
+        # ICP distance control
+        self.box_icp_distance = CustomDoubleSpinBox(decimals=2)
+        self.box_icp_distance.setPrefix("ICP Distance: ")
+        self.box_icp_distance.setSingleStep(0.1)
+        self.box_icp_distance.setRange(0.1, 100.0)
+        self.box_icp_distance.setValue(self.icp_distance)
+        self.box_icp_distance.valueChanged.connect(self.update_icp_distance)
+        icp_layout.addWidget(self.box_icp_distance)
+
+        icp_group.setLayout(icp_layout)
+        setting_layout.addWidget(icp_group)
 
         # ICP matching button
         self.gicp_button = QPushButton("Run ICP Matching")
@@ -120,8 +144,14 @@ class GICPMatchingViewer(q3d.Viewer):
 
         main_layout.addLayout(setting_layout)
 
-    def update_radius(self):
-        self.radius = self.box_radius.value()
+    def update_voxel_size(self):
+        self.voxel_size = self.box_voxel_size.value()
+
+    def update_normal_radius(self):
+        self.normal_radius = self.box_normal_radius.value()
+
+    def update_icp_distance(self):
+        self.icp_distance = self.box_icp_distance.value()
 
     def apply_transform(self):
         """Update transformation parameters and apply to source using set_transform."""
@@ -144,7 +174,6 @@ class GICPMatchingViewer(q3d.Viewer):
         self['source'].set_transform(T)
 
     def perform_matching(self):
-        print("\nPerforming scan matching registration...")
 
         # Initial transformation
         T_init = np.eye(4)
@@ -155,7 +184,8 @@ class GICPMatchingViewer(q3d.Viewer):
         T_result, result = matching(
             self.target_cloud, self.source_cloud,
             down_sampling_size=self.voxel_size,
-            radius=self.radius,
+            normal_radius=self.normal_radius,
+            icp_distance=self.icp_distance,
             T_init=T_init,
             icp_model="gicp"
         )

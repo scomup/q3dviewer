@@ -10,7 +10,7 @@ import rospy
 import numpy as np
 import argparse
 import q3dviewer as q3d
-from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox
 from q3dviewer.Qt import QtCore
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
@@ -42,6 +42,8 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
         return f"{value:.{self.decimals}f}"
 
     def valueFromText(self, text):
+        # Remove prefix and suffix to extract the numeric value
+        text = text.replace(self.prefix(), '').replace(self.suffix(), '').strip()
         return float(text)
 
 
@@ -50,7 +52,9 @@ class LiDARCalibViewer(q3d.Viewer):
         self.t01 = np.array([0, 0, 0])
         self.R01 = np.eye(3)
         self.cloud_num = 10
-        self.radius = 0.2
+        self.voxel_size = 0.1  # Voxel size for downsampling
+        self.normal_radius = 0.1  # Radius for normal estimation
+        self.icp_distance = 0.2  # Max correspondence distance for ICP
         super().__init__(**kwargs)
 
     def default_gl_setting(self, glwidget):
@@ -111,13 +115,34 @@ class LiDARCalibViewer(q3d.Viewer):
         self.line_quat.setReadOnly(True)
         setting_layout.addWidget(self.line_quat)
 
-        label_matching_setting = QLabel("Set matching radius:")
-        setting_layout.addWidget(label_matching_setting)
-        self.box_radius = CustomDoubleSpinBox(decimals=2)
-        self.box_radius.setSingleStep(0.1)
-        self.box_radius.setRange(0.1, 3.0)
-        self.box_radius.setValue(self.radius)
-        setting_layout.addWidget(self.box_radius)
+        # ICP configuration group
+        icp_group = QGroupBox("ICP Configuration")
+        icp_layout = QVBoxLayout()
+
+        self.box_voxel_size = CustomDoubleSpinBox(decimals=2)
+        self.box_voxel_size.setPrefix("Voxel Size: ")
+        self.box_voxel_size.setSingleStep(0.01)
+        self.box_voxel_size.setRange(0.01, 1.0)
+        self.box_voxel_size.setValue(self.voxel_size)
+        self.box_voxel_size.valueChanged.connect(self.update_voxel_size)
+        icp_layout.addWidget(self.box_voxel_size)
+
+        self.box_normal_radius = CustomDoubleSpinBox(decimals=2)
+        self.box_normal_radius.setPrefix("Normal Radius: ")
+        self.box_normal_radius.setSingleStep(0.01)
+        self.box_normal_radius.setRange(0.01, 1.0)
+        self.box_normal_radius.setValue(self.normal_radius)
+        icp_layout.addWidget(self.box_normal_radius)
+
+        self.box_icp_distance = CustomDoubleSpinBox(decimals=2)
+        self.box_icp_distance.setPrefix("ICP Distance: ")
+        self.box_icp_distance.setSingleStep(0.1)
+        self.box_icp_distance.setRange(0.1, 100.0)
+        self.box_icp_distance.setValue(self.icp_distance)
+        icp_layout.addWidget(self.box_icp_distance)
+
+        icp_group.setLayout(icp_layout)
+        setting_layout.addWidget(icp_group)
 
         self.icp_button = QPushButton("Auto Scan Matching")
         self.icp_button.clicked.connect(self.perform_matching)
@@ -140,11 +165,11 @@ class LiDARCalibViewer(q3d.Viewer):
         main_layout.addLayout(setting_layout)
         
 
-    def update_radius(self):
-        self.radius = self.box_radius.value()
-
     def update_cloud_num(self):
         self.cloud_num = self.box_cloud_num.value()
+
+    def update_voxel_size(self):
+        self.voxel_size = self.box_voxel_size.value()
 
     def apply_transform(self):
         """Update transformation parameters and apply to scan1 using set_transform."""
@@ -186,8 +211,9 @@ class LiDARCalibViewer(q3d.Viewer):
             # Perform ICP registration using cloud_registration.matching
             transformation_icp, result = matching(
                 cloud0_accum, cloud1_accum,
-                down_sampling_size=0.1,
-                radius=self.radius,
+                down_sampling_size=self.box_voxel_size.value(),
+                normal_radius=self.box_normal_radius.value(),
+                icp_distance=self.box_icp_distance.value(),
                 T_init=T_init,
                 icp_model="p2plane"
             )
@@ -263,13 +289,11 @@ def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(
         description="Find a T let T * scan1 = LiDAR0")
-    parser.add_argument('--lidar0', type=str,
+    parser.add_argument("lidar0", type=str,
                         help="Topic name for LiDAR0 data")
-    parser.add_argument('--lidar1', type=str,
+    parser.add_argument("lidar1", type=str,
                         help="Topic name for LiDAR1 data")
     args = parser.parse_args()
-    if not args.lidar0 or not args.lidar1:
-        parser.error("Both --lidar0 and --lidar1 must be provided")
 
     app = q3d.QApplication(["LiDAR Calib"])
     viewer = LiDARCalibViewer(name='LiDAR Calib')
