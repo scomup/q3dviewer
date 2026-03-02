@@ -8,7 +8,7 @@ from OpenGL.GL import *
 
 import numpy as np
 from OpenGL.GL import shaders
-from q3dviewer.Qt.QtWidgets import QSpinBox, QCheckBox
+from q3dviewer.Qt.QtWidgets import QSpinBox, QCheckBox, QSlider, QHBoxLayout, QLabel
 
 
 # Vertex and Fragment shader source code
@@ -152,13 +152,16 @@ class ImageItem(BaseItem):
         glEnable(GL_DEPTH_TEST)
 
     def add_setting(self, layout):
-        spinbox_alpha = QSpinBox()
-        spinbox_alpha.setPrefix("Alpha: ")
-        spinbox_alpha.setSingleStep(1)
-        spinbox_alpha.setRange(0, 255)
-        spinbox_alpha.setValue(self.alpha)
-        spinbox_alpha.valueChanged.connect(self.set_alpha)
-        layout.addWidget(spinbox_alpha)
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Alpha:")
+        alpha_layout.addWidget(alpha_label)
+        self.alpha_slider = QSlider()
+        self.alpha_slider.setOrientation(1)  # Qt.Horizontal
+        self.alpha_slider.setRange(0, 255)
+        self.alpha_slider.setValue(self.alpha)
+        self.alpha_slider.valueChanged.connect(self.set_alpha)
+        alpha_layout.addWidget(self.alpha_slider)
+        layout.addLayout(alpha_layout)
         
         checkbox_show = QCheckBox("Show Image")
         checkbox_show.setChecked(True)

@@ -12,6 +12,7 @@ from q3dviewer.Qt.QtCore import QThread, Signal, Qt
 from q3dviewer import GLWidget
 from q3dviewer.utils.helpers import get_version
 
+
 class ProgressWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -48,7 +49,7 @@ class FileLoaderThread(QThread):
             import os
             file_name = os.path.basename(file_path)
             self.progress.emit(i + 1, total, file_name)
-            
+
             if url.toLocalFile().lower().endswith(('.stl')):
                 from q3dviewer.utils.cloud_io import load_stl
                 mesh = load_stl(file_path)
@@ -57,7 +58,22 @@ class FileLoaderThread(QThread):
                 cloud = cloud_item.load(file_path, append=(i > 0))
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
                 self.viewer.glwidget.set_cam_position(center=center)
+                # Auto-configure satellite map origin from LAS CRS
+                # if file_path.lower().endswith(('.las', '.laz')):
+                #     self._try_set_satellite_origin(file_path, center)
         self.finished.emit()
+
+    # def _try_set_satellite_origin(self, file_path, center):
+    #     sat = self.viewer['satellite_map']
+    #     if sat is None:
+    #         return
+    #     try:
+    #         import laspy
+    #         with laspy.open(file_path) as reader:
+    #             header = reader.header
+    #             sat.set_origin_from_las(header, x=center[0], y=center[1])
+    #     except Exception as e:
+    #         print(f'[CloudViewer] satellite map CRS: {e}')
 
 
 class CustomGLWidget(GLWidget):
@@ -91,7 +107,7 @@ class CustomGLWidget(GLWidget):
                  'point_size': 5.0,
                  'line_width': 1.0}
             marks.append(m)
-        
+
         # calculate distances between consecutive points
         self.viewer['marker'].set_data(data=marks, append=False)
         if len(self.selected_points) >= 2:
@@ -101,14 +117,15 @@ class CustomGLWidget(GLWidget):
                 p2 = self.selected_points[i]
                 dist = np.linalg.norm(np.array(p2) - np.array(p1))
                 total_dists += dist
-            self.viewer['text'].set_data(text=f'Total Distance: {total_dists:.2f} meter')
+            self.viewer['text'].set_data(
+                text=f'Total Distance: {total_dists:.2f} meter')
         else:
             self.viewer['text'].set_data(text='')
 
 
 class CloudViewer(q3d.Viewer):
     def __init__(self, **kwargs):
-        gl_widget_class=lambda: CustomGLWidget(self)
+        def gl_widget_class(): return CustomGLWidget(self)
         super(CloudViewer, self).__init__(
             **kwargs,  gl_widget_class=gl_widget_class)
         self.setAcceptDrops(True)
@@ -147,49 +164,54 @@ class CloudViewer(q3d.Viewer):
         self.glwidget.set_cam_position(center=center)
 
 # print a quick help message using rich
+
+
 def print_help():
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
     from rich.text import Text
-    
+
     console = Console()
-    
+
     # Create a table for better organization
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_column(style="bold cyan", width=30)
     table.add_column(style="white")
-    
+
     # File loading section
-    table.add_row("📁 Load Files","Drag and drop files into the viewer")
-    table.add_row("","[dim]• Point clouds: .pcd, .ply, .las, .e57[/dim]")
-    table.add_row("","[dim]• Mesh files: .stl[/dim]")
+    table.add_row("📁 Load Files", "Drag and drop files into the viewer")
+    table.add_row("", "[dim]• Point clouds: .pcd, .ply, .las, .e57[/dim]")
+    table.add_row("", "[dim]• Mesh files: .stl[/dim]")
     table.add_row("", "")
-    
+
     # Measurement section
     table.add_row("📏 Measure Distance", "Interactive point measurement")
-    table.add_row("","[dim]• Ctrl + Left Click: Add measurement point[/dim]")
-    table.add_row("","[dim]• Ctrl + Right Click: Remove last point[/dim]")
-    table.add_row("","[dim]• Total distance displayed automatically[/dim]")
+    table.add_row("", "[dim]• Ctrl + Left Click: Add measurement point[/dim]")
+    table.add_row("", "[dim]• Ctrl + Right Click: Remove last point[/dim]")
+    table.add_row("", "[dim]• Total distance displayed automatically[/dim]")
     table.add_row("", "")
-    
+
     # Camera controls
-    table.add_row("🎥 Camera Controls","Navigate the 3D scene")
-    table.add_row("","[dim]• Double Click: Set camera center to point[/dim]")
-    table.add_row("","[dim]• Right Drag: Rotate view[/dim]")
-    table.add_row("","[dim]• Left Drag: Pan view[/dim]")
-    table.add_row("","[dim]• Mouse Wheel: Zoom in/out[/dim]")
+    table.add_row("🎥 Camera Controls", "Navigate the 3D scene")
+    table.add_row("", "[dim]• Double Click: Set camera center to point[/dim]")
+    table.add_row("", "[dim]• Right Drag: Rotate view[/dim]")
+    table.add_row("", "[dim]• Left Drag: Pan view[/dim]")
+    table.add_row("", "[dim]• Mouse Wheel: Zoom in/out[/dim]")
     table.add_row("", "")
-    
+
     # Settings section
-    table.add_row("⚙️  Settings","Press [bold green]'M'[/bold green] to open settings window")
-    table.add_row("","[dim]Adjust visualization properties[/dim]")
-    
+    table.add_row("⚙️  Settings",
+                  "Press [bold green]'M'[/bold green] to open settings window")
+    table.add_row("", "[dim]Adjust visualization properties[/dim]")
+
     # Print title and table without border
     console.print()
-    console.print(f"[bold magenta]☁️  Cloud Viewer ({get_version()}) Help[/bold magenta]\n")
+    console.print(
+        f"[bold magenta]☁️  Cloud Viewer ({get_version()}) Help[/bold magenta]\n")
     console.print(table)
     console.print()
+
 
 def main():
     print_help()
@@ -207,15 +229,16 @@ def main():
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
     text_item.disable_setting()
     mesh_item = q3d.StaticMeshItem()
+    satellite_map_item = q3d.SatelliteMapItem()
 
     viewer.add_items(
-        {'marker': marker_item, 
+        {'marker': marker_item,
          'cloud': cloud_item,
          'mesh': mesh_item,
-         'grid': grid_item, 
-         'axis': axis_item, 
-         'text': text_item,})
-
+         'grid': grid_item,
+         'axis': axis_item,
+         'text': text_item,
+         'satellite_map': satellite_map_item})
     if args.path:
         pcd_fn = args.path
         viewer.open_cloud_file(pcd_fn)
