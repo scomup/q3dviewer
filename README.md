@@ -12,10 +12,21 @@ To show how to use `q3dviewer` as a library, we also provide some [very useful t
 
 ## Installation
 
-To install `q3dviewer`, execute the following command in your terminal on either Linux or Windows:
-
+**For library usage only:**
 ```bash
 pip install q3dviewer
+```
+
+**For GUI tools (cloud_viewer, gaussian_viewer, etc.):**
+```bash
+pip install "q3dviewer[tools]"
+```
+
+**For Python 3.12+ (GUI tools):**
+```bash
+pipx install "q3dviewer[tools]"
+pipx ensurepath
+source ~/.bashrc
 ```
 
 ### Note for Windows Users

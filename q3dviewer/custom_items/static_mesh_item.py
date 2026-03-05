@@ -9,6 +9,7 @@ import numpy as np
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GL import shaders
+from q3dviewer.Qt.QtCore import Qt
 from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit
 
 import os
@@ -87,7 +88,7 @@ class StaticMeshItem(BaseItem):
             ambient_label = QLabel("Ambient Strength:")
             ambient_layout.addWidget(ambient_label)
             self.ambient_slider = QSlider()
-            self.ambient_slider.setOrientation(1)  # Qt.Horizontal
+            self.ambient_slider.setOrientation(Qt.Horizontal)
             self.ambient_slider.setRange(0, 100)
             self.ambient_slider.setValue(int(self.ambient_strength * 100))
             self.ambient_slider.valueChanged.connect(lambda v: self.update_ambient_strength(v / 100.0))
@@ -99,7 +100,7 @@ class StaticMeshItem(BaseItem):
             diffuse_label = QLabel("Diffuse Strength:")
             diffuse_layout.addWidget(diffuse_label)
             self.diffuse_slider = QSlider()
-            self.diffuse_slider.setOrientation(1)
+            self.diffuse_slider.setOrientation(Qt.Horizontal)
             self.diffuse_slider.setRange(0, 200)
             self.diffuse_slider.setValue(int(self.diffuse_strength * 100))
             self.diffuse_slider.valueChanged.connect(lambda v: self.update_diffuse_strength(v / 100.0))
@@ -111,7 +112,7 @@ class StaticMeshItem(BaseItem):
             specular_label = QLabel("Specular Strength:")
             specular_layout.addWidget(specular_label)
             self.specular_slider = QSlider()
-            self.specular_slider.setOrientation(1)
+            self.specular_slider.setOrientation(Qt.Horizontal)
             self.specular_slider.setRange(0, 100)
             self.specular_slider.setValue(int(self.specular_strength * 100))
             self.specular_slider.valueChanged.connect(lambda v: self.update_specular_strength(v / 100.0))
@@ -123,7 +124,7 @@ class StaticMeshItem(BaseItem):
             shininess_label = QLabel("Shininess:")
             shininess_layout.addWidget(shininess_label)
             self.shininess_slider = QSlider()
-            self.shininess_slider.setOrientation(1)
+            self.shininess_slider.setOrientation(Qt.Horizontal)
             self.shininess_slider.setRange(1, 256)
             self.shininess_slider.setValue(int(self.shininess))
             self.shininess_slider.valueChanged.connect(lambda v: self.update_shininess(float(v)))

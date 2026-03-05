@@ -34,7 +34,8 @@ class CustomDoubleSpinBox(QDoubleSpinBox):
 
     def valueFromText(self, text):
         # Remove prefix and suffix to extract the numeric value
-        text = text.replace(self.prefix(), '').replace(self.suffix(), '').strip()
+        text = text.replace(self.prefix(), '').replace(
+            self.suffix(), '').strip()
         return float(text)
 
 
@@ -306,9 +307,9 @@ def main():
     # Add visualization items
     grid_item = q3d.GridItem(size=100, spacing=10, color='#00000040')
     source_item = q3d.CloudItem(
-        size=1, alpha=1, color_mode='FLAT', color='#ff0000')
+        size=1, alpha=1, color_mode='FLAT', color="#ff4466")
     target_item = q3d.CloudItem(
-        size=1, alpha=1, color_mode='FLAT', color='#00ff00')
+        size=1, alpha=1, color_mode='FLAT', color="#00dd88")
 
     viewer.add_items({
         'grid': grid_item,

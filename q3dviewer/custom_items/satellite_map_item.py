@@ -21,6 +21,7 @@ from OpenGL.GL import *
 from OpenGL.GL import shaders
 from q3dviewer.utils import set_uniform
 from q3dviewer.base_item import BaseItem
+from q3dviewer.Qt.QtCore import Qt
 from q3dviewer.Qt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QSlider, QSpinBox, QVBoxLayout
 
 
@@ -391,7 +392,7 @@ class SatelliteMapItem(BaseItem):
         h3 = QHBoxLayout()
         h3.addWidget(QLabel("Alpha:"))
         self._alpha_slider = QSlider()
-        self._alpha_slider.setOrientation(1)          # Qt.Horizontal
+        self._alpha_slider.setOrientation(Qt.Horizontal)
         self._alpha_slider.setRange(0, 100)
         self._alpha_slider.setValue(int(self._alpha * 100))
         self._alpha_slider.valueChanged.connect(

@@ -8,6 +8,7 @@ from OpenGL.GL import *
 
 import numpy as np
 from OpenGL.GL import shaders
+from q3dviewer.Qt.QtCore import Qt
 from q3dviewer.Qt.QtWidgets import QSpinBox, QCheckBox, QSlider, QHBoxLayout, QLabel
 
 
@@ -156,7 +157,7 @@ class ImageItem(BaseItem):
         alpha_label = QLabel("Alpha:")
         alpha_layout.addWidget(alpha_label)
         self.alpha_slider = QSlider()
-        self.alpha_slider.setOrientation(1)  # Qt.Horizontal
+        self.alpha_slider.setOrientation(Qt.Horizontal)
         self.alpha_slider.setRange(0, 255)
         self.alpha_slider.setValue(self.alpha)
         self.alpha_slider.valueChanged.connect(self.set_alpha)

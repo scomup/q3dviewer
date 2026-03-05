@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q3dviewer"
-version = "1.2.7"
+version = "1.2.8"
 authors = [
     {name = "Liu Yang", email = "liu.yang@jp.panasonic.com"}
 ]
@@ -21,6 +21,10 @@ dependencies = [
     "numpy",
     "pyside6",
     "PyOpenGL",
+]
+
+[project.optional-dependencies]
+tools = [
     "meshio",
     "pypcd4",
     "pye57",
@@ -29,6 +33,7 @@ dependencies = [
     "imageio[ffmpeg]",
     "matplotlib",
     "pyproj",
+    "requires"
 ]
 
 [project.urls]

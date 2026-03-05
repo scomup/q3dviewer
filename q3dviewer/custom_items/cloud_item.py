@@ -11,6 +11,7 @@ from OpenGL.GL import shaders
 
 import threading
 import os
+from q3dviewer.Qt.QtCore import Qt
 from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QCheckBox, QSlider, QHBoxLayout
 from q3dviewer.utils.range_slider import RangeSlider
 from q3dviewer.utils import set_uniform
@@ -98,7 +99,7 @@ class CloudItem(BaseItem):
         alpha_label = QLabel("Alpha:")
         alpha_layout.addWidget(alpha_label)
         self.alpha_slider = QSlider()
-        self.alpha_slider.setOrientation(1)  # Qt.Horizontal
+        self.alpha_slider.setOrientation(Qt.Horizontal)
         self.alpha_slider.setRange(0, 100)
         self.alpha_slider.setValue(int(self.alpha * 100))
         self.alpha_slider.valueChanged.connect(lambda v: self.set_alpha(v / 100.0))

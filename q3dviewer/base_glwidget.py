@@ -19,7 +19,7 @@ class BaseGLWidget(QOpenGLWidget):
         self._fov = 60
         self.items = []
         self.keyTimer = QtCore.QTimer()
-        self.color = np.array([0, 0, 0, 0])
+        self.color = np.array([0, 0, 0, 1])
         self.dist = 40
         self.euler = np.array([np.pi/3, 0, np.pi/4])
         self.center = np.array([0, 0, 0.])

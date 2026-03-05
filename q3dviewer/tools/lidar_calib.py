@@ -299,9 +299,9 @@ def main():
     viewer = LiDARCalibViewer(name='LiDAR Calib')
     grid_item = q3d.GridItem(size=10, spacing=1, color='#00000040')
     scan0_item = q3d.CloudItem(
-        size=2, alpha=1, color_mode='FLAT', color='#ff0000')
+        size=2, alpha=1, color_mode='FLAT', color='#ff4466')
     scan1_item = q3d.CloudItem(
-        size=2, alpha=1, color_mode='FLAT', color='#00ff00')
+        size=2, alpha=1, color_mode='FLAT', color='#00dd88')
     viewer.add_items(
         {'scan0': scan0_item, 'scan1': scan1_item, 'grid': grid_item})
 
