@@ -14,9 +14,6 @@ import threading
 from io import BytesIO
 from pathlib import Path
 import numpy as np
-import requests
-from PIL import Image
-from pyproj import CRS, Transformer
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from q3dviewer.utils import set_uniform
@@ -90,6 +87,11 @@ class SatelliteMapItem(BaseItem):
     """
 
     DEFAULT_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    
+    # Optional dependencies loaded on first instantiation
+    _iio = None
+    _requests = None
+    _pyproj = None
 
     def __init__(self, zoom=18, blocks=2, alpha=0.7, height=0.0, tile_url=None):
         super().__init__()
@@ -98,6 +100,33 @@ class SatelliteMapItem(BaseItem):
         self._alpha = float(alpha)
         self._height = float(height)
         self._tile_url = tile_url or self.DEFAULT_TILE_URL
+
+        # Load required dependencies on first instantiation
+        cls = self.__class__
+        if cls._iio is None:
+            try:
+                import imageio.v3 as _iio
+                cls._iio = _iio
+            except ImportError:
+                raise ImportError(
+                    "imageio is required for SatelliteMapItem. "
+                    "Install with: pip install q3dviewer[tools]")
+        if cls._requests is None:
+            try:
+                import requests as _requests
+                cls._requests = _requests
+            except ImportError:
+                raise ImportError(
+                    "requests is required for SatelliteMapItem. "
+                    "Install with: pip install q3dviewer[tools]")
+        if cls._pyproj is None:
+            try:
+                import pyproj as _pyproj
+                cls._pyproj = _pyproj
+            except ImportError:
+                raise ImportError(
+                    "pyproj is required for SatelliteMapItem. "
+                    "Install with: pip install q3dviewer[tools]")
 
         # Map origin in local coordinate system (x, y)
         # For ENU mode: (0, 0) at lat/lon origin
@@ -160,7 +189,9 @@ class SatelliteMapItem(BaseItem):
             if lat is None or lon is None:
                 raise ValueError(
                     "lat and lon are required, or provide x, y and crs")
-            enu_crs = CRS.from_proj4(
+            
+            cls = self.__class__
+            enu_crs = cls._pyproj.CRS.from_proj4(
                 f"+proj=aeqd +lat_0={lat} +lon_0={lon} "
                 f"+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs")
             self._setup_crs(enu_crs)
@@ -174,9 +205,9 @@ class SatelliteMapItem(BaseItem):
     #  Projected-CRS helpers (JPRCS, UTM, etc.)                          #
     # ------------------------------------------------------------------ #
 
-    @staticmethod
-    def _extract_crs_from_vlrs(vlrs):
+    def _extract_crs_from_vlrs(self, vlrs):
         """Try to build a *pyproj.CRS* from LAS GeoTIFF VLR records."""
+        cls = self.__class__
         # 1) ESRI PE String (WKT) inside GeoAsciiParams
         for vlr in vlrs:
             for s in getattr(vlr, 'strings', []):
@@ -184,7 +215,7 @@ class SatelliteMapItem(BaseItem):
                     wkt = s.split('=', 1)[1].strip()
                     if wkt:
                         try:
-                            return CRS.from_wkt(wkt)
+                            return cls._pyproj.CRS.from_wkt(wkt)
                         except Exception:
                             pass
         # 2) ProjectedCSTypeGeoKey (3072) in GeoKeyDirectory
@@ -194,7 +225,7 @@ class SatelliteMapItem(BaseItem):
                 val = getattr(gk, 'value_offset', None)
                 if gk_id == 3072 and val and val not in (0, 32767):
                     try:
-                        return CRS.from_epsg(val)
+                        return cls._pyproj.CRS.from_epsg(val)
                     except Exception:
                         pass
         # 3) GeographicTypeGeoKey (2048)
@@ -204,22 +235,39 @@ class SatelliteMapItem(BaseItem):
                 val = getattr(gk, 'value_offset', None)
                 if gk_id == 2048 and val and val not in (0, 32767):
                     try:
-                        return CRS.from_epsg(val)
+                        return cls._pyproj.CRS.from_epsg(val)
                     except Exception:
                         pass
         return None
 
     def _setup_crs(self, crs):
         """Configure pyproj transformers for the given CRS."""
-        if not isinstance(crs, CRS):
-            crs = CRS(crs)
-        self.xy_2_lonlat = Transformer.from_crs(
-            crs, CRS.from_epsg(4326), always_xy=True)
-        self.lonlat_2_xy = Transformer.from_crs(
-            CRS.from_epsg(4326), crs, always_xy=True)
+        cls = self.__class__
+        if not isinstance(crs, cls._pyproj.CRS):
+            crs = cls._pyproj.CRS(crs)
+        self.xy_2_lonlat = cls._pyproj.Transformer.from_crs(
+            crs, cls._pyproj.CRS.from_epsg(4326), always_xy=True)
+        self.lonlat_2_xy = cls._pyproj.Transformer.from_crs(
+            cls._pyproj.CRS.from_epsg(4326), crs, always_xy=True)
 
     def set_crs_from_file(self, file_path, center=None):
-        crs, bbox_cx, bbox_cy = self.read_crs_from_file(file_path)
+        result = self.read_crs_from_file(file_path)
+        
+        if result[0] is None:
+            return False
+        
+        cls = self.__class__
+        # Result can be either (vlrs, bbox_cx, bbox_cy) or (crs, bbox_cx, bbox_cy)
+        # For LAS files, we get vlrs and need to extract CRS
+        if hasattr(result[0], '__iter__') and not isinstance(result[0], (str, cls._pyproj.CRS)):
+            # It's VLRs from LAS file
+            vlrs, bbox_cx, bbox_cy = result
+            crs = self._extract_crs_from_vlrs(vlrs)
+            if crs is None:
+                return False
+        else:
+            # It's already a CRS
+            crs, bbox_cx, bbox_cy = result
         
         if crs is None:
             return False
@@ -273,9 +321,9 @@ class SatelliteMapItem(BaseItem):
                 except Exception:
                     bbox_cx = bbox_cy = None
                 
-                # Extract CRS from VLRs
-                crs = SatelliteMapItem._extract_crs_from_vlrs(vlrs)
-                return crs, bbox_cx, bbox_cy
+                # Extract CRS from VLRs (need instance for pyproj access)
+                # Note: This is called from instance method set_crs_from_file
+                return vlrs, bbox_cx, bbox_cy
         # Add support for other file formats here in the future
         # elif file_path.lower().endswith('.shp'):
         #     ...
@@ -472,28 +520,38 @@ class SatelliteMapItem(BaseItem):
         if self._origin_x is None or self.xy_2_lonlat is None:
             return
 
-        # get the center tile coordinates from the current origin
-        center_lon, center_lat = self.xy_2_lonlat.transform(
-            self._origin_x, self._origin_y)
+        zoom = self._zoom
+        blocks = self._blocks
+        lon, lat = self.xy_2_lonlat.transform(self._origin_x, self._origin_y)
+        cx, cy = lonlat_to_tile(lon, lat, zoom)
+        tx_cen, ty_cen = int(math.floor(cx)), int(math.floor(cy))
 
-        # Compute which tiles are needed at current zoom / blocks
-        cx_f, cy_f = lonlat_to_tile(center_lon, center_lat, self._zoom)
-        cx, cy = int(cx_f), int(cy_f)
-        self._needed_keys = {
-            (cx + dx, cy + dy)
-            for dx in range(-self._blocks, self._blocks + 1)
-            for dy in range(-self._blocks, self._blocks + 1)
-        }
-        self.start_background_download()
+        tiles = []
+        for dx in range(-blocks, blocks + 1):
+            for dy in range(-blocks, blocks + 1):
+                tx = tx_cen + dx
+                ty = ty_cen + dy
+                if tx < 0 or ty < 0 or tx >= (1 << zoom) or ty >= (1 << zoom):
+                    continue
+                tiles.append((tx, ty))
+
+        self._needed_keys = set(tiles)
         self._need_sync = True
+        self.start_background_download()
 
     def fetch_tile_image(self, tx, ty, z):
-        """Return PIL.Image (RGBA) from cache or network.  *None* on error."""
+        """Fetch a single tile image from cache or network."""
+        cls = self.__class__
         p = self._cache_dir / f"{z}_{tx}_{ty}.png"
 
         if p.exists():
             try:
-                return Image.open(p).convert("RGBA")
+                img = cls._iio.imread(p)
+                # Convert to RGBA if needed
+                if img.shape[-1] == 3:
+                    alpha = np.ones((*img.shape[:2], 1), dtype=img.dtype) * 255
+                    img = np.concatenate([img, alpha], axis=-1)
+                return img
             except Exception:
                 p.unlink(missing_ok=True)
 
@@ -502,18 +560,27 @@ class SatelliteMapItem(BaseItem):
                .replace("{x}", str(tx))
                .replace("{y}", str(ty)))
         try:
-            r = requests.get(
+            r = cls._requests.get(
                 url,
                 headers={
                     "User-Agent": "q3dviewer-satellite/1.0 (cloud_forge)"},
                 timeout=15)
             r.raise_for_status()
-            img = Image.open(BytesIO(r.content)).convert("RGBA")
-            img.save(str(p), "PNG")
+            
+            # Load image from bytes
+            img = cls._iio.imread(BytesIO(r.content))
+            # Convert to RGBA if needed
+            if img.shape[-1] == 3:
+                alpha = np.ones((*img.shape[:2], 1), dtype=img.dtype) * 255
+                img = np.concatenate([img, alpha], axis=-1)
+            
+            # Save to cache
+            cls._iio.imwrite(str(p), img)
             return img
         except Exception as e:
             print(f"[SatelliteMap] tile z={z} x={tx} y={ty}: {e}")
             return None
+
 
     def start_background_download(self):
         epoch = self._build_epoch
@@ -546,7 +613,7 @@ class SatelliteMapItem(BaseItem):
         fs = shaders.compileShader(_FRAG_SRC, GL_FRAGMENT_SHADER)
         self._program = shaders.compileProgram(vs, fs)
 
-    def make_tile_gl(self, tx, ty, pil_img):
+    def make_tile_gl(self, tx, ty, img):
         """Create textured quad for one tile in world space."""
         zoom = self._zoom
         z = 0.0
@@ -579,8 +646,9 @@ class SatelliteMapItem(BaseItem):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
 
-        w, h = pil_img.size
-        data = np.flipud(np.array(pil_img)).tobytes()
+        h, w = img.shape[:2]
+        data = np.flipud(img).tobytes()
+            
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, data)
         glGenerateMipmap(GL_TEXTURE_2D)

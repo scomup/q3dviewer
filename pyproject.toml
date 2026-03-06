@@ -33,7 +33,7 @@ tools = [
     "imageio[ffmpeg]",
     "matplotlib",
     "pyproj",
-    "requires"
+    "requests",
 ]
 
 [project.urls]
