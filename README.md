@@ -17,7 +17,7 @@ To show how to use `q3dviewer` as a library, we also provide some [very useful t
 pip install q3dviewer
 ```
 
-**For GUI tools (cloud_viewer, gaussian_viewer, etc.):**
+**For GUI tools (cloud_viewer, film_maker, etc.):**
 ```bash
 pip install "q3dviewer[tools]"
 ```

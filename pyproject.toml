@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q3dviewer"
-version = "1.2.8"
+version = "1.2.9.dev"
 authors = [
     {name = "Liu Yang", email = "liu.yang@jp.panasonic.com"}
 ]
