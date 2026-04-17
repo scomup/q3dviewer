@@ -35,10 +35,10 @@ class GuassianViewer(q3d.Viewer):
         print("Try to load %s ..." % file)
         gs = load_gs(file)
         # convert camera optical frame (b) to camera frame (c).
-        Rcb = np.array([[0, -1, 0],
-                        [0, 0, -1],
-                        [1, 0, 0]]).T
-        gs = rotate_gaussian(Rcb, gs)
+        # Rcb = np.array([[0, -1, 0],
+        #                 [0, 0, -1],
+        #                 [1, 0, 0]]).T
+        # gs = rotate_gaussian(Rcb, gs)
         gs_data = gs.view(np.float32).reshape(gs.shape[0], -1)
         gau_item.set_data(gs_data=gs_data)
 

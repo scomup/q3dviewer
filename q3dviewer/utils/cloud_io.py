@@ -71,9 +71,9 @@ def load_ply(file):
     rgb = np.zeros([xyz.shape[0]], dtype=np.uint32)
     intensity = np.zeros([xyz.shape[0]], dtype=np.uint32)
     if "intensity" in mesh.point_data:
-        intensity = mesh.point_data["intensity"]
+        intensity = mesh.point_data["intensity"].astype(np.uint32)
     if "rgb" in mesh.point_data:
-        rgb = mesh.point_data["rgb"]
+        rgb = mesh.point_data["rgb"].astype(np.uint32)
     irgb = (intensity << 24) | rgb
     dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)

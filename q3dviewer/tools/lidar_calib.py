@@ -290,9 +290,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Find a T let T * scan1 = LiDAR0")
     parser.add_argument("lidar0", type=str,
-                        help="Topic name for LiDAR0 data")
+                        help="Topic name for LiDAR0 data (source)")
     parser.add_argument("lidar1", type=str,
-                        help="Topic name for LiDAR1 data")
+                        help="Topic name for LiDAR1 data (target)")
     args = parser.parse_args()
 
     app = q3d.QApplication(["LiDAR Calib"])

@@ -81,11 +81,7 @@ def matching(cloud0, cloud1, down_sampling_size=0.1, normal_radius=0.2, icp_dist
     elif icp_model == "gicp":
         # Check Open3D version for GICP support
         if o3d.__version__ < "0.15.0":
-            print("\033[93mWarning: Open3D version is older than 0.15.0. Falling back to point-to-plane ICP.\033[0m")
-            result = o3d.pipelines.registration.registration_icp(
-                cloud1_o3d, cloud0_o3d, icp_distance, T_init,
-                o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-                criteria)
+            raise ValueError("GICP requires Open3D version 0.15.0 or higher")
         else:
             # GICP - need Covariances
             cloud0_o3d.estimate_covariances(

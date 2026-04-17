@@ -89,6 +89,13 @@ class Text3DItem(BaseItem):
 
 
     def paint(self):
+        # Disable depth test to make text always visible
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(GL_FALSE)
+        
+        # Save current depth function and set to always pass
+        glDepthFunc(GL_ALWAYS)
+        
         for item in self.data_list:
             # Handle both dictionary and string formats
             if isinstance(item, dict):
@@ -150,3 +157,7 @@ class Text3DItem(BaseItem):
                     glVertex3f(*pos1)
                     glVertex3f(*pos2)
                     glEnd()
+        
+        # Re-enable depth test
+        glDepthMask(GL_TRUE)
+        glEnable(GL_DEPTH_TEST)
