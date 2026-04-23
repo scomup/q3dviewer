@@ -201,44 +201,6 @@ class SatelliteMapItem(BaseItem):
         self._origin_alt = float(alt)
         self.request_download()
 
-    # ------------------------------------------------------------------ #
-    #  Projected-CRS helpers (JPRCS, UTM, etc.)                          #
-    # ------------------------------------------------------------------ #
-
-    def _extract_crs_from_vlrs(self, vlrs):
-        """Try to build a *pyproj.CRS* from LAS GeoTIFF VLR records."""
-        cls = self.__class__
-        # 1) ESRI PE String (WKT) inside GeoAsciiParams
-        for vlr in vlrs:
-            for s in getattr(vlr, 'strings', []):
-                if 'ESRI PE String' in s:
-                    wkt = s.split('=', 1)[1].strip()
-                    if wkt:
-                        try:
-                            return cls._pyproj.CRS.from_wkt(wkt)
-                        except Exception:
-                            pass
-        # 2) ProjectedCSTypeGeoKey (3072) in GeoKeyDirectory
-        for vlr in vlrs:
-            for gk in getattr(vlr, 'geo_keys', []):
-                gk_id = getattr(gk, 'id', None)
-                val = getattr(gk, 'value_offset', None)
-                if gk_id == 3072 and val and val not in (0, 32767):
-                    try:
-                        return cls._pyproj.CRS.from_epsg(val)
-                    except Exception:
-                        pass
-        # 3) GeographicTypeGeoKey (2048)
-        for vlr in vlrs:
-            for gk in getattr(vlr, 'geo_keys', []):
-                gk_id = getattr(gk, 'id', None)
-                val = getattr(gk, 'value_offset', None)
-                if gk_id == 2048 and val and val not in (0, 32767):
-                    try:
-                        return cls._pyproj.CRS.from_epsg(val)
-                    except Exception:
-                        pass
-        return None
 
     def _setup_crs(self, crs):
         """Configure pyproj transformers for the given CRS."""
@@ -250,85 +212,31 @@ class SatelliteMapItem(BaseItem):
         self.lonlat_2_xy = cls._pyproj.Transformer.from_crs(
             cls._pyproj.CRS.from_epsg(4326), crs, always_xy=True)
 
-    def set_crs_from_file(self, file_path, center=None):
-        result = self.read_crs_from_file(file_path)
+    def set_crs(self, code, center):
+        """Set the map origin using an EPSG code and projected coordinates.
         
-        if result[0] is None:
-            return False
-        
-        cls = self.__class__
-        # Result can be either (vlrs, bbox_cx, bbox_cy) or (crs, bbox_cx, bbox_cy)
-        # For LAS files, we get vlrs and need to extract CRS
-        if hasattr(result[0], '__iter__') and not isinstance(result[0], (str, cls._pyproj.CRS)):
-            # It's VLRs from LAS file
-            vlrs, bbox_cx, bbox_cy = result
-            crs = self._extract_crs_from_vlrs(vlrs)
-            if crs is None:
-                return False
-        else:
-            # It's already a CRS
-            crs, bbox_cx, bbox_cy = result
-        
-        if crs is None:
-            return False
-        
-        # Use provided center or fall back to bbox center from file
-        if center is not None:
-            x, y = center[0], center[1]
-        elif bbox_cx is not None and bbox_cy is not None:
-            x, y = bbox_cx, bbox_cy
-        else:
-            return False
-        
-        # Set origin using the extracted CRS and coordinates
-        self.set_origin(x=x, y=y, crs=crs, alt=self._origin_alt)
-        
-        # Switch to CRS mode
+        Parameters
+        ----------
+        code : int
+            EPSG code of the projected coordinate system.
+        center : array-like
+            Easting and northing coordinates in the specified CRS.
+        """
+        # Update GUI if available
         if hasattr(self, '_mode_combo'):
-            self._mode_combo.setCurrentIndex(1)
+            self._mode_combo.setCurrentIndex(1)  # Switch to CRS mode
         
-        # Set CRS input fields for UI
-        if hasattr(self, '_epsg_spin') and crs.is_projected and crs.to_epsg():
-            self._epsg_spin.setValue(crs.to_epsg())
-        if hasattr(self, '_x_spin') and bbox_cx is not None:
-            self._x_spin.setValue(bbox_cx if center is None else center[0])
-        if hasattr(self, '_y_spin') and bbox_cy is not None:
-            self._y_spin.setValue(bbox_cy if center is None else center[1])
+        if hasattr(self, '_epsg_spin'):
+            self._epsg_spin.setValue(code)
         
-        # Update lon/lat display in ENU mode fields
-        if hasattr(self, '_lon_spin') and hasattr(self, '_lat_spin') and self.xy_2_lonlat is not None:
-            lon, lat = self.xy_2_lonlat.transform(
-                self._origin_x, self._origin_y)
-            self._lon_spin.setValue(lon)
-            self._lat_spin.setValue(lat)
-        return True
-                
-    @staticmethod
-    def read_crs_from_file(file_path):
-        file_path = str(file_path)
+        if hasattr(self, '_x_spin'):
+            self._x_spin.setValue(center[0])
         
-        # Handle LAS/LAZ files
-        if file_path.lower().endswith(('.las', '.laz')):
-            import laspy
-            with laspy.open(file_path) as reader:
-                header = reader.header
-                vlrs = header.vlrs
-                
-                # Extract bounding box center
-                try:
-                    bbox_cx = (header.x_min + header.x_max) / 2
-                    bbox_cy = (header.y_min + header.y_max) / 2
-                except Exception:
-                    bbox_cx = bbox_cy = None
-                
-                # Extract CRS from VLRs (need instance for pyproj access)
-                # Note: This is called from instance method set_crs_from_file
-                return vlrs, bbox_cx, bbox_cy
-        # Add support for other file formats here in the future
-        # elif file_path.lower().endswith('.shp'):
-        #     ...
-        else:
-            return None, None, None
+        if hasattr(self, '_y_spin'):
+            self._y_spin.setValue(center[1])
+        
+        # Set the origin
+        self.set_origin(x=center[0], y=center[1], crs=code, alt=self._origin_alt)
 
     def add_setting(self, layout):
         # ---- Visibility checkbox ----
@@ -341,11 +249,6 @@ class SatelliteMapItem(BaseItem):
         # ---- Manual origin input ----
         origin_group = QGroupBox("Set Origin")
         origin_layout = QVBoxLayout()
-
-        # Load from LAS file button
-        self._load_las_btn = QPushButton("Load from LAS File \u2026")
-        self._load_las_btn.clicked.connect(self._on_load_las_crs)
-        origin_layout.addWidget(self._load_las_btn)
 
         # Mode selector
         mode_layout = QHBoxLayout()
@@ -475,16 +378,6 @@ class SatelliteMapItem(BaseItem):
         self._enu_widget.setVisible(is_enu)
         self._crs_widget.setVisible(not is_enu)
 
-    def _on_load_las_crs(self):
-        """Open a file dialog, parse LAS VLRs, and configure the CRS."""
-        path, _ = QFileDialog.getOpenFileName(
-            None, "Select LAS File", "",
-            "LAS Files (*.las *.laz);;All Files (*)")
-        if not path:
-            return
-        
-        self.set_crs_from_file(path)
-
     def _on_load(self):
         """Load / reload the map tiles with the current origin, zoom and blocks."""
         if self._mode_combo.currentIndex() == 0:
@@ -564,7 +457,8 @@ class SatelliteMapItem(BaseItem):
                 url,
                 headers={
                     "User-Agent": "q3dviewer-satellite/1.0 (cloud_forge)"},
-                timeout=15)
+                timeout=15,
+                verify=False)  # Disable SSL verification to avoid certificate errors
             r.raise_for_status()
             
             # Load image from bytes

@@ -218,6 +218,100 @@ def load_las(file):
         cloud = np.rec.fromarrays([xyz, color], dtype=dtype)
     return cloud
 
+
+def read_crs_from_file(file_path):
+    """
+    Read CRS information from a file and extract EPSG code and coordinates.
+    
+    Returns:
+        tuple: (epsg_code, x, y) where epsg_code is an integer EPSG code,
+               box_min (2d array) is the minimum x and y coordinates of the bounding box, and
+               box_max (2d array) is the maximum x and y coordinates of the bounding box
+               Returns (None, None, None) if CRS cannot be extracted.
+    """
+    file_path = str(file_path)
+    
+    # Handle LAS/LAZ files
+    if file_path.lower().endswith(('.las', '.laz')):
+        try:
+            import laspy
+            import pyproj
+            
+            with laspy.open(file_path) as reader:
+                header = reader.header
+                vlrs = header.vlrs
+                
+                # Extract bounding box center
+                try:
+                    bbox_min = np.array([header.x_min, header.y_min])
+                    bbox_max = np.array([header.x_max, header.y_max])
+                except Exception:
+                    return None, None, None
+                
+                # Extract CRS from VLRs
+                crs = None
+                
+                # 1) ESRI PE String (WKT) inside GeoAsciiParams
+                for vlr in vlrs:
+                    for s in getattr(vlr, 'strings', []):
+                        if 'ESRI PE String' in s:
+                            wkt = s.split('=', 1)[1].strip()
+                            if wkt:
+                                try:
+                                    crs = pyproj.CRS.from_wkt(wkt)
+                                    break
+                                except Exception:
+                                    pass
+                    if crs:
+                        break
+                
+                # 2) ProjectedCSTypeGeoKey (3072) in GeoKeyDirectory
+                if not crs:
+                    for vlr in vlrs:
+                        for gk in getattr(vlr, 'geo_keys', []):
+                            gk_id = getattr(gk, 'id', None)
+                            val = getattr(gk, 'value_offset', None)
+                            if gk_id == 3072 and val and val not in (0, 32767):
+                                try:
+                                    crs = pyproj.CRS.from_epsg(val)
+                                    break
+                                except Exception:
+                                    pass
+                        if crs:
+                            break
+                
+                # 3) GeographicTypeGeoKey (2048)
+                if not crs:
+                    for vlr in vlrs:
+                        for gk in getattr(vlr, 'geo_keys', []):
+                            gk_id = getattr(gk, 'id', None)
+                            val = getattr(gk, 'value_offset', None)
+                            if gk_id == 2048 and val and val not in (0, 32767):
+                                try:
+                                    crs = pyproj.CRS.from_epsg(val)
+                                    break
+                                except Exception:
+                                    pass
+                        if crs:
+                            break
+                
+                # Extract EPSG code from CRS
+                if crs and hasattr(crs, 'to_epsg'):
+                    epsg_code = crs.to_epsg()
+                    if epsg_code:
+                        return epsg_code, bbox_min, bbox_max
+                        
+        except Exception as e:
+            print(f"[read_crs_from_file] Error reading {file_path}: {e}")
+            return None, None, None
+    
+    # Add support for other file formats here in the future
+    # elif file_path.lower().endswith('.shp'):
+    #     ...
+    
+    return None, None, None
+
+
 def save_las(cloud, save_path):
     import laspy
     header = laspy.LasHeader(point_format=3, version="1.2")
@@ -225,10 +319,10 @@ def save_las(cloud, save_path):
     las.x = cloud['xyz'][:, 0]
     las.y = cloud['xyz'][:, 1]
     las.z = cloud['xyz'][:, 2]
-    las.red = ((cloud['irgb'] >> 16) & 0xFF) * 255
-    las.green = ((cloud['irgb'] >> 8) & 0xFF) * 255
+    las.red = ((cloud['irgb'] >> 16) & 0xFF)
+    las.green = ((cloud['irgb'] >> 8) & 0xFF)
     las.blue = (cloud['irgb'] & 0xFF)
-    las.intensity = (cloud['irgb'] >> 24) * 255
+    las.intensity = (cloud['irgb'] >> 24)
     las.write(save_path)
 
 

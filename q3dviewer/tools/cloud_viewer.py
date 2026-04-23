@@ -11,6 +11,7 @@ from q3dviewer.Qt.QtWidgets import QVBoxLayout, QDialog, QLabel
 from q3dviewer.Qt.QtCore import QThread, Signal, Qt
 from q3dviewer import GLWidget
 from q3dviewer.utils.helpers import get_version
+from q3dviewer.utils.cloud_io import read_crs_from_file
 
 
 class ProgressWindow(QDialog):
@@ -61,12 +62,13 @@ class FileLoaderThread(QThread):
                 self.viewer.glwidget.set_cam_position(center=center)
                 
                 # Auto-configure satellite map origin from LAS/LAZ CRS
-                if file_path.lower().endswith(('.las', '.laz')):
-                    try:
-                        if satellite_map_item.set_crs_from_file(file_path, center=(center[0], center[1])):
-                            print(f"[CloudViewer] Satellite map configured from {file_name}")
-                    except Exception as e:
-                        print(f"[CloudViewer] Could not configure satellite map: {e}")
+                try:
+                    epsg_code, bbox_min, bbox_max = read_crs_from_file(file_path)
+                    if epsg_code is not None:
+                        satellite_map_item.set_crs(epsg_code, (bbox_min + bbox_max) / 2)
+                        print(f"[CloudViewer] Satellite map configured from {file_name} (EPSG:{epsg_code})")
+                except Exception as e:
+                    print(f"[CloudViewer] Could not configure satellite map: {e}")
         self.finished.emit()
 
 
