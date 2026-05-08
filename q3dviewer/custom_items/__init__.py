@@ -1,6 +1,7 @@
 from q3dviewer.custom_items.axis_item import AxisItem
 from q3dviewer.custom_items.cloud_item import CloudItem
 from q3dviewer.custom_items.cloud_io_item import CloudIOItem
+from q3dviewer.custom_items.cloud_sort_item import CloudSortItem
 from q3dviewer.custom_items.gaussian_item import GaussianItem
 from q3dviewer.custom_items.frame_item import FrameItem
 from q3dviewer.custom_items.grid_item import GridItem
@@ -11,4 +12,3 @@ from q3dviewer.custom_items.text3d_item import Text3DItem
 from q3dviewer.custom_items.static_mesh_item import StaticMeshItem
 from q3dviewer.custom_items.mesh_item import MeshItem
 from q3dviewer.custom_items.satellite_map_item import SatelliteMapItem
-

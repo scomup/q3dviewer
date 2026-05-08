@@ -60,15 +60,19 @@ class FileLoaderThread(QThread):
                 cloud = cloud_item.load(file_path, append=(i > 0))
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
                 self.viewer.glwidget.set_cam_position(center=center)
-                
+
                 # Auto-configure satellite map origin from LAS/LAZ CRS
                 try:
-                    epsg_code, bbox_min, bbox_max = read_crs_from_file(file_path)
+                    epsg_code, bbox_min, bbox_max = read_crs_from_file(
+                        file_path)
                     if epsg_code is not None:
-                        satellite_map_item.set_crs(epsg_code, (bbox_min + bbox_max) / 2)
-                        print(f"[CloudViewer] Satellite map configured from {file_name} (EPSG:{epsg_code})")
+                        satellite_map_item.set_crs(
+                            epsg_code, (bbox_min + bbox_max) / 2)
+                        print(
+                            f"[CloudViewer] Satellite map configured from {file_name} (EPSG:{epsg_code})")
                 except Exception as e:
-                    print(f"[CloudViewer] Could not configure satellite map: {e}")
+                    print(
+                        f"[CloudViewer] Could not configure satellite map: {e}")
         self.finished.emit()
 
 
@@ -217,7 +221,7 @@ def main():
     args = parser.parse_args()
     app = q3d.QApplication(['Cloud Viewer'])
     viewer = CloudViewer(name='Cloud Viewer')
-    cloud_item = q3d.CloudIOItem(size=1, alpha=0.1)
+    cloud_item = q3d.CloudSortItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()
     grid_item = q3d.GridItem(size=1000, spacing=20)
