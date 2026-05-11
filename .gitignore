@@ -4,3 +4,4 @@ q3dviewer.egg-info/*
 build/*
 .vscode/*
 dist/*
+q3dviewer/*.so

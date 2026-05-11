@@ -366,7 +366,7 @@ class SatelliteMapItem(BaseItem):
         copyright_label = QLabel("© OpenStreetMap contributors")
         copyright_label.setStyleSheet("color: gray; font-size: 10px;")
         copyright_label.setOpenExternalLinks(True)
-        copyright_label.setTextFormat(0x0002)  # Qt.RichText
+        copyright_label.setTextFormat(Qt.RichText)
         copyright_label.setText(
             '<a href="https://www.openstreetmap.org/copyright" style="color: gray; text-decoration: none;">'
             '© OpenStreetMap contributors</a>')
