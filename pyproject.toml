@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=64", "wheel", "numpy", "pybind11>=2.6.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "q3dviewer"
-version = "1.3.0"
+version = "1.3.2.dev0"
 authors = [
     {name = "Liu Yang", email = "liu.yang@jp.panasonic.com"}
 ]
@@ -35,12 +35,16 @@ tools = [
     "pyproj",
     "requests",
 ]
+cuda = [
+    "pybind11>=2.6.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/scomup/q3dviewer"
 
 [project.scripts]
 cloud_viewer = "q3dviewer.tools.cloud_viewer:main"
+compare_viewer = "q3dviewer.tools.compare_viewer:main"
 ros_viewer = "q3dviewer.tools.ros_viewer:main"
 mesh_viewer = "q3dviewer.tools.mesh_viewer:main"
 gaussian_viewer = "q3dviewer.tools.gaussian_viewer:main"

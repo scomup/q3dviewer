@@ -46,10 +46,10 @@ class CloudItem(BaseItem):
     DATA_TYPE = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     MODE_TABLE = {'FLAT': 0, 'I': 1, 'RGB': 2, 'GRAY': 3}
     POINT_TYPE_TABLE = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
-    
-    def __init__(self, size, alpha, 
-                 color_mode='I', 
-                 color='white', 
+
+    def __init__(self, size, alpha,
+                 color_mode='I',
+                 color='white',
                  point_type='PIXEL'):
         super().__init__()
         self.valid_buff_top = 0
@@ -62,7 +62,8 @@ class CloudItem(BaseItem):
         try:
             self.flat_rgb = text_to_rgba(color, flat=True)
         except ValueError:
-            print(f"Invalid color: {color}, please use matplotlib color format")
+            print(
+                f"Invalid color: {color}, please use matplotlib color format")
             exit(1)
         self.color_mode = self.MODE_TABLE[color_mode]
         self.vmin = 0
@@ -102,7 +103,8 @@ class CloudItem(BaseItem):
         self.alpha_slider.setOrientation(Qt.Horizontal)
         self.alpha_slider.setRange(0, 100)
         self.alpha_slider.setValue(int(self.alpha * 100))
-        self.alpha_slider.valueChanged.connect(lambda v: self.set_alpha(v / 100.0))
+        self.alpha_slider.valueChanged.connect(
+            lambda v: self.set_alpha(v / 100.0))
         alpha_layout.addWidget(self.alpha_slider)
         layout.addLayout(alpha_layout)
 
@@ -118,10 +120,12 @@ class CloudItem(BaseItem):
         layout.addWidget(self.combo_color)
 
         label_rgb = QLabel("Color:")
-        label_rgb.setToolTip("Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
+        label_rgb.setToolTip(
+            "Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
         layout.addWidget(label_rgb)
         self.edit_rgb = QLineEdit()
-        self.edit_rgb.setToolTip("Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
+        self.edit_rgb.setToolTip(
+            "Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
         self.edit_rgb.setText(self.color)
         self.edit_rgb.textChanged.connect(self._on_color)
         layout.addWidget(self.edit_rgb)
@@ -184,7 +188,8 @@ class CloudItem(BaseItem):
             self.flat_rgb = text_to_rgba(color, flat=True)
             self.need_update_setting = True
         except ValueError:
-            print(f"Invalid color: {color}, please use matplotlib color format")
+            print(
+                f"Invalid color: {color}, please use matplotlib color format")
 
     def set_size(self, size):
         self.size = size
@@ -226,7 +231,6 @@ class CloudItem(BaseItem):
                 self.wait_add_data = data
                 self.add_buff_loc = 0
 
-
     def update_setting(self):
         if (self.need_update_setting is False):
             return
@@ -237,7 +241,8 @@ class CloudItem(BaseItem):
         set_uniform(self.program, float(self.vmin), 'vmin')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.size), 'point_size')
-        set_uniform(self.program, int(self.POINT_TYPE_TABLE[self.point_type]), 'point_type')
+        set_uniform(self.program, int(
+            self.POINT_TYPE_TABLE[self.point_type]), 'point_type')
         set_uniform(self.program, self.T, 'model_matrix')
         glUseProgram(0)
         self.need_update_setting = False
@@ -270,10 +275,10 @@ class CloudItem(BaseItem):
                 new_buff_top = new_buff_half.shape[0]
                 new_buff = new_buff_half
             if exceed_flag:
-                print("[Cloud Item] Exceed maximum cloud size %d, reduce the data size" % self.max_cloud_size)
+                print("[Cloud Item] Exceed maximum cloud size %d, reduce the data size" %
+                      self.max_cloud_size)
                 self.buff = self.buff[:self.max_cloud_size]
                 self.buff[:new_buff_top] = new_buff
-
 
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes,
@@ -290,8 +295,10 @@ class CloudItem(BaseItem):
         self.mutex.release()
 
     def initialize_gl(self):
-        vertex_shader = open(self.path + '/../shaders/cloud_vert.glsl', 'r').read()
-        fragment_shader = open(self.path + '/../shaders/cloud_frag.glsl', 'r').read()
+        vertex_shader = open(
+            self.path + '/../shaders/cloud_vert.glsl', 'r').read()
+        fragment_shader = open(
+            self.path + '/../shaders/cloud_frag.glsl', 'r').read()
         self.program = shaders.compileProgram(
             shaders.compileShader(vertex_shader, GL_VERTEX_SHADER),
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
@@ -304,12 +311,12 @@ class CloudItem(BaseItem):
     def paint(self):
         self.update_render_buffer()
         self.update_setting()
-        
+
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
         glEnable(GL_DEPTH_TEST)
-        
+
         if self.alpha < 0.9:
             glDepthFunc(GL_ALWAYS)
         else:
