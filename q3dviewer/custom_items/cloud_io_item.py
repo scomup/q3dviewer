@@ -6,6 +6,8 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.custom_items.cloud_item import CloudItem
 from pathlib import Path
 import os
+import numpy as np
+from OpenGL.GL import *
 from q3dviewer.Qt.QtWidgets import QPushButton, QLabel, QLineEdit, QMessageBox
 from q3dviewer.utils.cloud_io import save_pcd, save_ply, save_e57, save_las, load_pcd, load_ply, load_e57, load_las
 
@@ -50,7 +52,21 @@ class CloudIOItem(CloudItem):
         self.save_msg.setStandardButtons(QMessageBox.Ok)
 
     def save(self):
-        cloud = self.buff[:self.valid_buff_top]
+        if self.valid_buff_top == 0:
+            self.save_msg.setText("No cloud data to save.")
+            self.save_msg.exec()
+            return
+        # Read cloud data back from GPU (VBO → CPU), one-time cost at save time
+        widget = self.glwidget()
+        if widget is not None:
+            widget.makeCurrent()
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        raw = glGetBufferSubData(GL_ARRAY_BUFFER, 0,
+                                 self.valid_buff_top * self.STRIDE)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        if widget is not None:
+            widget.doneCurrent()
+        cloud = np.frombuffer(raw, dtype=self.DATA_TYPE).copy()
         func = None
         if self.save_path.endswith(".pcd"):
             from q3dviewer.utils.cloud_io import save_pcd

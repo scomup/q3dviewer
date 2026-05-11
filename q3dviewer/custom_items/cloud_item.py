@@ -68,7 +68,7 @@ class CloudItem(BaseItem):
         self.color_mode = self.MODE_TABLE[color_mode]
         self.vmin = 0
         self.vmax = 255
-        self.buff = np.empty((0), self.DATA_TYPE)
+        self.buff_capacity = 0  # number of points allocated on GPU
         self.wait_add_data = None
         self.need_update_setting = True
         self.max_cloud_size = 300000000
@@ -248,51 +248,64 @@ class CloudItem(BaseItem):
         self.need_update_setting = False
 
     def update_render_buffer(self):
-        # Ensure there is data waiting to be added to the buffer
-        if (self.wait_add_data is None):
+        if self.wait_add_data is None:
             return
-        # Acquire lock to update the buffer safely
         self.mutex.acquire()
+        try:
+            new_data = self.wait_add_data
+            self.wait_add_data = None
+            new_count = new_data.shape[0]
+            new_buff_top = self.add_buff_loc + new_count
 
-        new_buff_top = self.add_buff_loc + self.wait_add_data.shape[0]
-        if new_buff_top > self.buff.shape[0]:
-            # if need to update buff capacity, create new cpu buff and new vbo
-            buff_capacity = self.buff.shape[0]
-            while (new_buff_top > buff_capacity):
-                buff_capacity += self.CAPACITY
-            if Q3D_DEBUG is not None:
-                print("[Cloud Item] Update capacity to %d" % buff_capacity)
-            new_buff = np.empty((buff_capacity), self.DATA_TYPE)
-            new_buff[:self.add_buff_loc] = self.buff[:self.add_buff_loc]
-            new_buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
-            self.buff = new_buff
+            # Hard-cap at max_cloud_size — avoids expensive CPU readback
+            if new_buff_top > self.max_cloud_size:
+                new_buff_top = self.max_cloud_size
+                new_count = new_buff_top - self.add_buff_loc
+                if new_count <= 0:
+                    print("[Cloud Item] Max cloud size reached, ignoring data.")
+                    return
+                new_data = new_data[:new_count]
+                print("[Cloud Item] Truncated to max cloud size %d" % self.max_cloud_size)
 
-            # if exceed the maximum cloud size, randomly select half of the points
-            exceed_flag = False
-            while new_buff.shape[0] > self.max_cloud_size:
-                exceed_flag = True
-                new_buff_half = new_buff[:new_buff_top:2]
-                new_buff_top = new_buff_half.shape[0]
-                new_buff = new_buff_half
-            if exceed_flag:
-                print("[Cloud Item] Exceed maximum cloud size %d, reduce the data size" %
-                      self.max_cloud_size)
-                self.buff = self.buff[:self.max_cloud_size]
-                self.buff[:new_buff_top] = new_buff
+            if new_buff_top > self.buff_capacity:
+                # Grow GPU buffer — pure GPU-to-GPU, zero CPU roundtrip
+                new_capacity = max(self.buff_capacity, self.CAPACITY)
+                while new_buff_top > new_capacity:
+                    new_capacity += self.CAPACITY
+                new_capacity = min(new_capacity, self.max_cloud_size)
 
+                new_vbo = glGenBuffers(1)
+                glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
+                glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE,
+                             None, GL_DYNAMIC_DRAW)
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+                # GPU-to-GPU copy of existing valid data
+                if self.add_buff_loc > 0:
+                    glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
+                    glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
+                    glCopyBufferSubData(
+                        GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
+                        0, 0, self.add_buff_loc * self.STRIDE)
+                    glBindBuffer(GL_COPY_READ_BUFFER, 0)
+                    glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
+
+                glDeleteBuffers(1, [self.vbo])
+                self.vbo = new_vbo
+                self.buff_capacity = new_capacity
+                if Q3D_DEBUG is not None:
+                    print("[Cloud Item] GPU buffer grown to %d points" % new_capacity)
+
+            # Upload only the new slice — O(new_data), not O(total)
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferData(GL_ARRAY_BUFFER, self.buff.nbytes,
-                         self.buff, GL_DYNAMIC_DRAW)
+            glBufferSubData(GL_ARRAY_BUFFER,
+                            self.add_buff_loc * self.STRIDE,
+                            new_count * self.STRIDE,
+                            new_data)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-        else:
-            self.buff[self.add_buff_loc:new_buff_top] = self.wait_add_data
-            glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferSubData(GL_ARRAY_BUFFER, self.add_buff_loc * self.STRIDE,
-                            self.wait_add_data.shape[0] * self.STRIDE,
-                            self.wait_add_data)
-        self.valid_buff_top = new_buff_top
-        self.wait_add_data = None
-        self.mutex.release()
+            self.valid_buff_top = new_buff_top
+        finally:
+            self.mutex.release()
 
     def initialize_gl(self):
         vertex_shader = open(
