@@ -82,6 +82,13 @@ class CustomGLWidget(GLWidget):
         self.viewer = viewer
         self.selected_points = []
 
+    def keyPressEvent(self, event):
+        """Handle keyboard events."""
+        if event.text().lower() == 'r':
+            self.viewer['cloud'].force_sort()
+        else:
+            super().keyPressEvent(event)
+
     def mousePressEvent(self, event):
         # ctrl + left click to add select point
         # ctrl + right click to remove a point from selected points
@@ -198,6 +205,12 @@ def print_help():
     table.add_row("", "[dim]• Right Drag: Rotate view[/dim]")
     table.add_row("", "[dim]• Left Drag: Pan view[/dim]")
     table.add_row("", "[dim]• Mouse Wheel: Zoom in/out[/dim]")
+    table.add_row("", "")
+
+    # Sorting section
+    table.add_row("🔄 Depth Sorting",
+                  "Press [bold green]'R'[/bold green] to force sort once")
+    table.add_row("", "[dim]Manual depth sorting for transparency[/dim]")
     table.add_row("", "")
 
     # Settings section

@@ -52,8 +52,9 @@ class CloudItem(BaseItem):
                  color='white',
                  point_type='PIXEL'):
         super().__init__()
-        self.valid_buff_top = 0
-        self.add_buff_loc = 0
+        self.valid_buff_top = 0  # the loc in buffer of the top of valid data
+        self.add_buff_loc = 0    # the loc in buffer to add new data
+        self.buff_capacity = 0   # the size of GPU buffer in number of points
         self.alpha = alpha
         self.size = size
         self.point_type = point_type
@@ -68,7 +69,6 @@ class CloudItem(BaseItem):
         self.color_mode = self.MODE_TABLE[color_mode]
         self.vmin = 0
         self.vmax = 255
-        self.buff_capacity = 0  # number of points allocated on GPU
         self.wait_add_data = None
         self.need_update_setting = True
         self.max_cloud_size = 300000000
@@ -251,61 +251,56 @@ class CloudItem(BaseItem):
         if self.wait_add_data is None:
             return
         self.mutex.acquire()
-        try:
-            new_data = self.wait_add_data
-            self.wait_add_data = None
-            new_count = new_data.shape[0]
-            new_buff_top = self.add_buff_loc + new_count
-
-            # Hard-cap at max_cloud_size — avoids expensive CPU readback
-            if new_buff_top > self.max_cloud_size:
-                new_buff_top = self.max_cloud_size
-                new_count = new_buff_top - self.add_buff_loc
-                if new_count <= 0:
-                    print("[Cloud Item] Max cloud size reached, ignoring data.")
-                    return
-                new_data = new_data[:new_count]
-                print("[Cloud Item] Truncated to max cloud size %d" % self.max_cloud_size)
-
-            if new_buff_top > self.buff_capacity:
-                # Grow GPU buffer — pure GPU-to-GPU, zero CPU roundtrip
-                new_capacity = max(self.buff_capacity, self.CAPACITY)
-                while new_buff_top > new_capacity:
-                    new_capacity += self.CAPACITY
-                new_capacity = min(new_capacity, self.max_cloud_size)
-
-                new_vbo = glGenBuffers(1)
-                glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
-                glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE,
-                             None, GL_DYNAMIC_DRAW)
-                glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-                # GPU-to-GPU copy of existing valid data
-                if self.add_buff_loc > 0:
-                    glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
-                    glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
-                    glCopyBufferSubData(
-                        GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
-                        0, 0, self.add_buff_loc * self.STRIDE)
-                    glBindBuffer(GL_COPY_READ_BUFFER, 0)
-                    glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
-
-                glDeleteBuffers(1, [self.vbo])
-                self.vbo = new_vbo
-                self.buff_capacity = new_capacity
-                if Q3D_DEBUG is not None:
-                    print("[Cloud Item] GPU buffer grown to %d points" % new_capacity)
-
-            # Upload only the new slice — O(new_data), not O(total)
-            glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            glBufferSubData(GL_ARRAY_BUFFER,
-                            self.add_buff_loc * self.STRIDE,
-                            new_count * self.STRIDE,
-                            new_data)
+        new_data = self.wait_add_data
+        self.wait_add_data = None
+        new_count = new_data.shape[0]
+        new_buff_top = self.add_buff_loc + new_count
+        # Hard-cap at max_cloud_size — avoids expensive CPU readback
+        if new_buff_top > self.max_cloud_size:
+            new_buff_top = self.max_cloud_size
+            new_count = new_buff_top - self.add_buff_loc
+            if new_count <= 0:
+                print("[Cloud Item] Max cloud size reached, ignoring data.")
+                self.mutex.release()
+                return
+            new_data = new_data[:new_count]
+            print("[Cloud Item] Truncated to max cloud size %d" %
+                  self.max_cloud_size)
+        if new_buff_top > self.buff_capacity:
+            # Grow GPU buffer — pure GPU-to-GPU, zero CPU roundtrip
+            new_capacity = max(self.buff_capacity, self.CAPACITY)
+            while new_buff_top > new_capacity:
+                new_capacity += self.CAPACITY
+            new_capacity = min(new_capacity, self.max_cloud_size)
+            new_vbo = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
+            glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE,
+                         None, GL_DYNAMIC_DRAW)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            self.valid_buff_top = new_buff_top
-        finally:
-            self.mutex.release()
+            # GPU-to-GPU copy of existing valid data
+            if self.add_buff_loc > 0:
+                glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
+                glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
+                glCopyBufferSubData(
+                    GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
+                    0, 0, self.add_buff_loc * self.STRIDE)
+                glBindBuffer(GL_COPY_READ_BUFFER, 0)
+                glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
+            glDeleteBuffers(1, [self.vbo])
+            self.vbo = new_vbo
+            self.buff_capacity = new_capacity
+            if Q3D_DEBUG is not None:
+                print("[Cloud Item] GPU buffer grown to %d points" %
+                      new_capacity)
+        # Upload only the new slice — O(new_data), not O(total)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        self.add_buff_loc * self.STRIDE,
+                        new_count * self.STRIDE,
+                        new_data)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self.valid_buff_top = new_buff_top
+        self.mutex.release()
 
     def initialize_gl(self):
         vertex_shader = open(

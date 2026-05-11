@@ -7,7 +7,7 @@ from q3dviewer.custom_items.cloud_io_item import CloudIOItem
 from pathlib import Path
 import os
 from q3dviewer.Qt.QtWidgets import QSpinBox, QCheckBox, QSlider, QHBoxLayout, QLabel
-from q3dviewer.cuda_sort import CUDAPointSorter
+from q3dviewer.point_sort import PointSorter
 from q3dviewer.utils import set_uniform
 from OpenGL.GL import shaders
 from OpenGL.GL import *
@@ -42,54 +42,42 @@ class CloudSortItem(CloudIOItem):
         # Initialize parent class first
         super().__init__(**kwargs)
 
-        # CUDA depth sorting (optional)
-        self.cuda_sorter = None
+        # Depth sorting (always available: CUDA or CPU fallback)
+        self.sorter = PointSorter()
         self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
-        self.use_depth_sorting = False
+        self.use_depth_sorting = use_depth_sorting
+        self._force_sort_once = False  # Flag for manual sort trigger
 
-        # Try to initialize CUDA sorter
-        self.cuda_sorter = CUDAPointSorter()
-        if not self.cuda_sorter.is_available():
-            print("[CloudSortItem] CUDA not available, depth sorting disabled")
-            self.cuda_sorter = None
-            self.use_depth_sorting = False
-        else:
-            # Only enable depth sorting if requested and CUDA is available
-            self.use_depth_sorting = use_depth_sorting
-            if use_depth_sorting:
-                print("[CloudSortItem] CUDA available, depth sorting enabled")
+        if use_depth_sorting:
+            mode = "CUDA GPU" if self.sorter.is_using_cuda() else "CPU"
+            print(f"[CloudSortItem] Depth sorting enabled ({mode} mode)")
 
     def add_setting(self, layout):
         super().add_setting(layout)
 
-        # GPU depth sorting checkbox
-        self.check_depth_sort = QCheckBox("GPU Depth Sorting (CUDA)")
+        # Sorting mode label
+        mode_text = "CUDA GPU" if self.sorter.is_using_cuda() else "CPU"
+        label_mode = QLabel(f"Sorting Mode: {mode_text}")
+        label_mode.setStyleSheet("color: gray; font-style: italic;")
+        layout.addWidget(label_mode)
+
+        # Depth sorting checkbox
+        self.check_depth_sort = QCheckBox("Enable Depth Sorting")
         self.check_depth_sort.setChecked(self.use_depth_sorting)
         self.check_depth_sort.stateChanged.connect(self._on_depth_sorting)
         layout.addWidget(self.check_depth_sort)
 
-        if self.cuda_sorter is None:
-            self.check_depth_sort.setEnabled(False)
-            self.check_depth_sort.setToolTip(
-                "CUDA not available, cannot enable depth sorting")
-
     def _on_depth_sorting(self, state):
         """Toggle depth sorting on/off."""
-        new_state = (state != 0)
-        if new_state and not self.cuda_sorter:
-            print("[CloudSortItem] CUDA not available, cannot enable depth sorting")
-            self.check_depth_sort.setChecked(False)
-            return
-        self.use_depth_sorting = new_state
+        self.use_depth_sorting = (state != 0)
         # Clear cache when toggling to force re-sort
         self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
 
     def __del__(self):
-        if self.cuda_sorter is not None:
-            try:
-                self.cuda_sorter.unregister()
-            except:
-                pass
+        try:
+            self.sorter.unregister()
+        except:
+            pass
 
     def update_render_buffer(self):
         if self.wait_add_data is None:
@@ -109,7 +97,8 @@ class CloudSortItem(CloudIOItem):
                     print("[Cloud Item] Max cloud size reached, ignoring data.")
                     return
                 new_data = new_data[:new_count]
-                print("[Cloud Item] Truncated to max cloud size %d" % self.max_cloud_size)
+                print("[Cloud Item] Truncated to max cloud size %d" %
+                      self.max_cloud_size)
 
             vbo_reallocated = False
             if new_buff_top > self.buff_capacity:
@@ -149,24 +138,26 @@ class CloudSortItem(CloudIOItem):
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self.valid_buff_top = new_buff_top
 
-            # CUDA sorter must be unregistered only when VBO handle changes
-            if vbo_reallocated and self.cuda_sorter:
-                self.cuda_sorter.unregister()
+            # Sorter must be unregistered when VBO handle changes
+            if vbo_reallocated:
+                self.sorter.unregister()
                 self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
         finally:
             self.mutex.release()
 
-    def _perform_depth_sort(self, view_matrix):
-        """Execute depth sorting on VBO using CUDA."""
+    def force_sort(self):
+        self._force_sort_once = True
+        mode = "CUDA GPU" if self.sorter.is_using_cuda() else "CPU"
+        print(f"[CloudSortItem] Force sort by {mode}")
+
+    def _perform_depth_sort(self, view_matrix, force=False):
+        """Execute depth sorting on VBO (CUDA or CPU)."""
         if self.valid_buff_top == 0:
             return
 
-        if self.cuda_sorter is None:
-            return
-
-        if not self.cuda_sorter.is_registered():
+        if not self.sorter.is_registered():
             # Register VBO with CUDA
-            self.cuda_sorter.register(
+            self.sorter.register(
                 int(self.vbo),
                 self.valid_buff_top
             )
@@ -175,11 +166,11 @@ class CloudSortItem(CloudIOItem):
 
         # Check if sorting is needed based on camera rotation
         rotation_diff = np.abs(depth_coeffs - self.last_depth_coeffs).max()
-        if rotation_diff < 0.1:
+        if rotation_diff < 0.1 and not force:
             return
 
-        # Perform CUDA sorting (reorders VBO data in-place)
-        self.cuda_sorter.sort_by_depth(
+        # Perform sorting (CUDA or CPU, reorders VBO data in-place)
+        self.sorter.sort_by_depth(
             depth_coeffs,
             self.valid_buff_top
         )
@@ -191,10 +182,11 @@ class CloudSortItem(CloudIOItem):
         self.update_render_buffer()
         self.update_setting()
 
-        # Perform depth sorting if enabled
-        if self.use_depth_sorting:
+        # Perform depth sorting if enabled or force requested
+        if self.use_depth_sorting or self._force_sort_once:
             view_matrix = self.glwidget().view_matrix
-            self._perform_depth_sort(view_matrix)
+            self._perform_depth_sort(view_matrix, force=self._force_sort_once)
+            self._force_sort_once = False
 
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
