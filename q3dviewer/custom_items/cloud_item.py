@@ -258,18 +258,17 @@ class CloudItem(BaseItem):
         try:
             new_data = self.wait_add_data
             self.wait_add_data = None
-            new_count = new_data.shape[0]
 
-            # Clamp batch to half max_cloud_size so one downsample always makes room.
-            max_batch = self.max_cloud_size // 2
-            if new_count > max_batch:
-                new_data = new_data[:max_batch]
-                new_count = max_batch
-                print(f"[Cloud Item] Batch truncated to {max_batch} points (half of max)")
+            # Pre-downsample incoming batch on CPU (stride-2, spatially uniform)
+            # until it fits in half the buffer. This guarantees Phase 2 terminates
+            # in at most one GPU downsample pass, avoiding potential infinite loop.
+            while new_data.shape[0] > self.max_cloud_size // 2:
+                new_data = new_data[::2]
+                print(f"[Cloud Item] new data downsampled to {new_data.shape[0]} points")
 
             # Phase 1 — grow buffer on demand up to max_cloud_size.
             # glDeleteBuffers only happens here (growth phase), never in steady-state.
-            new_buff_top = self.add_buff_loc + new_count
+            new_buff_top = self.add_buff_loc + new_data.shape[0]
             if new_buff_top > self.buff_capacity and self.buff_capacity < self.max_cloud_size:
                 new_capacity = max(self.buff_capacity, self.CAPACITY)
                 while new_buff_top > new_capacity:
@@ -292,17 +291,17 @@ class CloudItem(BaseItem):
                 self.buff_capacity = new_capacity
 
             # Phase 2 — GPU downsample until there is room (only at max capacity).
-            while self.add_buff_loc + new_count > self.buff_capacity:
+            while self.add_buff_loc + new_data.shape[0] > self.buff_capacity:
                 self._gpu_downsample()
 
             # Upload new slice
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferSubData(GL_ARRAY_BUFFER,
                             self.add_buff_loc * self.STRIDE,
-                            new_count * self.STRIDE,
+                            new_data.shape[0] * self.STRIDE,
                             new_data)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            self.valid_buff_top = self.add_buff_loc + new_count
+            self.valid_buff_top = self.add_buff_loc + new_data.shape[0]
         finally:
             self.mutex.release()
 
@@ -342,11 +341,8 @@ class CloudItem(BaseItem):
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
 
-        # Clamp user-set max_cloud_size by the GL driver's SSBO size limit.
-        driver_max = glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
-        if self.max_cloud_size > driver_max:
-            print(f"[CloudItem] max_cloud_size clamped {self.max_cloud_size} → {driver_max} (GL driver limit)")
-            self.max_cloud_size = driver_max
+        # Cap max_cloud_size to the GL driver's SSBO size limit.
+        self.max_cloud_size = glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
 
         # ── Main GPU buffer ──────────────────────────────────────────────────────
         # Start small; grows on demand (Phase 1) up to max_cloud_size,

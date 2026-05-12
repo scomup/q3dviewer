@@ -86,18 +86,17 @@ class CloudSortItem(CloudIOItem):
         try:
             new_data = self.wait_add_data
             self.wait_add_data = None
-            new_count = new_data.shape[0]
 
-            # Clamp batch to half max_cloud_size so one downsample always makes room.
-            max_batch = self.max_cloud_size // 2
-            if new_count > max_batch:
-                new_data = new_data[:max_batch]
-                new_count = max_batch
-                print(f"[Cloud Item] Batch truncated to {max_batch} points (half of max)")
+            # Pre-downsample incoming batch on CPU (stride-2, spatially uniform)
+            # until it fits in half the buffer. This guarantees Phase 2 terminates
+            # in at most one GPU downsample pass, avoiding potential infinite loop.
+            while new_data.shape[0] > self.max_cloud_size // 2:
+                new_data = new_data[::2]
+                print(f"[Cloud Item] new data downsampled to {new_data.shape[0]} points")
 
             # Phase 1 — grow buffer on demand up to max_cloud_size.
             # glDeleteBuffers only happens here (growth phase), never in steady-state.
-            new_buff_top = self.add_buff_loc + new_count
+            new_buff_top = self.add_buff_loc + new_data.shape[0]
             vbo_reallocated = False  # [sort]
             if new_buff_top > self.buff_capacity and self.buff_capacity < self.max_cloud_size:
                 new_capacity = max(self.buff_capacity, self.CAPACITY)
@@ -122,7 +121,7 @@ class CloudSortItem(CloudIOItem):
                 vbo_reallocated = True  # [sort]
 
             # Phase 2 — GPU downsample until there is room (only at max capacity).
-            while self.add_buff_loc + new_count > self.buff_capacity:
+            while self.add_buff_loc + new_data.shape[0] > self.buff_capacity:
                 self._gpu_downsample()
                 self.sorter.unregister()  # [sort]
                 self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])  # [sort]
@@ -131,10 +130,10 @@ class CloudSortItem(CloudIOItem):
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferSubData(GL_ARRAY_BUFFER,
                             self.add_buff_loc * self.STRIDE,
-                            new_count * self.STRIDE,
+                            new_data.shape[0] * self.STRIDE,
                             new_data)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            self.valid_buff_top = self.add_buff_loc + new_count
+            self.valid_buff_top = self.add_buff_loc + new_data.shape[0]
 
             if vbo_reallocated:  # [sort] VBO handle changed — sorter must re-register.
                 self.sorter.unregister()
