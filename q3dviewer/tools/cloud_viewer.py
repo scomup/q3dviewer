@@ -58,6 +58,8 @@ class FileLoaderThread(QThread):
                 mesh_item.set_data(mesh)
             else:
                 cloud = cloud_item.load(file_path, append=(i > 0))
+                if cloud is None:
+                    continue
                 center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
                 self.viewer.glwidget.set_cam_position(center=center)
 

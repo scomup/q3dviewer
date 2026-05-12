@@ -176,6 +176,9 @@ class GaussianItem(BaseItem):
         if (self.gs_data.shape[0] == 0):
             return
 
+        # disable depth test to avoid z-fighting, we will sort the gaussian and draw them in back-to-front order to get correct blending result.
+        glDisable(GL_DEPTH_TEST)
+
         # preprocess and sort gaussian by compute shader.
         self.preprocessGS()
         self.try_sort()
@@ -193,6 +196,7 @@ class GaussianItem(BaseItem):
         glBindVertexArray(0)
         glUseProgram(0)
         glDisable(GL_BLEND)
+        glEnable(GL_DEPTH_TEST)
 
     def try_sort(self):
         # don't sort if the depths are not change.

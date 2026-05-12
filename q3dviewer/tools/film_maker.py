@@ -416,7 +416,7 @@ def main():
     args = parser.parse_args()
     app = q3d.QApplication(['Film Maker'])
     viewer = CMMViewer(name='Film Maker', update_interval=30)
-    cloud_item = q3d.CloudIOItem(size=1, point_type='SPHERE', alpha=0.5)
+    cloud_item = q3d.CloudSortItem(size=1, point_type='SPHERE', alpha=0.5)
     grid_item = q3d.GridItem(size=1000, spacing=20)
 
     viewer.add_items(
