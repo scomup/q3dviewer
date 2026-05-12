@@ -93,7 +93,18 @@ class PointSorter:
         """
         if self._impl is not None:
             # CUDA path: register for zero-copy GPU access
-            self._impl.register_buffers(points_ssbo_id, max_points)
+            try:
+                self._impl.register_buffers(points_ssbo_id, max_points)
+            except RuntimeError as e:
+                if "out of memory" in str(e).lower():
+                    print(
+                        f"[PointSorter] CUDA out of memory for {max_points} points, "
+                        f"falling back to CPU sorting: {e}")
+                    self._impl = None
+                    self._vbo_id = points_ssbo_id
+                    self._max_points = max_points
+                else:
+                    raise
         else:
             # CPU fallback: just store VBO ID for later use
             self._vbo_id = points_ssbo_id
