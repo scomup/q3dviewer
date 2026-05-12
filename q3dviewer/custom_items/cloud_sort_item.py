@@ -87,22 +87,19 @@ class CloudSortItem(CloudIOItem):
             new_data = self.wait_add_data
             self.wait_add_data = None
             new_count = new_data.shape[0]
+
+            # Clamp batch to half max_cloud_size so one downsample always makes room.
+            max_batch = self.max_cloud_size // 2
+            if new_count > max_batch:
+                new_data = new_data[:max_batch]
+                new_count = max_batch
+                print(f"[Cloud Item] Batch truncated to {max_batch} points (half of max)")
+
+            # Phase 1 — grow buffer on demand up to max_cloud_size.
+            # glDeleteBuffers only happens here (growth phase), never in steady-state.
             new_buff_top = self.add_buff_loc + new_count
-
-            # Hard-cap at max_cloud_size — avoids expensive CPU readback
-            if new_buff_top > self.max_cloud_size:
-                new_buff_top = self.max_cloud_size
-                new_count = new_buff_top - self.add_buff_loc
-                if new_count <= 0:
-                    print("[Cloud Item] Max cloud size reached, ignoring data.")
-                    return
-                new_data = new_data[:new_count]
-                print("[Cloud Item] Truncated to max cloud size %d" %
-                      self.max_cloud_size)
-
-            vbo_reallocated = False
-            if new_buff_top > self.buff_capacity:
-                # Grow GPU buffer — pure GPU-to-GPU, zero CPU roundtrip
+            vbo_reallocated = False  # [sort]
+            if new_buff_top > self.buff_capacity and self.buff_capacity < self.max_cloud_size:
                 new_capacity = max(self.buff_capacity, self.CAPACITY)
                 while new_buff_top > new_capacity:
                     new_capacity += self.CAPACITY
@@ -110,36 +107,36 @@ class CloudSortItem(CloudIOItem):
 
                 new_vbo = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
-                glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE,
-                             None, GL_DYNAMIC_DRAW)
+                glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE, None, GL_DYNAMIC_DRAW)
                 glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-                # GPU-to-GPU copy of existing valid data
                 if self.add_buff_loc > 0:
                     glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
                     glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
-                    glCopyBufferSubData(
-                        GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
-                        0, 0, self.add_buff_loc * self.STRIDE)
+                    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
+                                        0, 0, self.add_buff_loc * self.STRIDE)
                     glBindBuffer(GL_COPY_READ_BUFFER, 0)
                     glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
-
                 glDeleteBuffers(1, [self.vbo])
                 self.vbo = new_vbo
                 self.buff_capacity = new_capacity
-                vbo_reallocated = True
+                vbo_reallocated = True  # [sort]
 
-            # Upload only the new slice — O(new_data), not O(total)
+            # Phase 2 — GPU downsample until there is room (only at max capacity).
+            while self.add_buff_loc + new_count > self.buff_capacity:
+                self._gpu_downsample()
+                self.sorter.unregister()  # [sort]
+                self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])  # [sort]
+
+            # Upload new slice
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
             glBufferSubData(GL_ARRAY_BUFFER,
                             self.add_buff_loc * self.STRIDE,
                             new_count * self.STRIDE,
                             new_data)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            self.valid_buff_top = new_buff_top
+            self.valid_buff_top = self.add_buff_loc + new_count
 
-            # Sorter must be unregistered when VBO handle changes
-            if vbo_reallocated:
+            if vbo_reallocated:  # [sort] VBO handle changed — sorter must re-register.
                 self.sorter.unregister()
                 self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
         finally:
@@ -156,10 +153,12 @@ class CloudSortItem(CloudIOItem):
             return
 
         if not self.sorter.is_registered():
-            # Register VBO with CUDA
+            # Register with current buff_capacity (= actual buffer size).
+            # During growth this is re-registered after each vbo_reallocated.
+            # After reaching max_cloud_size, buff_capacity is stable.
             self.sorter.register(
                 int(self.vbo),
-                self.valid_buff_top
+                self.buff_capacity
             )
 
         depth_coeffs = (view_matrix @ self.T)[2, :3]

@@ -42,7 +42,7 @@ class CloudItem(BaseItem):
     """
     # Class-level constants
     STRIDE = 16  # Stride of cloud array in bytes
-    CAPACITY = 10000000  # Initial buffer capacity (10M points)
+    CAPACITY = 10000000  # Growth increment (10M points = 160 MB)
     DATA_TYPE = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     MODE_TABLE = {'FLAT': 0, 'I': 1, 'RGB': 2, 'GRAY': 3}
     POINT_TYPE_TABLE = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
@@ -71,7 +71,11 @@ class CloudItem(BaseItem):
         self.vmax = 255
         self.wait_add_data = None
         self.need_update_setting = True
-        self.max_cloud_size = 300000000
+        # Default 10M points (160 MB). Set item.max_cloud_size before adding
+        # to viewer to override. Pre-allocated once at initialize_gl time.
+        self.max_cloud_size = 10000000
+        self.downsample_count = 0   # how many GPU downsample passes have run
+        self.downsample_program = None
         self.T = np.eye(4, dtype=np.float32)
         # Enable depth test when full opaque
         self.path = os.path.dirname(__file__)
@@ -251,56 +255,82 @@ class CloudItem(BaseItem):
         if self.wait_add_data is None:
             return
         self.mutex.acquire()
-        new_data = self.wait_add_data
-        self.wait_add_data = None
-        new_count = new_data.shape[0]
-        new_buff_top = self.add_buff_loc + new_count
-        # Hard-cap at max_cloud_size — avoids expensive CPU readback
-        if new_buff_top > self.max_cloud_size:
-            new_buff_top = self.max_cloud_size
-            new_count = new_buff_top - self.add_buff_loc
-            if new_count <= 0:
-                print("[Cloud Item] Max cloud size reached, ignoring data.")
-                self.mutex.release()
-                return
-            new_data = new_data[:new_count]
-            print("[Cloud Item] Truncated to max cloud size %d" %
-                  self.max_cloud_size)
-        if new_buff_top > self.buff_capacity:
-            # Grow GPU buffer — pure GPU-to-GPU, zero CPU roundtrip
-            new_capacity = max(self.buff_capacity, self.CAPACITY)
-            while new_buff_top > new_capacity:
-                new_capacity += self.CAPACITY
-            new_capacity = min(new_capacity, self.max_cloud_size)
-            new_vbo = glGenBuffers(1)
-            glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
-            glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE,
-                         None, GL_DYNAMIC_DRAW)
+        try:
+            new_data = self.wait_add_data
+            self.wait_add_data = None
+            new_count = new_data.shape[0]
+
+            # Clamp batch to half max_cloud_size so one downsample always makes room.
+            max_batch = self.max_cloud_size // 2
+            if new_count > max_batch:
+                new_data = new_data[:max_batch]
+                new_count = max_batch
+                print(f"[Cloud Item] Batch truncated to {max_batch} points (half of max)")
+
+            # Phase 1 — grow buffer on demand up to max_cloud_size.
+            # glDeleteBuffers only happens here (growth phase), never in steady-state.
+            new_buff_top = self.add_buff_loc + new_count
+            if new_buff_top > self.buff_capacity and self.buff_capacity < self.max_cloud_size:
+                new_capacity = max(self.buff_capacity, self.CAPACITY)
+                while new_buff_top > new_capacity:
+                    new_capacity += self.CAPACITY
+                new_capacity = min(new_capacity, self.max_cloud_size)
+
+                new_vbo = glGenBuffers(1)
+                glBindBuffer(GL_ARRAY_BUFFER, new_vbo)
+                glBufferData(GL_ARRAY_BUFFER, new_capacity * self.STRIDE, None, GL_DYNAMIC_DRAW)
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+                if self.add_buff_loc > 0:
+                    glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
+                    glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
+                    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
+                                        0, 0, self.add_buff_loc * self.STRIDE)
+                    glBindBuffer(GL_COPY_READ_BUFFER, 0)
+                    glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
+                glDeleteBuffers(1, [self.vbo])
+                self.vbo = new_vbo
+                self.buff_capacity = new_capacity
+
+            # Phase 2 — GPU downsample until there is room (only at max capacity).
+            while self.add_buff_loc + new_count > self.buff_capacity:
+                self._gpu_downsample()
+
+            # Upload new slice
+            glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+            glBufferSubData(GL_ARRAY_BUFFER,
+                            self.add_buff_loc * self.STRIDE,
+                            new_count * self.STRIDE,
+                            new_data)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
-            # GPU-to-GPU copy of existing valid data
-            if self.add_buff_loc > 0:
-                glBindBuffer(GL_COPY_READ_BUFFER, self.vbo)
-                glBindBuffer(GL_COPY_WRITE_BUFFER, new_vbo)
-                glCopyBufferSubData(
-                    GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER,
-                    0, 0, self.add_buff_loc * self.STRIDE)
-                glBindBuffer(GL_COPY_READ_BUFFER, 0)
-                glBindBuffer(GL_COPY_WRITE_BUFFER, 0)
-            glDeleteBuffers(1, [self.vbo])
-            self.vbo = new_vbo
-            self.buff_capacity = new_capacity
-            if Q3D_DEBUG is not None:
-                print("[Cloud Item] GPU buffer grown to %d points" %
-                      new_capacity)
-        # Upload only the new slice — O(new_data), not O(total)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        glBufferSubData(GL_ARRAY_BUFFER,
-                        self.add_buff_loc * self.STRIDE,
-                        new_count * self.STRIDE,
-                        new_data)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-        self.valid_buff_top = new_buff_top
-        self.mutex.release()
+            self.valid_buff_top = self.add_buff_loc + new_count
+        finally:
+            self.mutex.release()
+
+    def _gpu_downsample(self):
+        """GPU-only in-place stride-2 decimation. No temp buffer needed:
+        dst[i] = src[i*2], and i <= i*2 always, so no write overtakes its read."""
+        half = self.valid_buff_top // 2
+        if half == 0:
+            return
+
+        glUseProgram(self.downsample_program)
+        # Single buffer binding — read from buf[i*2], write to buf[i] in-place.
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self.vbo)
+        glUniform1ui(
+            glGetUniformLocation(self.downsample_program, 'num_dst_points'),
+            half)
+        groups = (half + 255) // 256
+        glDispatchCompute(groups, 1, 1)
+        glUseProgram(0)
+
+        # Ensure in-place compute writes are visible to the vertex fetch stage.
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT
+                        | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT)
+
+        self.valid_buff_top = half
+        self.add_buff_loc = half
+        self.downsample_count += 1
+        print(f"[CloudItem] GPU downsampled to {half} points (pass #{self.downsample_count})")
 
     def initialize_gl(self):
         vertex_shader = open(
@@ -311,10 +341,29 @@ class CloudItem(BaseItem):
             shaders.compileShader(vertex_shader, GL_VERTEX_SHADER),
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
-        self.max_cloud_size = glGetIntegerv(
-            GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
-        # Bind attribute locations
+
+        # Clamp user-set max_cloud_size by the GL driver's SSBO size limit.
+        driver_max = glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
+        if self.max_cloud_size > driver_max:
+            print(f"[CloudItem] max_cloud_size clamped {self.max_cloud_size} → {driver_max} (GL driver limit)")
+            self.max_cloud_size = driver_max
+
+        # ── Main GPU buffer ──────────────────────────────────────────────────────
+        # Start small; grows on demand (Phase 1) up to max_cloud_size,
+        # then GPU-downsamples in-place (Phase 2). Multiple items are safe
+        # because each only uses the memory its data actually needs.
+        initial = min(self.CAPACITY, self.max_cloud_size)
         self.vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, initial * self.STRIDE, None, GL_DYNAMIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self.buff_capacity = initial
+
+        # ── Compute shader for GPU-only downsample ───────────────────────────────
+        comp_src = open(
+            self.path + '/../shaders/downsample_comp.glsl', 'r').read()
+        comp = shaders.compileShader(comp_src, GL_COMPUTE_SHADER)
+        self.downsample_program = shaders.compileProgram(comp)
 
     def paint(self):
         self.update_render_buffer()

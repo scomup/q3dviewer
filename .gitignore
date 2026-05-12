@@ -5,3 +5,4 @@ build/*
 .vscode/*
 dist/*
 q3dviewer/*.so
+git
