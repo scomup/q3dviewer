@@ -87,10 +87,7 @@ class CloudSortItem(CloudIOItem):
             new_data = self.wait_add_data
             self.wait_add_data = None
 
-            # Pre-downsample incoming batch on CPU (stride-2, spatially uniform)
-            # until it fits in half the buffer. This guarantees Phase 2 terminates
-            # in at most one GPU downsample pass, avoiding potential infinite loop.
-            while new_data.shape[0] > self.max_cloud_size // 2:
+            while new_data.shape[0] > self.max_cloud_size * 0.9:
                 new_data = new_data[::2]
                 print(f"[Cloud Item] new data downsampled to {new_data.shape[0]} points")
 

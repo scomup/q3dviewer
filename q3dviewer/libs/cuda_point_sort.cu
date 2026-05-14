@@ -8,6 +8,10 @@
  */
 
 #include <cuda_runtime.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <GL/gl.h>
+#endif
 #include <cuda_gl_interop.h>
 #include <cub/cub.cuh>
 #include <pybind11/pybind11.h>

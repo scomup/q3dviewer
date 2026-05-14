@@ -3,6 +3,9 @@ Setup script for q3dviewer with optional CUDA support
 """
 import os
 import sys
+import sysconfig
+import shutil
+import platform
 from pathlib import Path
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
@@ -29,6 +32,15 @@ def find_cuda_path():
         '/opt/cuda',
     ]
 
+    if sys.platform == 'win32':
+        program_files = os.environ.get('ProgramFiles')
+        if program_files:
+            cuda_root = os.path.join(
+                program_files, 'NVIDIA GPU Computing Toolkit', 'CUDA')
+            if os.path.isdir(cuda_root):
+                for version_dir in sorted(os.listdir(cuda_root), reverse=True):
+                    cuda_paths.append(os.path.join(cuda_root, version_dir))
+
     # Check environment variable first
     if 'CUDA_HOME' in os.environ:
         cuda_paths.insert(0, os.environ['CUDA_HOME'])
@@ -36,6 +48,10 @@ def find_cuda_path():
         cuda_paths.insert(0, os.environ['CUDA_PATH'])
 
     # Try nvcc in PATH first
+    nvcc_from_path = shutil.which('nvcc')
+    if nvcc_from_path:
+        return os.path.dirname(os.path.dirname(os.path.abspath(nvcc_from_path)))
+
     try:
         import subprocess
         result = subprocess.run(['nvcc', '--version'],
@@ -57,11 +73,51 @@ def find_cuda_path():
 
     # Check common installation paths
     for cuda_path in cuda_paths:
-        nvcc_path = os.path.join(cuda_path, 'bin', 'nvcc')
+        nvcc_name = 'nvcc.exe' if sys.platform == 'win32' else 'nvcc'
+        nvcc_path = os.path.join(cuda_path, 'bin', nvcc_name)
         if os.path.exists(nvcc_path):
             return cuda_path
 
     return None
+
+
+def find_nvcc_path(cuda_home):
+    """Find nvcc executable path."""
+    nvcc_from_path = shutil.which('nvcc')
+    if nvcc_from_path:
+        return nvcc_from_path
+
+    nvcc_name = 'nvcc.exe' if sys.platform == 'win32' else 'nvcc'
+    nvcc = os.path.join(cuda_home, 'bin', nvcc_name)
+    if os.path.exists(nvcc):
+        return nvcc
+
+    return None
+
+
+def get_msvc_env():
+    """Return an environment with MSVC tools available for nvcc on Windows."""
+    env = os.environ.copy()
+
+    if sys.platform != 'win32':
+        return env
+
+    try:
+        from setuptools._distutils._msvccompiler import _get_vc_env
+    except ImportError:
+        from distutils._msvccompiler import _get_vc_env
+
+    plat_spec = 'x64' if platform.machine().endswith('64') else 'x86'
+    vc_env = _get_vc_env(plat_spec)
+
+    # Avoid duplicate PATH/path entries. Windows environment keys are
+    # case-insensitive, but Python dictionaries are not.
+    existing_keys = {key.lower(): key for key in env}
+    for key, value in vc_env.items():
+        env_key = existing_keys.get(key.lower(), key)
+        env[env_key] = value
+
+    return env
 
 
 def is_cuda_available():
@@ -119,9 +175,9 @@ class BuildExtWithCUDA(build_ext):
         if cuda_home is None:
             raise RuntimeError("CUDA installation not found")
 
-        nvcc = os.path.join(cuda_home, 'bin', 'nvcc')
-        if not os.path.exists(nvcc):
-            raise RuntimeError(f"nvcc not found at {nvcc}")
+        nvcc = find_nvcc_path(cuda_home)
+        if nvcc is None:
+            raise RuntimeError(f"nvcc not found under {cuda_home} or PATH")
 
         print(f"Using CUDA from: {cuda_home}")
         print(f"Using nvcc: {nvcc}")
@@ -141,15 +197,7 @@ class BuildExtWithCUDA(build_ext):
                                "Install it with: pip install pybind11")
 
         # Python and numpy include paths
-        python_include = self.distribution.get_command_obj(
-            'build').build_platlib
-        if hasattr(sys, 'base_prefix'):
-            python_include = os.path.join(sys.base_prefix, 'include',
-                                          f'python{sys.version_info.major}.{sys.version_info.minor}')
-        else:
-            python_include = os.path.join(sys.prefix, 'include',
-                                          f'python{sys.version_info.major}.{sys.version_info.minor}')
-
+        python_include = sysconfig.get_path('include')
         numpy_include = np.get_include()
         cuda_include = os.path.join(cuda_home, 'include')
 
@@ -160,11 +208,19 @@ class BuildExtWithCUDA(build_ext):
         # CUDA compilation flags
         cuda_flags = [
             '-O3',
-            '--compiler-options', '-fPIC',
             '-std=c++14',
             '--expt-relaxed-constexpr',
             '-DNDEBUG',
         ]
+
+        if sys.platform == 'win32':
+            cuda_flags.extend([
+                '-Xcompiler', '/MD,/O2,/EHsc,/utf-8',
+            ])
+        else:
+            cuda_flags.extend([
+                '--compiler-options', '-fPIC',
+            ])
 
         # Add GPU architectures (compute capabilities)
         # Cover common GPUs from Pascal to Ada Lovelace
@@ -199,7 +255,16 @@ class BuildExtWithCUDA(build_ext):
         cmd.extend(['-o', output_path])
 
         # Link against Python
-        if sys.platform == 'darwin':
+        if sys.platform == 'win32':
+            python_lib = os.path.join(
+                sys.base_prefix,
+                'libs',
+                f'python{sys.version_info.major}{sys.version_info.minor}.lib')
+            if not os.path.exists(python_lib):
+                raise RuntimeError(f"Python import library not found: {python_lib}")
+            cmd.append(python_lib)
+            cmd.append('opengl32.lib')
+        elif sys.platform == 'darwin':
             # macOS
             cmd.extend(['-undefined', 'dynamic_lookup'])
         else:
@@ -211,7 +276,7 @@ class BuildExtWithCUDA(build_ext):
         print(f"Command: {' '.join(cmd)}")
 
         try:
-            subprocess.check_call(cmd)
+            subprocess.check_call(cmd, env=get_msvc_env())
             print(f"Successfully built {ext.name}")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to build CUDA extension: {e}")
