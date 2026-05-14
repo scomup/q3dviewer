@@ -375,9 +375,9 @@ class MeshItem(BaseItem):
     def initialize_gl(self):
         """OpenGL initialization"""
         # Use instanced mesh shaders with geometry shader for GPU-side triangle generation
-        vert_shader = open(self.path + '/../shaders/mesh_vert.glsl', 'r').read()
-        geom_shader = open(self.path + '/../shaders/mesh_geom.glsl', 'r').read()
-        frag_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r').read()
+        vert_shader = open(self.path + '/../shaders/mesh_vert.glsl', 'r', encoding='utf-8').read()
+        geom_shader = open(self.path + '/../shaders/mesh_geom.glsl', 'r', encoding='utf-8').read()
+        frag_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r', encoding='utf-8').read()
         try:
             program = shaders.compileProgram(
                 shaders.compileShader(vert_shader, GL_VERTEX_SHADER),

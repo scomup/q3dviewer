@@ -203,11 +203,11 @@ class StaticMeshItem(BaseItem):
 
     def initialize_gl(self):
         """OpenGL initialization - load triangle shader"""
-        frag_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r').read()
+        frag_shader = open(self.path + '/../shaders/mesh_frag.glsl', 'r', encoding='utf-8').read()
         
         try:
-            vert_shader = open(self.path + '/../shaders/triangle_mesh_vert.glsl', 'r').read()
-            geom_shader = open(self.path + '/../shaders/triangle_mesh_geom.glsl', 'r').read()
+            vert_shader = open(self.path + '/../shaders/triangle_mesh_vert.glsl', 'r', encoding='utf-8').read()
+            geom_shader = open(self.path + '/../shaders/triangle_mesh_geom.glsl', 'r', encoding='utf-8').read()
             self.program = shaders.compileProgram(
                 shaders.compileShader(vert_shader, GL_VERTEX_SHADER),
                 shaders.compileShader(geom_shader, GL_GEOMETRY_SHADER),

@@ -56,7 +56,7 @@ class GaussianItem(BaseItem):
             self.path + '/../shaders/gau_vert.glsl', 'r').read()
         sort_shader = open(
             self.path + '/../shaders/sort_by_key.glsl', 'r').read()
-        prep_shader = open(self.path + '/../shaders/gau_prep.glsl', 'r').read()
+        prep_shader = open(self.path + '/../shaders/gau_prep.glsl', 'r', encoding='utf-8').read()
 
         self.sort_program = shaders.compileProgram(
             shaders.compileShader(sort_shader, GL_COMPUTE_SHADER))
