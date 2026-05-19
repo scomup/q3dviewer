@@ -9,15 +9,10 @@ import signal
 from q3dviewer.Qt.QtWidgets import QMainWindow, QApplication, QHBoxLayout
 
 
-def handler(signal, frame):
-    QApplication.quit()
-    print("Force close by Ctrl+C")
-
-
 class Viewer(QMainWindow):
     def __init__(self, name='Viewer', win_size=[1920, 1080], 
                  gl_widget_class=GLWidget, update_interval=20):
-        self.set_quit_handler(handler)
+        self.set_quit_handler()
         super(Viewer, self).__init__()
         self.setGeometry(0, 0, win_size[0], win_size[1])
         self.gl_widget_class = gl_widget_class
@@ -27,8 +22,8 @@ class Viewer(QMainWindow):
         self.setWindowTitle(name)
         self.installEventFilter(self)
 
-    def set_quit_handler(self, handler):
-        signal.signal(signal.SIGINT, handler)
+    def set_quit_handler(self):
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     def init_ui(self):
         center_widget = QWidget()
