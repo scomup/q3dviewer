@@ -135,6 +135,7 @@ class BaseGLWidget(QOpenGLWidget):
         if delta == 0:
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
+        self.need_recalc_view = True
         self.show_center = True
 
     def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
@@ -307,6 +308,9 @@ class BaseGLWidget(QOpenGLWidget):
     def update(self):
         self.update_movement()
         super().update()
+        # if not self.need_recalc_view:
+        #     super().update()
+        #     self.need_recalc_view = False
 
     def update_model_projection(self):
         glMatrixMode(GL_PROJECTION)
@@ -354,6 +358,7 @@ class BaseGLWidget(QOpenGLWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self.need_recalc_view = True
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
 
