@@ -453,12 +453,24 @@ class SatelliteMapItem(BaseItem):
                .replace("{x}", str(tx))
                .replace("{y}", str(ty)))
         try:
-            r = cls._requests.get(
-                url,
-                headers={
-                    "User-Agent": "q3dviewer-satellite/1.0 (cloud_forge)"},
-                timeout=15,
-                verify=False)  # Disable SSL verification to avoid certificate errors
+            headers = {
+                "User-Agent": "q3dviewer-satellite (cloud_forge)"
+            }
+
+            try:
+                r = cls._requests.get(
+                    url,
+                    headers=headers,
+                    timeout=15,
+                    verify=True)
+                print(f"[SatelliteMap] Fetched tile z={z} x={tx} y={ty} from network")
+            except cls._requests.exceptions.SSLError:
+                r = cls._requests.get(
+                    url,
+                    headers=headers,
+                    timeout=15,
+                    verify=False)
+
             r.raise_for_status()
             
             # Load image from bytes

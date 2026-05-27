@@ -10,7 +10,7 @@ import rospy
 import numpy as np
 import argparse
 import q3dviewer as q3d
-from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox
+from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox, QComboBox
 from q3dviewer.Qt import QtCore
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg
 from q3dviewer.utils.maths import matrix_to_quaternion, euler_to_matrix, matrix_to_euler
@@ -30,6 +30,8 @@ cloud0_accum = None
 clouds0 = []
 cloud1_accum = None
 clouds1 = []
+sub0 = None
+sub1 = None
 
 
 class CustomDoubleSpinBox(QDoubleSpinBox):
@@ -55,6 +57,8 @@ class LiDARCalibViewer(q3d.Viewer):
         self.voxel_size = 0.1  # Voxel size for downsampling
         self.normal_radius = 0.1  # Radius for normal estimation
         self.icp_distance = 0.2  # Max correspondence distance for ICP
+        self.lidar0_topic = None
+        self.lidar1_topic = None
         super().__init__(**kwargs)
 
     def default_gl_setting(self, glwidget):
@@ -66,6 +70,25 @@ class LiDARCalibViewer(q3d.Viewer):
         # Create a vertical layout for the settings
         setting_layout = QVBoxLayout()
         setting_layout.setAlignment(QtCore.Qt.AlignTop)
+
+        # Topic selection group
+        topic_group = QGroupBox("LiDAR Topics")
+        topic_layout = QVBoxLayout()
+        topic_layout.addWidget(QLabel("LiDAR0 Topic (PointCloud2):"))
+        self.box_topic0 = QComboBox()
+        topic_layout.addWidget(self.box_topic0)
+        topic_layout.addWidget(QLabel("LiDAR1 Topic (PointCloud2):"))
+        self.box_topic1 = QComboBox()
+        topic_layout.addWidget(self.box_topic1)
+        self.btn_refresh_topics = QPushButton("Refresh Topic List")
+        self.btn_refresh_topics.clicked.connect(self.refresh_topic_list)
+        topic_layout.addWidget(self.btn_refresh_topics)
+        topic_group.setLayout(topic_layout)
+        setting_layout.addWidget(topic_group)
+
+        self.box_topic0.currentTextChanged.connect(self.on_topic_changed)
+        self.box_topic1.currentTextChanged.connect(self.on_topic_changed)
+
         # Add XYZ spin boxes
         label_xyz = QLabel("Set XYZ:")
         setting_layout.addWidget(label_xyz)
@@ -163,6 +186,70 @@ class LiDARCalibViewer(q3d.Viewer):
         self.box_yaw.valueChanged.connect(self.apply_transform)
 
         main_layout.addLayout(setting_layout)
+
+    def _get_pointcloud_topics(self):
+        try:
+            published_topics = rospy.get_published_topics()
+        except Exception as e:
+            print(f"Failed to get published topics: {e}")
+            return []
+
+        topics = [
+            topic for topic, msg_type in published_topics
+            if msg_type == "sensor_msgs/PointCloud2"
+        ]
+        return sorted(topics)
+
+    def refresh_topic_list(self, preferred0=None, preferred1=None):
+        topics = self._get_pointcloud_topics()
+        current0 = preferred0 if preferred0 is not None else self.box_topic0.currentText()
+        current1 = preferred1 if preferred1 is not None else self.box_topic1.currentText()
+
+        self.box_topic0.blockSignals(True)
+        self.box_topic1.blockSignals(True)
+
+        self.box_topic0.clear()
+        self.box_topic1.clear()
+
+        if not topics:
+            self.box_topic0.addItem("")
+            self.box_topic1.addItem("")
+            self.box_topic0.blockSignals(False)
+            self.box_topic1.blockSignals(False)
+            print("No PointCloud2 topics found. Click refresh after topics are available.")
+            return
+
+        self.box_topic0.addItems(topics)
+        self.box_topic1.addItems(topics)
+
+        idx0 = topics.index(current0) if current0 in topics else 0
+        if current1 in topics:
+            idx1 = topics.index(current1)
+        elif len(topics) > 1:
+            idx1 = 1
+        else:
+            idx1 = 0
+
+        self.box_topic0.setCurrentIndex(idx0)
+        self.box_topic1.setCurrentIndex(idx1)
+
+        self.box_topic0.blockSignals(False)
+        self.box_topic1.blockSignals(False)
+
+        self.on_topic_changed()
+
+    def on_topic_changed(self):
+        topic0 = self.box_topic0.currentText().strip()
+        topic1 = self.box_topic1.currentText().strip()
+
+        if not topic0 or not topic1:
+            return
+        if topic0 == self.lidar0_topic and topic1 == self.lidar1_topic:
+            return
+
+        self.lidar0_topic = topic0
+        self.lidar1_topic = topic1
+        reregister_subscribers(topic0, topic1)
         
 
     def update_cloud_num(self):
@@ -284,15 +371,39 @@ def scan1_cb(data):
     viewer['scan1'].set_data(data=cloud1_accum)
 
 
+def reset_cloud_buffers():
+    global cloud0_accum, clouds0, cloud1_accum, clouds1
+    cloud0_accum = None
+    cloud1_accum = None
+    clouds0.clear()
+    clouds1.clear()
+
+
+def reregister_subscribers(topic0, topic1):
+    global sub0, sub1
+    if sub0 is not None:
+        sub0.unregister()
+        sub0 = None
+    if sub1 is not None:
+        sub1.unregister()
+        sub1 = None
+
+    reset_cloud_buffers()
+
+    sub0 = rospy.Subscriber(topic0, PointCloud2, scan0_cb, queue_size=1)
+    sub1 = rospy.Subscriber(topic1, PointCloud2, scan1_cb, queue_size=1)
+    print(f"Subscribed topics: lidar0={topic0}, lidar1={topic1}")
+
+
 def main():
     global viewer
     # Set up argument parser
     parser = argparse.ArgumentParser(
         description="Find a T let T * scan1 = LiDAR0")
-    parser.add_argument("lidar0", type=str,
-                        help="Topic name for LiDAR0 data (source)")
-    parser.add_argument("lidar1", type=str,
-                        help="Topic name for LiDAR1 data (target)")
+    parser.add_argument("lidar0", nargs='?', default=None, type=str,
+                        help="Initial topic name for LiDAR0 data (source)")
+    parser.add_argument("lidar1", nargs='?', default=None, type=str,
+                        help="Initial topic name for LiDAR1 data (target)")
     args = parser.parse_args()
 
     app = q3d.QApplication(["LiDAR Calib"])
@@ -307,11 +418,12 @@ def main():
 
     rospy.init_node('lidar_calib', anonymous=True)
 
-    # Use topic names from arguments
-    rospy.Subscriber(args.lidar0, PointCloud2, scan0_cb, queue_size=1)
-    rospy.Subscriber(args.lidar1, PointCloud2, scan1_cb, queue_size=1)
+    viewer.refresh_topic_list(preferred0=args.lidar0, preferred1=args.lidar1)
 
     viewer.show()
+    viewer.refresh_topic_list(
+            preferred0=args.lidar0,
+            preferred1=args.lidar1)
     app.exec()
 
 
