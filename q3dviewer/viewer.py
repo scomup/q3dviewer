@@ -22,8 +22,11 @@ class Viewer(QMainWindow):
         self.setWindowTitle(name)
         self.installEventFilter(self)
 
-    def set_quit_handler(self):
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
+    def set_quit_handler(self, handler=None):
+        if handler is None:
+            handler = signal.SIG_DFL
+        signal.signal(signal.SIGINT, handler)
+
 
     def init_ui(self):
         center_widget = QWidget()
