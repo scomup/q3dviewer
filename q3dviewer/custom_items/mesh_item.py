@@ -11,7 +11,7 @@ from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit
-
+from q3dviewer.Qt.QtCore import Qt
 import os
 from q3dviewer.utils import set_uniform, text_to_rgba
 import time
