@@ -48,7 +48,7 @@ class SettingWindow(QWidget):
 
 
 class GLWidget(BaseGLWidget):
-    def __init__(self):
+    def __init__(self, auto_update=False):
         self.followed_name = 'none'
         self.named_items = {}
         self.color_str = 'black'
@@ -56,7 +56,7 @@ class GLWidget(BaseGLWidget):
         self.setting_window = SettingWindow()
         self.enable_show_center = True
         self.old_center = None
-        super(GLWidget, self).__init__()
+        super(GLWidget, self).__init__(auto_update=auto_update)
 
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.key() == QtCore.Qt.Key_M:  # setting menu

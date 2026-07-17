@@ -12,13 +12,13 @@ from q3dviewer.Qt.QtWidgets import QOpenGLWidget
 
 
 class BaseGLWidget(QOpenGLWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, auto_update=False):
         QOpenGLWidget.__init__(self, parent)
+        self.auto_update = auto_update
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
         self.reset()
         self._fov = 60
         self.items = []
-        self.keyTimer = QtCore.QTimer()
         self.color = np.array([0, 0, 0, 1])
         self.dist = 40
         self.euler = np.array([np.pi/3, 0, np.pi/4])
@@ -116,26 +116,30 @@ class BaseGLWidget(QOpenGLWidget):
         self.view_matrix = view_matrix
         self.need_recalc_view = False
 
+    def mark_view_dirty(self):
+        self.need_recalc_view = True
+        if self.auto_update:
+            super().update()
+
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
             delattr(self, 'mousePos')
 
     def set_dist(self, dist):
         self.dist = dist
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def update_dist(self, delta):
         self.dist += delta
         if self.dist < 0.1:
             self.dist = 0.1
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
-        self.need_recalc_view = True
         self.show_center = True
 
     def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
@@ -153,7 +157,7 @@ class BaseGLWidget(QOpenGLWidget):
         Rwc_new = euler_to_matrix(new_euler)
         self.center = twc - Rwc_new @ tco
         self.euler = new_euler
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -179,7 +183,7 @@ class BaseGLWidget(QOpenGLWidget):
 
     def set_center(self, center):
         self.center = center
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def paintGL(self):
         # if the camera is moved, update the model view matrix.
@@ -300,7 +304,7 @@ class BaseGLWidget(QOpenGLWidget):
 
     def set_euler(self, euler):
         self.euler = euler
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def set_color(self, color):
         self.color = color
@@ -308,9 +312,6 @@ class BaseGLWidget(QOpenGLWidget):
     def update(self):
         self.update_movement()
         super().update()
-        # if not self.need_recalc_view:
-        #     super().update()
-        #     self.need_recalc_view = False
 
     def update_model_projection(self):
         glMatrixMode(GL_PROJECTION)
@@ -347,20 +348,20 @@ class BaseGLWidget(QOpenGLWidget):
         self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
         self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
         self.euler[0] = np.clip(self.euler[0], 0, np.pi)
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def translate(self, trans):
         self.center += trans
-        self.need_recalc_view = True
+        self.mark_view_dirty()
 
     def change_show_center(self, state):
         self.enable_show_center = state
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.need_recalc_view = True
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
+        self.mark_view_dirty()
 
     def capture_frame(self):
         self.makeCurrent()  # Ensure the OpenGL context is current

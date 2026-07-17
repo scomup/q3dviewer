@@ -88,6 +88,7 @@ class CustomGLWidget(GLWidget):
         """Handle keyboard events."""
         if event.text().lower() == 'r':
             self.viewer['cloud'].force_sort()
+            self.viewer.request_update.emit()
         else:
             super().keyPressEvent(event)
 
@@ -131,12 +132,18 @@ class CustomGLWidget(GLWidget):
         else:
             self.viewer['text'].set_data(text='')
 
+        self.viewer.request_update.emit()
+
 
 class CloudViewer(q3d.Viewer):
+    request_update = Signal()
+
     def __init__(self, **kwargs):
+        kwargs.setdefault('update_interval', 0)
         def gl_widget_class(): return CustomGLWidget(self)
         super(CloudViewer, self).__init__(
             **kwargs,  gl_widget_class=gl_widget_class)
+        self.request_update.connect(self.update)
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
@@ -162,6 +169,7 @@ class CloudViewer(q3d.Viewer):
 
     def file_loading_finished(self):
         self.progress_window.close()
+        self.request_update.emit()
 
     def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
@@ -171,6 +179,7 @@ class CloudViewer(q3d.Viewer):
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
         self.glwidget.set_cam_position(center=center)
+        self.request_update.emit()
 
 # print a quick help message using rich
 

@@ -6,7 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.glwidget import *
 import signal
-from q3dviewer.Qt.QtWidgets import QMainWindow, QApplication, QHBoxLayout
+from q3dviewer.Qt.QtWidgets import QMainWindow, QApplication, QHBoxLayout, QWidget
 
 
 class Viewer(QMainWindow):
@@ -53,10 +53,14 @@ class Viewer(QMainWindow):
         pass
 
     def add_update_timer(self):
-        timer = QtCore.QTimer(self)
-        timer.setInterval(self.update_interval)  # period, in milliseconds
-        timer.timeout.connect(self.update)
-        timer.start()
+        if self.update_interval <= 0:
+            self.glwidget.auto_update = True
+            return
+        self.glwidget.auto_update = False
+        self.timer = QtCore.QTimer(self)
+        self.timer.setInterval(self.update_interval)  # period, in milliseconds
+        self.timer.timeout.connect(self.update)
+        self.timer.start()
 
     def add_items(self, named_items: dict):
         for name, item in named_items.items():

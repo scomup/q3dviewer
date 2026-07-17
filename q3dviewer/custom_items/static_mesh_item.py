@@ -81,6 +81,18 @@ class StaticMeshItem(BaseItem):
         self.edit_rgb.textChanged.connect(self._on_color)
         layout.addWidget(self.edit_rgb)
 
+        # Alpha transparency control
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Alpha:")
+        alpha_layout.addWidget(alpha_label)
+        self.alpha_slider = QSlider()
+        self.alpha_slider.setOrientation(Qt.Horizontal)
+        self.alpha_slider.setRange(0, 100)
+        self.alpha_slider.setValue(int(self.alpha * 100))
+        self.alpha_slider.valueChanged.connect(lambda v: self.set_alpha(v / 100.0))
+        alpha_layout.addWidget(self.alpha_slider)
+        layout.addLayout(alpha_layout)
+
         # Material property controls for Phong lighting
         if self.enable_lighting:
             # Ambient strength control
@@ -166,10 +178,13 @@ class StaticMeshItem(BaseItem):
         self.shininess = value
         self.need_update_setting = True
 
-    def update_alpha(self, value):
+    def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
         self.need_update_setting = True
+
+    def update_alpha(self, value):
+        self.set_alpha(value)
 
     def set_data(self, data):
         """

@@ -19,7 +19,8 @@ import time
 
 class MeshItem(BaseItem):
     """
-    A OpenGL mesh item for rendering 3D triangular meshes.
+    A dynamic OpenGL mesh item for rendering 3D triangular meshes.
+    This item only supports keyed incremental updates (QUAD_DTYPE).
     Attributes:
         color (str or tuple): Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
         wireframe (bool): If True, renders the mesh in wireframe mode.
@@ -27,7 +28,7 @@ class MeshItem(BaseItem):
     # Class-level constants
     FACE_CAPACITY = 1000000    # Initial capacity for faces
     BIG_INT = 2**31 - 1         # Sentinel value for dirty region tracking
-    FACE_INPUT_DTYPE = np.dtype([
+    QUAD_DTYPE = np.dtype([
         ('key', np.int64),
         ('vertices', np.float32, (12,)),
         ('good', np.uint8)
@@ -60,6 +61,7 @@ class MeshItem(BaseItem):
         self.vbo = None
         self.program = None
         self._gpu_face_capacity = 0    # Track GPU buffer capacity
+        self._force_full_upload = False
         
         # Fixed rendering parameters (not adjustable via UI)
         self.enable_lighting = True
@@ -205,85 +207,21 @@ class MeshItem(BaseItem):
 
     def set_data(self, data):
         """
-        Args:
-            data: One of the following formats:
-                  - Nx3 numpy array (N must be divisible by 3): vertex list -> static
-                  - Nx9 numpy array: triangle list -> static
-                  - Structured array with dtype [('key', int64), ('vertices', float32, (12,)), ('good', uint32)] -> incremental
-        """
-        if not isinstance(data, np.ndarray):
-            raise ValueError("Data must be a numpy array")
-        
-        # Structured array format -> use incremental path (has keys for updates)
-        if data.dtype == self.FACE_INPUT_DTYPE:
-            self.set_incremental_data(data)
-            return
-        
-        # Nx3 , Nx9, Nx12 format -> use static path (more efficient, no key overhead)
-        if data.ndim == 2 and data.shape[1] in [3, 9, 12]:
-            self.set_static_data(data)
-            return
-        
-        raise ValueError("Data must be Nx3, Nx9, or structured array format")
+        Set dynamic mesh data.
 
-    def set_static_data(self, data):
-        """
-        Efficiently set static mesh data without key2index overhead.
-        For static meshes that don't need incremental updates.
-        
         Args:
-            data: numpy array in one of these formats:
-                  - Nx3: vertex list (N must be divisible by 3)
-                  - Nx9: triangle list
-                  - Nx12: quad list
+            data: Structured numpy array with fields:
+                  [('key', int64), ('vertices', float32, (12,)), ('good', uint8)]
         """
         if not isinstance(data, np.ndarray):
             raise ValueError("Data must be a numpy array")
-        
-        if data.ndim != 2:
-            raise ValueError(f"Data must be 2D array, got {data.ndim}D")
-        self.clear_mesh()
-        # Handle Nx3 format
-        if data.shape[1] == 3:
-            if data.shape[0] % 3 != 0:
-                raise ValueError(f"Nx3 format requires N divisible by 3, got N={data.shape[0]}")
-            
-            num_faces = data.shape[0] // 3
-            faces = np.zeros((num_faces, 13), dtype=np.float32)
-            
-            # Reshape to (num_faces, 9) for efficient copying
-            tmp = data.reshape(num_faces, 9)
-            faces[:, 0:3]  = tmp[:, 0:3]   # v0
-            faces[:, 3:6]  = tmp[:, 3:6]   # v1
-            faces[:, 6:9]  = tmp[:, 6:9]   # v2
-            faces[:, 9:12] = tmp[:, 6:9]   # v3 = v2 (degenerate)
-            faces[:, 12] = 1.0             # good=1.0
-            
-        # Handle Nx9 format
-        elif data.shape[1] == 9:
-            num_faces = data.shape[0]
-            faces = np.zeros((num_faces, 13), dtype=np.float32)
-            
-            faces[:, 0:9] = data           # Copy all 9 vertices
-            faces[:, 9:12] = data[:, 6:9]  # v3 = v2 (degenerate)
-            faces[:, 12] = 1.0             # good=1.0
-        elif data.shape[1] == 12:
-            num_faces = data.shape[0]
-            faces = np.zeros((num_faces, 13), dtype=np.float32)
-            faces[:, 0:12] = data          # Copy all 12 vertices
-            faces[:, 12] = 1.0             # good=1.0
-        else:
-            raise ValueError(f"Data shape must be Nx3, Nx9, or Nx12, got Nx{data.shape[1]}")
-        
-        # Replace faces buffer (static data, no key management)
-        self.clear_mesh()
-        self.faces = faces
-        self.valid_f_top = num_faces
-        
-        # Mark entire buffer as dirty
-        self.dirty_min = 0
-        self.dirty_max = self.valid_f_top
-        self.need_update_buffer = True
+        if data.dtype != self.QUAD_DTYPE:
+            raise ValueError(
+                "MeshItem only supports dynamic QUAD_DTYPE data: "
+                "[('key', int64), ('vertices', float32, (12,)), ('good', uint8)]"
+            )
+
+        self.set_incremental_data(data)
 
 
     def set_incremental_data(self, fs):
@@ -291,7 +229,7 @@ class MeshItem(BaseItem):
         Incrementally update mesh with new face data.
         Args:
             fs: Structured numpy array with dtype:
-                [('key', np.int64), ('vertices', np.float32, (12,)), ('good', np.uint32)]
+                [('key', np.int64), ('vertices', np.float32, (12,)), ('good', np.uint8)]
                 - key: unique identifier for the face
                 - vertices: 12 floats representing 4 vertices (v0, v1, v2, v3)
                 - good: 0 or 1, whether to render this face
@@ -304,10 +242,6 @@ class MeshItem(BaseItem):
         
         if not isinstance(fs, np.ndarray) or fs.dtype.names is None:
             raise ValueError("fs must be a structured numpy array with fields: key, vertices, good")
-
-        # Ensure enough capacity in faces buffer
-        while self.valid_f_top + len(fs) > len(self.faces):
-            self._expand_face_buffer()
 
         # Prepare face data: convert structured array to Nx13 format
         n_faces = len(fs)
@@ -325,6 +259,16 @@ class MeshItem(BaseItem):
         # Optimization: Separate updates from new insertions
         update_mask = np.array([key in self.key2index for key in keys], dtype=bool)
         new_mask = ~update_mask
+
+        # Ensure enough capacity only for truly new faces.
+        n_new = int(np.count_nonzero(new_mask))
+        expanded = False
+        while self.valid_f_top + n_new > len(self.faces):
+            self._expand_face_buffer()
+            expanded = True
+        if expanded:
+            # VBO will be reallocated on next frame; old contents must be re-uploaded.
+            self._force_full_upload = True
         
         # Batch update existing faces
         if np.any(update_mask):
@@ -405,6 +349,7 @@ class MeshItem(BaseItem):
             self._gpu_face_capacity = 0
         
         # Check if we need to reallocate VBO for faces
+        vbo_reallocated = False
         if self._gpu_face_capacity < len(self.faces):
             glBindVertexArray(self.vao)
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
@@ -445,24 +390,32 @@ class MeshItem(BaseItem):
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self._gpu_face_capacity = len(self.faces)
+            vbo_reallocated = True
         
         # Upload faces to VBO (only dirty region)
         if self.need_update_buffer:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-            
-            # Calculate the range to upload [dirty_min, dirty_max)
-            start_index = int(self.dirty_min)
-            end_index = int(self.dirty_max)
+
+            # After VBO realloc or CPU buffer expansion, re-upload full valid range.
+            if self._force_full_upload or vbo_reallocated:
+                start_index = 0
+                end_index = int(self.valid_f_top)
+            else:
+                # Calculate the dirty range [dirty_min, dirty_max)
+                start_index = int(self.dirty_min)
+                end_index = int(self.dirty_max)
             count = end_index - start_index
-            
-            # Upload only the modified region
-            glBufferSubData(GL_ARRAY_BUFFER,
-                           start_index * 13 * 4,  # offset in bytes
-                           count * 13 * 4,         # size in bytes
-                           self.faces[start_index:end_index])
+
+            if count > 0:
+                # Upload only modified region (or full valid region when required)
+                glBufferSubData(GL_ARRAY_BUFFER,
+                               start_index * 13 * 4,  # offset in bytes
+                               count * 13 * 4,         # size in bytes
+                               self.faces[start_index:end_index])
             
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             self.need_update_buffer = False
+            self._force_full_upload = False
             
             # Reset dirty region
             self.dirty_min = self.BIG_INT
