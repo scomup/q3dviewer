@@ -23,7 +23,7 @@ pip install --index-url https://test.pypi.org/simple/ \
 
 ```bash
 # 1. Update version in pyproject.toml (remove .dev0)
-# version = "1.3.1"
+# version = "1.3.2"
 
 # 2. Build
 rm -rf dist/ build/ *.egg-info
@@ -33,8 +33,8 @@ python3 -m build
 twine upload dist/*.tar.gz
 
 # 4. Create git tag
-git tag -a v1.3.1 -m "Release 1.3.1"
-git push origin v1.3.1
+git tag -a v1.3.2 -m "Release 1.3.2"
+git push origin v1.3.2
 ```
 
 ## Notes
