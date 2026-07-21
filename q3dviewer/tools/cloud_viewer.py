@@ -139,7 +139,6 @@ class CloudViewer(q3d.Viewer):
     request_update = Signal()
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('update_interval', 0)
         def gl_widget_class(): return CustomGLWidget(self)
         super(CloudViewer, self).__init__(
             **kwargs,  gl_widget_class=gl_widget_class)
@@ -244,7 +243,8 @@ def main():
     parser.add_argument("--path", help="the cloud file path")
     args = parser.parse_args()
     app = q3d.QApplication(['Cloud Viewer'])
-    viewer = CloudViewer(name='Cloud Viewer')
+    # set update_interval to 0 to disable automatic updates
+    viewer = CloudViewer(name='Cloud Viewer', update_interval=0)
     cloud_item = q3d.CloudSortItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()
