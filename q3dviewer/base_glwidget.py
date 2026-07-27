@@ -29,7 +29,21 @@ class BaseGLWidget(QOpenGLWidget):
         self.need_recalc_view = True
         self.view_matrix = self.get_view_matrix()
         self.projection_matrix = self.get_projection_matrix()
-
+        self.key_hold_timer = QtCore.QTimer(self)
+        self.key_hold_timer.setInterval(16)
+        self.key_hold_timer.timeout.connect(self.update_movement)
+        self.movement_keys = {
+            QtCore.Qt.Key_Up,
+            QtCore.Qt.Key_Down,
+            QtCore.Qt.Key_Left,
+            QtCore.Qt.Key_Right,
+            QtCore.Qt.Key_Z,
+            QtCore.Qt.Key_X,
+            QtCore.Qt.Key_A,
+            QtCore.Qt.Key_D,
+            QtCore.Qt.Key_W,
+            QtCore.Qt.Key_S,
+        }
         # Pre-calculate candidate offsets for depth picking, sorted by distance
         radius = 3
         offset = []
@@ -43,21 +57,18 @@ class BaseGLWidget(QOpenGLWidget):
         self.offset = np.array(self.offset)
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
-        if ev.key() == QtCore.Qt.Key_Up or  \
-                ev.key() == QtCore.Qt.Key_Down or \
-                ev.key() == QtCore.Qt.Key_Left or \
-                ev.key() == QtCore.Qt.Key_Right or \
-                ev.key() == QtCore.Qt.Key_Z or \
-                ev.key() == QtCore.Qt.Key_X or \
-                ev.key() == QtCore.Qt.Key_A or \
-                ev.key() == QtCore.Qt.Key_D or \
-                ev.key() == QtCore.Qt.Key_W or \
-                ev.key() == QtCore.Qt.Key_S:
+        key = ev.key()
+        if key in self.movement_keys:
             self.active_keys.add(ev.key())
-        self.active_keys.add(ev.key())
+            if self.auto_update and not self.key_hold_timer.isActive():
+                self.key_hold_timer.start()
 
     def keyReleaseEvent(self, ev: QtGui.QKeyEvent):
+        if ev.isAutoRepeat():
+            return
         self.active_keys.discard(ev.key())
+        if not any(k in self.active_keys for k in self.movement_keys):
+            self.key_hold_timer.stop()
 
     def current_width(self):
         """
