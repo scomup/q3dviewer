@@ -256,3 +256,4 @@ class GaussianItem(BaseItem):
             self.prev_Rz = np.array([np.inf, np.inf, np.inf])
             self.cuda_pw = None
             self.need_updateGS = True
+            self.notify_changed()

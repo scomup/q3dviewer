@@ -135,12 +135,14 @@ class FrameItem(BaseItem):
             ])
             Twc = Twc @ M_conv
         self.Twc = Twc
+        self.notify_changed()
 
     def set_data(self, img=None, transform=None, is_opencv_coord=False):
         if transform is not None:
             self.set_transform(transform, is_opencv_coord)
         self.img = img
         self.need_updating = True
+        self.notify_changed()
 
     def update_img_buffer(self):
         if self.need_updating:

@@ -76,6 +76,7 @@ class LineItem(BaseItem):
                 self.wait_add_data = np.concatenate([self.wait_add_data, data])
             self.add_buff_loc = self.valid_buff_top
         self.mutex.release()
+        self.notify_changed()
 
     def update_render_buffer(self):
         if (self.wait_add_data is None):

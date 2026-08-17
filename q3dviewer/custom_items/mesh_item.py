@@ -75,7 +75,7 @@ class MeshItem(BaseItem):
         self.alpha = 1.0
         
         # Settings flag
-        self.need_update_setting = True
+        self.notify_changed()
         self.need_update_buffer = True
         self.path = os.path.dirname(__file__)
     
@@ -169,41 +169,42 @@ class MeshItem(BaseItem):
         try:
             self.color = color
             self.flat_rgb = text_to_rgba(color, flat=True)
-            self.need_update_setting = True
+            self.notify_changed()
         except ValueError:
             pass
 
     def update_wireframe(self, value):
         self.wireframe = value
+        self.notify_changed()
         
     def update_enable_lighting(self, value):
         self.enable_lighting = value
-        self.need_update_setting = True
+        self.notify_changed()
         
     def update_line_width(self, value):
         self.line_width = value
-        self.need_update_setting = True
+        self.notify_changed()
         
     def update_ambient_strength(self, value):
         self.ambient_strength = value
-        self.need_update_setting = True
+        self.notify_changed()
         
     def update_diffuse_strength(self, value):
         self.diffuse_strength = value
-        self.need_update_setting = True
+        self.notify_changed()
         
     def update_specular_strength(self, value):
         self.specular_strength = value
-        self.need_update_setting = True
+        self.notify_changed()
         
     def update_shininess(self, value):
         self.shininess = value
-        self.need_update_setting = True
+        self.notify_changed()
 
     def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
-        self.need_update_setting = True
+        self.notify_changed()
 
     def set_data(self, data):
         """
@@ -222,6 +223,7 @@ class MeshItem(BaseItem):
             )
 
         self.set_incremental_data(data)
+        self.notify_changed()
 
 
     def set_incremental_data(self, fs):
@@ -423,7 +425,7 @@ class MeshItem(BaseItem):
         
     def update_setting(self):
         """Set fixed rendering parameters (called once during initialization)"""
-        if not self.need_update_setting:
+        if not self.is_setting_changed():
             return
         # Set fixed uniforms for instanced shaders
         set_uniform(self.program, int(self.enable_lighting), 'if_light')
@@ -436,7 +438,7 @@ class MeshItem(BaseItem):
         set_uniform(self.program, float(self.shininess), 'shininess')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.flat_rgb), 'flat_rgb')
-        self.need_update_setting = False
+        self.clear_setting_changed()
 
     def paint(self):
         """

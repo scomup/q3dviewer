@@ -14,7 +14,6 @@ class AxisItem(BaseItem):
         self.size = size
         self.width = width
         self.T = np.eye(4, dtype=np.float32)
-        self.need_update_setting = True
 
     def initialize_gl(self):
         # Axis vertices
@@ -52,16 +51,18 @@ class AxisItem(BaseItem):
 
     def set_size(self, size):
         self.size = size
+        self.notify_changed()
 
     def set_width(self, width):
         self.width = width
+        self.notify_changed()
         
     def set_transform(self, transform):
         """
         Set the transformation matrix for the axis item.
         """
         self.T = transform
-        self.need_update_setting = True
+        self.notify_changed()
 
     def paint(self):
         glLineWidth(self.width)

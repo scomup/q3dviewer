@@ -100,7 +100,7 @@ def _patch_cloud_sync(primary, secondary):
     def _on_color_mode(index, _orig=_o, _s=secondary):
         _orig(index)
         _s.color_mode = index
-        _s.need_update_setting = True
+        _s.notify_changed()
     primary._on_color_mode = _on_color_mode
 
     # --- _on_point_type_selection -----------------------------------------
@@ -108,7 +108,7 @@ def _patch_cloud_sync(primary, secondary):
     def _on_ptype(index, _orig=_o, _s=secondary):
         _orig(index)
         _s.point_type = list(CloudItem.POINT_TYPE_TABLE.keys())[index]
-        _s.need_update_setting = True
+        _s.notify_changed()
     primary._on_point_type_selection = _on_ptype
 
     # --- _on_color --------------------------------------------------------
@@ -117,7 +117,7 @@ def _patch_cloud_sync(primary, secondary):
         _orig(color)
         try:
             _s.flat_rgb = text_to_rgba(color, flat=True)
-            _s.need_update_setting = True
+            _s.notify_changed()
         except ValueError:
             pass
     primary._on_color = _on_color
@@ -128,7 +128,7 @@ def _patch_cloud_sync(primary, secondary):
         _orig(lower, upper)
         _s.vmin = lower
         _s.vmax = upper
-        _s.need_update_setting = True
+        _s.notify_changed()
     primary._on_range = _on_range
 
     # --- _on_depth_sorting (CloudSortItem only) ---------------------------
