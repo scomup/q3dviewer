@@ -175,9 +175,9 @@ class MeshItem(BaseItem):
         self.save_path_edit.textChanged.connect(self.set_save_path)
         layout.addWidget(self.save_path_edit)
 
-        save_button = QPushButton("Save Mesh")
-        save_button.clicked.connect(self.save)
-        layout.addWidget(save_button)
+        self.save_button = QPushButton("Save Mesh")
+        self.save_button.clicked.connect(self.save)
+        layout.addWidget(self.save_button)
 
         self.save_msg = QMessageBox()
         self.save_msg.setIcon(QMessageBox.Information)
@@ -227,13 +227,16 @@ class MeshItem(BaseItem):
             save_path = save_path + ".stl"
 
         try:
+            self.save_button.setEnabled(False)
             save_stl(triangle_vertices, save_path, binary=True)
             self.save_path = save_path
             self.save_path_edit.setText(save_path)
             self.save_msg.setText("Save mesh to %s" % save_path)
+            self.save_button.setEnabled(True)
         except Exception as e:
             print(e)
             self.save_msg.setText("Cannot save to %s" % save_path)
+            self.save_button.setEnabled(True)
         self.save_msg.exec()
 
     def _on_color(self, color):
