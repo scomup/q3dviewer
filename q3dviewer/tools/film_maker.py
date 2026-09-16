@@ -15,6 +15,7 @@ from q3dviewer import GLWidget
 from q3dviewer.tools.cloud_viewer import FileLoaderThread, ProgressWindow
 
 import imageio.v2 as imageio
+import json
 import os
 from q3dviewer.utils.maths import matrix_to_euler, interpolate_pose
 
@@ -56,7 +57,10 @@ class CMMViewer(q3d.Viewer):
     """
     def __init__(self, **kwargs):
         self.key_frames = []
+        self.data_file = None
         self.video_path = os.path.join(os.path.expanduser("~"), "output.mp4")
+        self.project_path = os.path.join(os.path.expanduser("~"),
+                         "film_project.json")
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
         # for drop cloud file
         self.setAcceptDrops(True)
@@ -137,7 +141,16 @@ class CMMViewer(q3d.Viewer):
         self.stop_time_spinbox.setRange(0, 100)
         self.stop_time_spinbox.valueChanged.connect(self.set_frame_stop_time)
         setting_layout.addWidget(self.stop_time_spinbox)
-        
+
+        save_load_layout = QHBoxLayout()
+        save_button = QPushButton("Save Project")
+        save_button.clicked.connect(self.save_project)
+        save_load_layout.addWidget(save_button)
+        load_button = QPushButton("Load Project")
+        load_button.clicked.connect(self.load_project)
+        save_load_layout.addWidget(load_button)
+        setting_layout.addLayout(save_load_layout)
+
         setting_layout.setAlignment(QtCore.Qt.AlignTop)
 
         # Create a dock widget for the settings
@@ -155,18 +168,69 @@ class CMMViewer(q3d.Viewer):
     def update_video_path(self, path):
         self.video_path = path
 
-    def add_key_frame(self):
-        view_matrix = self.glwidget.view_matrix
-        # Get camera pose in world frame
-        Twc = np.linalg.inv(view_matrix)
+    def _record_data_file(self, path):
+        path = os.fspath(path)
+        if path:
+            self.data_file = os.path.abspath(os.path.expanduser(path))
+
+    def _clear_loaded_data(self):
+        cloud_item = self['cloud']
+        if cloud_item is not None:
+            cloud_item.clear()
+        mesh_item = self['mesh']
+        if mesh_item is not None:
+            mesh_item.clear_mesh()
+
+    def _clear_key_frames(self):
+        for frame in self.key_frames:
+            self.glwidget.remove_item(frame.item)
+        self.key_frames.clear()
+        self.frame_list.blockSignals(True)
+        self.frame_list.clear()
+        self.frame_list.blockSignals(False)
+
+    def save_project(self):
+        project = [
+            {
+                'pose': frame.Twc.tolist(),
+                'lin_vel': frame.lin_vel,
+                'ang_vel': frame.ang_vel,
+                'stop_time': frame.stop_time,
+            }
+            for frame in self.key_frames
+        ]
+
+        with open(self.project_path, 'w', encoding='utf-8') as file:
+            json.dump(project, file, indent=2)
+
+    def load_project(self):
+        if self.is_playing or self.is_recording:
+            return
+
+        with open(self.project_path, 'r', encoding='utf-8') as file:
+            project = json.load(file)
+
+        self._clear_key_frames()
+        for frame in project:
+            self._add_key_frame_pose(
+                np.asarray(frame['pose'], dtype=np.float64),
+                frame['lin_vel'],
+                frame['ang_vel'],
+                frame['stop_time'])
+
+
+    def _add_key_frame_pose(self, Twc, lin_vel=None, ang_vel=None,
+                            stop_time=None):
         if self.key_frames:
             prev = self.key_frames[-1]
-            key_frame = KeyFrame(Twc,
-                                 lin_vel=prev.lin_vel, 
-                                 ang_vel=prev.ang_vel,
-                                 stop_time=prev.stop_time)
+            lin_vel = prev.lin_vel if lin_vel is None else lin_vel
+            ang_vel = prev.ang_vel if ang_vel is None else ang_vel
+            stop_time = prev.stop_time if stop_time is None else stop_time
         else:
-            key_frame = KeyFrame(Twc)
+            lin_vel = 10 if lin_vel is None else lin_vel
+            ang_vel = np.pi / 3 if ang_vel is None else ang_vel
+            stop_time = 0 if stop_time is None else stop_time
+        key_frame = KeyFrame(Twc, lin_vel, ang_vel, stop_time)
         self.key_frames.append(key_frame)
         # visualize this key frame using FrameItem
         self.glwidget.add_item(key_frame.item)
@@ -176,6 +240,12 @@ class CMMViewer(q3d.Viewer):
         item = QListWidgetItem(f"Frame {len(self.key_frames)}")
         self.frame_list.addItem(item)
         self.frame_list.setCurrentRow(len(self.key_frames) - 1)
+
+    def add_key_frame(self):
+        view_matrix = self.glwidget.view_matrix
+        # Get camera pose in world frame
+        Twc = np.linalg.inv(view_matrix)
+        self._add_key_frame_pose(Twc)
 
     def del_key_frame(self):
         current_index = self.frame_list.currentRow()
@@ -389,6 +459,8 @@ class CMMViewer(q3d.Viewer):
         self.progress_window = ProgressWindow(self)
         self.progress_window.show()
         files = event.mimeData().urls()
+        if files:
+            self._record_data_file(files[0].toLocalFile())
         self.progress_thread = FileLoaderThread(self, files)
         self.progress_thread.progress.connect(self.file_loading_progress)
         self.progress_thread.finished.connect(self.file_loading_finished)
@@ -405,6 +477,22 @@ class CMMViewer(q3d.Viewer):
         if cloud_item is None:
             print("Can't find clouditem.")
             return
+
+        file = os.path.abspath(os.path.expanduser(os.fspath(file)))
+        self._record_data_file(file)
+
+        mesh_item = self['mesh']
+        if file.lower().endswith('.stl'):
+            from q3dviewer.utils.cloud_io import load_stl
+            mesh_item.set_data(load_stl(file))
+            return
+
+        if file.lower().endswith('.ply'):
+            from q3dviewer.utils.cloud_io import is_ply_mesh, load_ply_mesh
+            if is_ply_mesh(file):
+                mesh_item.set_data(load_ply_mesh(file))
+                return
+
         cloud = cloud_item.load(file, append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
         self.glwidget.set_cam_position(center=center)
@@ -417,10 +505,11 @@ def main():
     app = q3d.QApplication(['Film Maker'])
     viewer = CMMViewer(name='Film Maker', update_interval=30)
     cloud_item = q3d.CloudSortItem(size=1, point_type='SPHERE', alpha=0.5)
+    mesh_item = q3d.StaticMeshItem()
     grid_item = q3d.GridItem(size=1000, spacing=20)
 
     viewer.add_items(
-        {'cloud': cloud_item, 'grid': grid_item})
+        {'cloud': cloud_item, 'mesh': mesh_item, 'grid': grid_item})
 
     if args.path:
         pcd_fn = args.path
