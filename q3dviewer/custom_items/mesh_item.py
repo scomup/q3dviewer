@@ -10,10 +10,12 @@ import numpy as np
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
 from OpenGL.GL import shaders
-from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit
+from q3dviewer.Qt.QtWidgets import QLabel, QCheckBox, QDoubleSpinBox, QSlider, QHBoxLayout, QLineEdit, QPushButton, QMessageBox
 from q3dviewer.Qt.QtCore import Qt
 import os
+from pathlib import Path
 from q3dviewer.utils import set_uniform, text_to_rgba
+from q3dviewer.utils.cloud_io import save_stl
 import time
 
 
@@ -78,6 +80,7 @@ class MeshItem(BaseItem):
         self.need_update_setting = True
         self.need_update_buffer = True
         self.path = os.path.dirname(__file__)
+        self.save_path = str(Path(os.path.expanduser("~"), "mesh.stl"))
     
         
     def add_setting(self, layout):
@@ -164,6 +167,77 @@ class MeshItem(BaseItem):
             self.shininess_slider.valueChanged.connect(lambda v: self.update_shininess(float(v)))
             shininess_layout.addWidget(self.shininess_slider)
             layout.addLayout(shininess_layout)
+
+        label_save = QLabel("Save Path:")
+        layout.addWidget(label_save)
+        self.save_path_edit = QLineEdit()
+        self.save_path_edit.setText(self.save_path)
+        self.save_path_edit.textChanged.connect(self.set_save_path)
+        layout.addWidget(self.save_path_edit)
+
+        self.save_button = QPushButton("Save Mesh")
+        self.save_button.clicked.connect(self.save)
+        layout.addWidget(self.save_button)
+
+        self.save_msg = QMessageBox()
+        self.save_msg.setIcon(QMessageBox.Information)
+        self.save_msg.setWindowTitle("save")
+        self.save_msg.setStandardButtons(QMessageBox.Ok)
+
+    def set_save_path(self, path):
+        self.save_path = path
+
+    def _collect_triangle_vertices(self):
+        """Convert internal quad faces to triangle vertices for STL export."""
+        if self.valid_f_top == 0:
+            return np.empty((0, 3), dtype=np.float32)
+
+        valid = self.faces[:self.valid_f_top]
+        good = valid[:, 12] > 0.5
+        if not np.any(good):
+            return np.empty((0, 3), dtype=np.float32)
+
+        quads = valid[good, :12].reshape(-1, 4, 3)
+        tri1 = quads[:, [0, 1, 2], :]
+        tri2 = quads[:, [0, 1, 3], :]
+        triangles = np.concatenate([tri1, tri2], axis=0)
+
+        # Skip degenerate/invalid triangles to match shader behavior
+        # and avoid invalid normal computation inside meshio.
+        edge1 = triangles[:, 1, :] - triangles[:, 0, :]
+        edge2 = triangles[:, 2, :] - triangles[:, 0, :]
+        area2 = np.linalg.norm(np.cross(edge1, edge2), axis=1)
+        finite_mask = np.isfinite(triangles).all(axis=(1, 2))
+        valid_mask = finite_mask & np.isfinite(area2) & (area2 > 1e-8)
+        if not np.any(valid_mask):
+            return np.empty((0, 3), dtype=np.float32)
+
+        triangles = triangles[valid_mask]
+        return triangles.reshape(-1, 3).astype(np.float32)
+
+    def save(self):
+        triangle_vertices = self._collect_triangle_vertices()
+        if triangle_vertices.shape[0] == 0:
+            self.save_msg.setText("No mesh data to save.")
+            self.save_msg.exec()
+            return
+
+        save_path = self.save_path
+        if not save_path.lower().endswith(".stl"):
+            save_path = save_path + ".stl"
+
+        try:
+            self.save_button.setEnabled(False)
+            save_stl(triangle_vertices, save_path, binary=True)
+            self.save_path = save_path
+            self.save_path_edit.setText(save_path)
+            self.save_msg.setText("Save mesh to %s" % save_path)
+            self.save_button.setEnabled(True)
+        except Exception as e:
+            print(e)
+            self.save_msg.setText("Cannot save to %s" % save_path)
+            self.save_button.setEnabled(True)
+        self.save_msg.exec()
 
     def _on_color(self, color):
         try:
