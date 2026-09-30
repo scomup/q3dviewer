@@ -66,9 +66,11 @@ class Text3DItem(BaseItem):
         if not append:
             self.data_list = []
         self.data_list.extend(data)
+        self.notify_changed()
 
     def clear_data(self):
         self.data_list = []
+        self.notify_changed()
 
 
     def initialize_gl(self):

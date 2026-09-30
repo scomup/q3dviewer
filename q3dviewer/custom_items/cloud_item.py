@@ -143,6 +143,7 @@ class CloudItem(BaseItem):
         self.vmin = lower
         self.vmax = upper
         self.need_update_setting = True
+        self.notify_changed()
 
     def _on_color_mode(self, index):
         self.color_mode = index
@@ -156,6 +157,7 @@ class CloudItem(BaseItem):
             self.slider_v.show()
 
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_color_mode(self, color_mode):
         if color_mode in {'FLAT', 'RGB', 'I', 'GRAY'}:
@@ -176,10 +178,12 @@ class CloudItem(BaseItem):
         # self.size = 1
         # self.box_size.setValue(self.size)
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_alpha(self, alpha):
         self.alpha = alpha
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_flat_rgb(self, color):
         try:
@@ -191,6 +195,7 @@ class CloudItem(BaseItem):
         try:
             self.flat_rgb = text_to_rgba(color, flat=True)
             self.need_update_setting = True
+            self.notify_changed()
         except ValueError:
             print(
                 f"Invalid color: {color}, please use matplotlib color format")
@@ -198,10 +203,12 @@ class CloudItem(BaseItem):
     def set_size(self, size):
         self.size = size
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_transform(self, transform):
         self.T = transform
         self.need_update_setting = True
+        self.notify_changed()
 
     def clear(self):
         data = np.empty((0), self.DATA_TYPE)
@@ -234,6 +241,7 @@ class CloudItem(BaseItem):
             else:
                 self.wait_add_data = data
                 self.add_buff_loc = 0
+        self.notify_changed()
 
     def update_setting(self):
         if (self.need_update_setting is False):

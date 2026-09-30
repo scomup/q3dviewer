@@ -7,7 +7,7 @@ from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
 from q3dviewer.Qt import QtCore, QtGui
-from q3dviewer.utils.maths import frustum, euler_to_matrix, makeT
+from q3dviewer.utils.maths import frustum, euler_to_matrix, calc_view_matrix
 from q3dviewer.Qt.QtWidgets import QOpenGLWidget
 
 
@@ -18,7 +18,6 @@ class BaseGLWidget(QOpenGLWidget):
         self.reset()
         self._fov = 60
         self.items = []
-        self.keyTimer = QtCore.QTimer()
         self.color = np.array([0, 0, 0, 1])
         self.dist = 40
         self.euler = np.array([np.pi/3, 0, np.pi/4])
@@ -26,8 +25,9 @@ class BaseGLWidget(QOpenGLWidget):
         self.active_keys = set()
         self.show_center = False
         self.enable_show_center = True
-        self.need_recalc_view = True
-        self.view_matrix = self.get_view_matrix()
+        self.need_recalc_view = True # dist, euler or center has changed
+        self.view_changed = False
+        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
         self.projection_matrix = self.get_projection_matrix()
 
         # Pre-calculate candidate offsets for depth picking, sorted by distance
@@ -109,12 +109,13 @@ class BaseGLWidget(QOpenGLWidget):
         # initialize the projection matrix and model view matrix
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
-        self.view_matrix = self.get_view_matrix()
+        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
         self.update_model_view()
 
     def set_view_matrix(self, view_matrix):
         self.view_matrix = view_matrix
         self.need_recalc_view = False
+        self.view_changed = True
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -182,12 +183,8 @@ class BaseGLWidget(QOpenGLWidget):
         self.need_recalc_view = True
 
     def paintGL(self):
-        # if the camera is moved, update the model view matrix.
-        if self.need_recalc_view:
-            self.view_matrix = self.get_view_matrix()
-            self.need_recalc_view = False
+        # Set view matrix to OpenGL.
         self.update_model_view()
-
         # set the background color
         bgcolor = self.color
         glClearColor(*bgcolor)
@@ -221,7 +218,7 @@ class BaseGLWidget(QOpenGLWidget):
             glEnd()
             self.show_center = False
 
-    def update_movement(self):
+    def update_cam_pose_by_key(self):
         """
         Update the movement of the camera based on the active keys.
         """
@@ -277,16 +274,6 @@ class BaseGLWidget(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(self.view_matrix.T)
 
-    def get_view_matrix(self):
-        two = self.center  # the origin(center) in the world frame
-        tco = np.array([0, 0, self.dist])  # the origin(center) in camera frame
-        Rwc = euler_to_matrix(self.euler)
-        twc = two + Rwc @ tco
-        Rcw = Rwc.T
-        tcw = -Rcw @ twc
-        Tcw = makeT(Rcw, tcw)
-        return Tcw
-
     def set_cam_position(self, **kwargs):
         center = kwargs.get('center', None)
         distance = kwargs.get('distance', None)
@@ -306,11 +293,20 @@ class BaseGLWidget(QOpenGLWidget):
         self.color = color
 
     def update(self):
-        self.update_movement()
-        super().update()
-        # if not self.need_recalc_view:
-        #     super().update()
-        #     self.need_recalc_view = False
+        # only update if there are changes in the view or any items
+        self.update_cam_pose_by_key()
+
+        if self.need_recalc_view:
+            self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
+            self.view_changed = True
+            self.need_recalc_view = False
+
+        have_dirty_item = any(item.is_changed() for item in self.items)
+        if have_dirty_item or self.view_changed:
+            QOpenGLWidget.update(self) # will call paintGL()
+            self.view_changed = False
+            for item in self.items:
+                item.clear_changed()
 
     def update_model_projection(self):
         glMatrixMode(GL_PROJECTION)

@@ -52,9 +52,11 @@ class AxisItem(BaseItem):
 
     def set_size(self, size):
         self.size = size
+        self.notify_changed()
 
     def set_width(self, width):
         self.width = width
+        self.notify_changed()
         
     def set_transform(self, transform):
         """
@@ -62,6 +64,7 @@ class AxisItem(BaseItem):
         """
         self.T = transform
         self.need_update_setting = True
+        self.notify_changed()
 
     def paint(self):
         glLineWidth(self.width)

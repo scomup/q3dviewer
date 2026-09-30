@@ -92,15 +92,18 @@ class GLWidget(BaseGLWidget):
             self.set_center(p)
         super().mouseDoubleClickEvent(event)
 
-    def update(self):
+    def follow_odom(self):
         if self.followed_name != 'none':
             new_center = self.named_items[self.followed_name].T[:3, 3]
             if self.old_center is None:
-                self.old_center = self.center
-                return
-            delta = new_center - self.old_center
-            self.set_center(self.center + delta)
-            self.old_center = new_center
+                self.old_center = new_center.copy()
+            else:
+                delta = new_center - self.old_center
+                self.set_center(self.center + delta)
+                self.old_center = new_center.copy()
+
+    def update(self):
+        self.follow_odom()
         super().update()
 
     def add_setting(self, layout):

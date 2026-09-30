@@ -72,6 +72,7 @@ class CloudSortItem(CloudIOItem):
         self.use_depth_sorting = (state != 0)
         # Clear cache when toggling to force re-sort
         self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
+        self.notify_changed()
 
     def __del__(self):
         try:
@@ -142,6 +143,7 @@ class CloudSortItem(CloudIOItem):
         self._force_sort_once = True
         mode = "CUDA GPU" if self.sorter.is_using_cuda() else "CPU"
         print(f"[CloudSortItem] Force sort by {mode}")
+        self.notify_changed()
 
     def _perform_depth_sort(self, view_matrix, force=False):
         """Execute depth sorting on VBO (CUDA or CPU)."""

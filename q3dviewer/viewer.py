@@ -72,6 +72,7 @@ class Viewer(QMainWindow):
         # force update by timer
         self.glwidget.update()
 
+
     def closeEvent(self, event):
         event.accept()
         QApplication.quit()

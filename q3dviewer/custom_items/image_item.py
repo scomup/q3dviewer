@@ -121,6 +121,7 @@ class ImageItem(BaseItem):
                 dtype=data.dtype) * self.alpha
             data = np.concatenate((data, alpha_channel), axis=-1)
         self.image = data
+        self.notify_changed()
 
     def paint(self):
         if self.image is not None:
@@ -171,3 +172,4 @@ class ImageItem(BaseItem):
 
     def set_alpha(self, alpha):
         self.alpha = alpha
+        self.notify_changed()

@@ -23,6 +23,7 @@ class GridItem(BaseItem):
     def set_color(self, color):
         try:
             self.rgba = text_to_rgba(color)
+            self.notify_changed()
         except ValueError:
             raise ValueError("Invalid color format. Use hex format like '#RRGGBB' or '#RRGGBBAA'.")
 
@@ -91,29 +92,35 @@ class GridItem(BaseItem):
     def set_size(self, size):
         self.size = size
         self.need_update_grid = True
+        self.notify_changed()
 
     def _on_spacing(self, spacing):
         if spacing > 0:
             self.spacing = spacing
             self.need_update_grid = True
+            self.notify_changed()
 
     def _on_offset_x(self, value):
         self.offset[0] = value
         print(self.offset)
         self.need_update_grid = True
+        self.notify_changed()
 
     def _on_offset_y(self, value):
         self.offset[1] = value
         self.need_update_grid = True
+        self.notify_changed()
 
     def _on_offset_z(self, value):
         self.offset[2] = value
         self.need_update_grid = True
+        self.notify_changed()
 
     def set_offset(self, offset):
         if isinstance(offset, np.ndarray) and offset.shape == (3,):
             self.offset = offset
             self.need_update_grid = True
+            self.notify_changed()
         else:
             raise ValueError("Offset must be a numpy array with shape (3,)")
 
