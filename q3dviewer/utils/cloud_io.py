@@ -28,6 +28,43 @@ def load_stl(file_path):
     return faces
 
 
+def is_ply_mesh(file):
+    with open(file, 'rb') as ply_file:
+        if ply_file.readline().strip() != b'ply':
+            return False
+
+        for raw_line in ply_file:
+            line = raw_line.decode('ascii', errors='ignore').strip().split()
+            if not line:
+                continue
+            if line[0] == 'end_header':
+                break
+            if len(line) >= 3 and line[0] == 'element' and line[1] in ('face', 'triangle'):
+                try:
+                    return int(line[2]) > 0
+                except ValueError:
+                    return False
+    return False
+
+
+def load_ply_mesh(file):
+    import meshio
+    mesh = meshio.read(file)
+    vertices = np.asarray(mesh.points, dtype=np.float32)
+
+    triangles = None
+    for cell_block in mesh.cells:
+        if cell_block.type == 'triangle':
+            triangles = np.asarray(cell_block.data, dtype=np.int64)
+            break
+
+    if triangles is None or triangles.size == 0:
+        raise ValueError(f'No triangle cells found in PLY file: {file}')
+
+    faces = vertices[triangles].reshape(-1, 3)
+    return faces
+
+
 def save_stl(faces, save_path, binary=True):
     import meshio
     faces = np.asarray(faces, dtype=np.float32)

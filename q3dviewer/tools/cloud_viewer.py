@@ -52,29 +52,37 @@ class FileLoaderThread(QThread):
             file_name = os.path.basename(file_path)
             self.progress.emit(i + 1, total, file_name)
 
-            if url.toLocalFile().lower().endswith(('.stl')):
+            if file_path.lower().endswith('.stl'):
                 from q3dviewer.utils.cloud_io import load_stl
                 mesh = load_stl(file_path)
                 mesh_item.set_data(mesh)
-            else:
-                cloud = cloud_item.load(file_path, append=(i > 0))
-                if cloud is None:
-                    continue
-                center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
-                self.viewer.glwidget.set_cam_position(center=center)
+                continue
 
-                # Auto-configure satellite map origin from LAS/LAZ CRS
-                try:
-                    epsg_code, bbox_min, bbox_max = read_crs_from_file(
-                        file_path)
-                    if epsg_code is not None:
-                        satellite_map_item.set_crs(
-                            epsg_code, (bbox_min + bbox_max) / 2)
-                        print(
-                            f"[CloudViewer] Satellite map configured from {file_name} (EPSG:{epsg_code})")
-                except Exception as e:
+            if file_path.lower().endswith('.ply'):
+                from q3dviewer.utils.cloud_io import is_ply_mesh, load_ply_mesh
+                if is_ply_mesh(file_path):
+                    mesh = load_ply_mesh(file_path)
+                    mesh_item.set_data(mesh)
+                    continue
+
+            cloud = cloud_item.load(file_path, append=(i > 0))
+            if cloud is None:
+                continue
+            center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+            self.viewer.glwidget.set_cam_position(center=center)
+
+            # Auto-configure satellite map origin from LAS/LAZ CRS
+            try:
+                epsg_code, bbox_min, bbox_max = read_crs_from_file(
+                    file_path)
+                if epsg_code is not None:
+                    satellite_map_item.set_crs(
+                        epsg_code, (bbox_min + bbox_max) / 2)
                     print(
-                        f"[CloudViewer] Could not configure satellite map: {e}")
+                        f"[CloudViewer] Satellite map configured from {file_name} (EPSG:{epsg_code})")
+            except Exception as e:
+                print(
+                    f"[CloudViewer] Could not configure satellite map: {e}")
         self.finished.emit()
 
 
@@ -191,7 +199,7 @@ def print_help():
     # File loading section
     table.add_row("📁 Load Files", "Drag and drop files into the viewer")
     table.add_row("", "[dim]• Point clouds: .pcd, .ply, .las, .e57[/dim]")
-    table.add_row("", "[dim]• Mesh files: .stl[/dim]")
+    table.add_row("", "[dim]• Mesh files: .stl, triangle .ply[/dim]")
     table.add_row("", "")
 
     # Measurement section
@@ -235,8 +243,7 @@ def main():
     parser.add_argument("--path", help="the cloud file path")
     args = parser.parse_args()
     app = q3d.QApplication(['Cloud Viewer'])
-    # set update_interval to 0 to disable automatic updates
-    viewer = CloudViewer(name='Cloud Viewer', update_interval=0)
+    viewer = CloudViewer(name='Cloud Viewer')
     cloud_item = q3d.CloudSortItem(size=1, alpha=0.1)
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()

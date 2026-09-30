@@ -4,10 +4,15 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from q3dviewer.Qt import QtCore
-from q3dviewer.Qt.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
+from q3dviewer.Qt.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox, QPushButton
 from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils import text_to_rgba
+import json
+from pathlib import Path
+
+
+CAMERA_POSE_PATH = Path.home() / ".config" / "q3dviewer" / "camera_pose.json"
 
 
 class SettingWindow(QWidget):
@@ -48,7 +53,7 @@ class SettingWindow(QWidget):
 
 
 class GLWidget(BaseGLWidget):
-    def __init__(self, auto_update=False):
+    def __init__(self):
         self.followed_name = 'none'
         self.named_items = {}
         self.color_str = 'black'
@@ -56,7 +61,7 @@ class GLWidget(BaseGLWidget):
         self.setting_window = SettingWindow()
         self.enable_show_center = True
         self.old_center = None
-        super(GLWidget, self).__init__(auto_update=auto_update)
+        super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.key() == QtCore.Qt.Key_M:  # setting menu
@@ -87,15 +92,18 @@ class GLWidget(BaseGLWidget):
             self.set_center(p)
         super().mouseDoubleClickEvent(event)
 
-    def update(self):
+    def follow_odom(self):
         if self.followed_name != 'none':
             new_center = self.named_items[self.followed_name].T[:3, 3]
             if self.old_center is None:
-                self.old_center = self.center
-                return
-            delta = new_center - self.old_center
-            self.set_center(self.center + delta)
-            self.old_center = new_center
+                self.old_center = new_center.copy()
+            else:
+                delta = new_center - self.old_center
+                self.set_center(self.center + delta)
+                self.old_center = new_center.copy()
+
+    def update(self):
+        self.follow_odom()
         super().update()
 
     def add_setting(self, layout):
@@ -123,6 +131,14 @@ class GLWidget(BaseGLWidget):
         checkbox_show_center.setChecked(self.enable_show_center)
         checkbox_show_center.stateChanged.connect(self.change_show_center)
         layout.addWidget(checkbox_show_center)
+
+        save_camera_pose = QPushButton("Save Camera Pose")
+        save_camera_pose.clicked.connect(self.save_camera_pose)
+        layout.addWidget(save_camera_pose)
+
+        load_camera_pose = QPushButton("Load Camera Pose")
+        load_camera_pose.clicked.connect(self.load_camera_pose)
+        layout.addWidget(load_camera_pose)
 
     def initial_followable(self):
         self.followable_item_name = ['none']
@@ -153,6 +169,15 @@ class GLWidget(BaseGLWidget):
 
     def change_show_center(self, state):
         self.enable_show_center = state
+
+    def save_camera_pose(self):
+        CAMERA_POSE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with CAMERA_POSE_PATH.open('w', encoding='utf-8') as file:
+            json.dump(self.get_camera_pose(), file, indent=2)
+
+    def load_camera_pose(self):
+        with CAMERA_POSE_PATH.open('r', encoding='utf-8') as file:
+            self.set_camera_pose(json.load(file))
 
     def get_camera_pose(self):
         """Get current camera pose parameters"""

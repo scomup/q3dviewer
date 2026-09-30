@@ -172,3 +172,4 @@ class ImageItem(BaseItem):
 
     def set_alpha(self, alpha):
         self.alpha = alpha
+        self.notify_changed()

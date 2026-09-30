@@ -70,7 +70,7 @@ class CloudItem(BaseItem):
         self.vmin = 0
         self.vmax = 255
         self.wait_add_data = None
-        self.notify_changed()
+        self.need_update_setting = True
         # Default 10M points (160 MB). Set item.max_cloud_size before adding
         # to viewer to override. Pre-allocated once at initialize_gl time.
         self.max_cloud_size = 10000000
@@ -142,6 +142,7 @@ class CloudItem(BaseItem):
     def _on_range(self, lower, upper):
         self.vmin = lower
         self.vmax = upper
+        self.need_update_setting = True
         self.notify_changed()
 
     def _on_color_mode(self, index):
@@ -154,6 +155,8 @@ class CloudItem(BaseItem):
             self.slider_v.show()
         elif (index == self.MODE_TABLE['GRAY']):  # grayscale
             self.slider_v.show()
+
+        self.need_update_setting = True
         self.notify_changed()
 
     def set_color_mode(self, color_mode):
@@ -162,7 +165,7 @@ class CloudItem(BaseItem):
                 self.combo_color.setCurrentIndex(self.MODE_TABLE[color_mode])
             except:
                 self.color_mode = self.MODE_TABLE[color_mode]
-                self.notify_changed()
+                self.need_update_setting = True
         else:
             print(f"Invalid color mode: {color_mode}")
 
@@ -174,10 +177,12 @@ class CloudItem(BaseItem):
             self.box_size.setPrefix("Set size (cm): ")
         # self.size = 1
         # self.box_size.setValue(self.size)
+        self.need_update_setting = True
         self.notify_changed()
 
     def set_alpha(self, alpha):
         self.alpha = alpha
+        self.need_update_setting = True
         self.notify_changed()
 
     def set_flat_rgb(self, color):
@@ -189,6 +194,7 @@ class CloudItem(BaseItem):
     def _on_color(self, color):
         try:
             self.flat_rgb = text_to_rgba(color, flat=True)
+            self.need_update_setting = True
             self.notify_changed()
         except ValueError:
             print(
@@ -196,10 +202,12 @@ class CloudItem(BaseItem):
 
     def set_size(self, size):
         self.size = size
+        self.need_update_setting = True
         self.notify_changed()
 
     def set_transform(self, transform):
         self.T = transform
+        self.need_update_setting = True
         self.notify_changed()
 
     def clear(self):
@@ -236,7 +244,7 @@ class CloudItem(BaseItem):
         self.notify_changed()
 
     def update_setting(self):
-        if not self.is_setting_changed():
+        if (self.need_update_setting is False):
             return
         glUseProgram(self.program)
         set_uniform(self.program, int(self.flat_rgb), 'flat_rgb')
@@ -249,7 +257,7 @@ class CloudItem(BaseItem):
             self.POINT_TYPE_TABLE[self.point_type]), 'point_type')
         set_uniform(self.program, self.T, 'model_matrix')
         glUseProgram(0)
-        self.clear_setting_changed()
+        self.need_update_setting = False
 
     def update_render_buffer(self):
         if self.wait_add_data is None:

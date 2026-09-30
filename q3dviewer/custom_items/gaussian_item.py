@@ -48,6 +48,7 @@ class GaussianItem(BaseItem):
         glUseProgram(self.program)
         set_uniform(self.program, index, 'render_mod')
         glUseProgram(0)
+        self.notify_changed()
 
     def initialize_gl(self):
         fragment_shader = open(

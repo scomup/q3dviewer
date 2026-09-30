@@ -166,11 +166,13 @@ class FrameItem(BaseItem):
     def set_color(self, color):
         try:
             self.rgba = text_to_rgba(color)
+            self.notify_changed()
         except ValueError:
             raise ValueError("Invalid color format")
 
     def set_line_width(self, width):
         self.width = width
+        self.notify_changed()
 
     def paint(self):
         self.view_matrix = self.glwidget().view_matrix

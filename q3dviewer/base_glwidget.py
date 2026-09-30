@@ -7,14 +7,13 @@ from OpenGL.GL import *
 from math import radians, tan
 import numpy as np
 from q3dviewer.Qt import QtCore, QtGui
-from q3dviewer.utils.maths import frustum, euler_to_matrix, makeT
+from q3dviewer.utils.maths import frustum, euler_to_matrix, calc_view_matrix
 from q3dviewer.Qt.QtWidgets import QOpenGLWidget
 
 
 class BaseGLWidget(QOpenGLWidget):
-    def __init__(self, parent=None, auto_update=False):
+    def __init__(self, parent=None):
         QOpenGLWidget.__init__(self, parent)
-        self.auto_update = auto_update
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
         self.reset()
         self._fov = 60
@@ -26,24 +25,11 @@ class BaseGLWidget(QOpenGLWidget):
         self.active_keys = set()
         self.show_center = False
         self.enable_show_center = True
-        self.need_recalc_view = True
-        self.view_matrix = self.get_view_matrix()
+        self.need_recalc_view = True # dist, euler or center has changed
+        self.view_changed = False
+        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
         self.projection_matrix = self.get_projection_matrix()
-        self.key_hold_timer = QtCore.QTimer(self)
-        self.key_hold_timer.setInterval(16)
-        self.key_hold_timer.timeout.connect(self.update_movement)
-        self.movement_keys = {
-            QtCore.Qt.Key_Up,
-            QtCore.Qt.Key_Down,
-            QtCore.Qt.Key_Left,
-            QtCore.Qt.Key_Right,
-            QtCore.Qt.Key_Z,
-            QtCore.Qt.Key_X,
-            QtCore.Qt.Key_A,
-            QtCore.Qt.Key_D,
-            QtCore.Qt.Key_W,
-            QtCore.Qt.Key_S,
-        }
+
         # Pre-calculate candidate offsets for depth picking, sorted by distance
         radius = 3
         offset = []
@@ -57,18 +43,21 @@ class BaseGLWidget(QOpenGLWidget):
         self.offset = np.array(self.offset)
 
     def keyPressEvent(self, ev: QtGui.QKeyEvent):
-        key = ev.key()
-        if key in self.movement_keys:
+        if ev.key() == QtCore.Qt.Key_Up or  \
+                ev.key() == QtCore.Qt.Key_Down or \
+                ev.key() == QtCore.Qt.Key_Left or \
+                ev.key() == QtCore.Qt.Key_Right or \
+                ev.key() == QtCore.Qt.Key_Z or \
+                ev.key() == QtCore.Qt.Key_X or \
+                ev.key() == QtCore.Qt.Key_A or \
+                ev.key() == QtCore.Qt.Key_D or \
+                ev.key() == QtCore.Qt.Key_W or \
+                ev.key() == QtCore.Qt.Key_S:
             self.active_keys.add(ev.key())
-            if self.auto_update and not self.key_hold_timer.isActive():
-                self.key_hold_timer.start()
+        self.active_keys.add(ev.key())
 
     def keyReleaseEvent(self, ev: QtGui.QKeyEvent):
-        if ev.isAutoRepeat():
-            return
         self.active_keys.discard(ev.key())
-        if not any(k in self.active_keys for k in self.movement_keys):
-            self.key_hold_timer.stop()
 
     def current_width(self):
         """
@@ -120,17 +109,13 @@ class BaseGLWidget(QOpenGLWidget):
         # initialize the projection matrix and model view matrix
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
-        self.view_matrix = self.get_view_matrix()
+        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
         self.update_model_view()
 
     def set_view_matrix(self, view_matrix):
         self.view_matrix = view_matrix
         self.need_recalc_view = False
-
-    def mark_view_dirty(self):
-        self.need_recalc_view = True
-        if self.auto_update:
-            super().update()
+        self.view_changed = True
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -138,19 +123,20 @@ class BaseGLWidget(QOpenGLWidget):
 
     def set_dist(self, dist):
         self.dist = dist
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def update_dist(self, delta):
         self.dist += delta
         if self.dist < 0.1:
             self.dist = 0.1
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def wheelEvent(self, ev):
         delta = ev.angleDelta().x()
         if delta == 0:
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
+        self.need_recalc_view = True
         self.show_center = True
 
     def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
@@ -168,7 +154,7 @@ class BaseGLWidget(QOpenGLWidget):
         Rwc_new = euler_to_matrix(new_euler)
         self.center = twc - Rwc_new @ tco
         self.euler = new_euler
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def mouseMoveEvent(self, ev):
         lpos = ev.localPos()
@@ -194,15 +180,11 @@ class BaseGLWidget(QOpenGLWidget):
 
     def set_center(self, center):
         self.center = center
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def paintGL(self):
-        # if the camera is moved, update the model view matrix.
-        if self.need_recalc_view:
-            self.view_matrix = self.get_view_matrix()
-            self.need_recalc_view = False
+        # Set view matrix to OpenGL.
         self.update_model_view()
-
         # set the background color
         bgcolor = self.color
         glClearColor(*bgcolor)
@@ -236,7 +218,7 @@ class BaseGLWidget(QOpenGLWidget):
             glEnd()
             self.show_center = False
 
-    def update_movement(self):
+    def update_cam_pose_by_key(self):
         """
         Update the movement of the camera based on the active keys.
         """
@@ -292,16 +274,6 @@ class BaseGLWidget(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadMatrixf(self.view_matrix.T)
 
-    def get_view_matrix(self):
-        two = self.center  # the origin(center) in the world frame
-        tco = np.array([0, 0, self.dist])  # the origin(center) in camera frame
-        Rwc = euler_to_matrix(self.euler)
-        twc = two + Rwc @ tco
-        Rcw = Rwc.T
-        tcw = -Rcw @ twc
-        Tcw = makeT(Rcw, tcw)
-        return Tcw
-
     def set_cam_position(self, **kwargs):
         center = kwargs.get('center', None)
         distance = kwargs.get('distance', None)
@@ -315,14 +287,26 @@ class BaseGLWidget(QOpenGLWidget):
 
     def set_euler(self, euler):
         self.euler = euler
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def set_color(self, color):
         self.color = color
 
     def update(self):
-        self.update_movement()
-        super().update()
+        # only update if there are changes in the view or any items
+        self.update_cam_pose_by_key()
+
+        if self.need_recalc_view:
+            self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
+            self.view_changed = True
+            self.need_recalc_view = False
+
+        have_dirty_item = any(item.is_changed() for item in self.items)
+        if have_dirty_item or self.view_changed:
+            QOpenGLWidget.update(self) # will call paintGL()
+            self.view_changed = False
+            for item in self.items:
+                item.clear_changed()
 
     def update_model_projection(self):
         glMatrixMode(GL_PROJECTION)
@@ -359,20 +343,20 @@ class BaseGLWidget(QOpenGLWidget):
         self.euler[2] = (self.euler[2] + np.pi) % (2 * np.pi) - np.pi
         self.euler[1] = (self.euler[1] + np.pi) % (2 * np.pi) - np.pi
         self.euler[0] = np.clip(self.euler[0], 0, np.pi)
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def translate(self, trans):
         self.center += trans
-        self.mark_view_dirty()
+        self.need_recalc_view = True
 
     def change_show_center(self, state):
         self.enable_show_center = state
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self.need_recalc_view = True
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
-        self.mark_view_dirty()
 
     def capture_frame(self):
         self.makeCurrent()  # Ensure the OpenGL context is current

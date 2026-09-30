@@ -53,7 +53,7 @@ class StaticMeshItem(BaseItem):
         self.alpha = 1.0
         
         # Settings flag
-        self.notify_changed()
+        self.need_update_setting = True
         self.need_update_buffer = True
         self.path = os.path.dirname(__file__)
     
@@ -147,42 +147,41 @@ class StaticMeshItem(BaseItem):
         try:
             self.color = color
             self.flat_rgb = text_to_rgba(color, flat=True)
-            self.notify_changed()
+            self.need_update_setting = True
         except ValueError:
             pass
 
     def update_wireframe(self, value):
         self.wireframe = value
-        self.notify_changed()
         
     def update_enable_lighting(self, value):
         self.enable_lighting = value
-        self.notify_changed()
+        self.need_update_setting = True
         
     def update_line_width(self, value):
         self.line_width = value
-        self.notify_changed()
+        self.need_update_setting = True
         
     def update_ambient_strength(self, value):
         self.ambient_strength = value
-        self.notify_changed()
+        self.need_update_setting = True
         
     def update_diffuse_strength(self, value):
         self.diffuse_strength = value
-        self.notify_changed()
+        self.need_update_setting = True
         
     def update_specular_strength(self, value):
         self.specular_strength = value
-        self.notify_changed()
+        self.need_update_setting = True
         
     def update_shininess(self, value):
         self.shininess = value
-        self.notify_changed()
+        self.need_update_setting = True
 
     def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
-        self.notify_changed()
+        self.need_update_setting = True
 
     def update_alpha(self, value):
         self.set_alpha(value)
@@ -210,7 +209,6 @@ class StaticMeshItem(BaseItem):
         self.vertices = data.astype(np.float32)
         self.num_triangles = len(self.vertices)
         self.need_update_buffer = True
-        self.notify_changed()
 
     def clear_mesh(self):
         """Clear all mesh data"""
@@ -285,7 +283,7 @@ class StaticMeshItem(BaseItem):
         
     def update_setting(self):
         """Set rendering parameters"""
-        if not self.is_setting_changed():
+        if not self.need_update_setting:
             return
         
         set_uniform(self.program, int(self.enable_lighting), 'if_light')
@@ -297,7 +295,7 @@ class StaticMeshItem(BaseItem):
         set_uniform(self.program, float(self.shininess), 'shininess')
         set_uniform(self.program, float(self.alpha), 'alpha')
         set_uniform(self.program, int(self.flat_rgb), 'flat_rgb')
-        self.clear_setting_changed()
+        self.need_update_setting = False
 
     def paint(self):
         """

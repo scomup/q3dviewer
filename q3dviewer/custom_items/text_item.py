@@ -62,6 +62,7 @@ class Text2DItem(BaseItem):
     def set_color(self, color):
         try:
             self.rgb = text_to_rgba(color)
+            self.notify_changed()
         except ValueError:
             print("Invalid color format. Use mathplotlib color format.")
 

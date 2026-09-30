@@ -189,6 +189,16 @@ def matrix_to_euler(R):
     return np.array([roll, pitch, yaw])
 
 
+def calc_view_matrix(self, dist, euler):
+    two = self.center  # the origin(center) in the world frame
+    tco = np.array([0, 0, dist])  # the origin(center) in camera frame
+    Rwc = euler_to_matrix(euler)
+    twc = two + Rwc @ tco
+    Rcw = Rwc.T
+    tcw = -Rcw @ twc
+    Tcw = makeT(Rcw, tcw)
+    return Tcw
+
 def matrix_to_quaternion(matrix):
     trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2]
     if trace > 0:

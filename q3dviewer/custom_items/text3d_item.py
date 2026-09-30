@@ -70,6 +70,7 @@ class Text3DItem(BaseItem):
 
     def clear_data(self):
         self.data_list = []
+        self.notify_changed()
 
 
     def initialize_gl(self):

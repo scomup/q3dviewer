@@ -16,7 +16,7 @@ class BaseItem(QObject):
         self._visible = True
         self._initialized = False
         self._disable_setting = False
-        self._is_setting_changed = True
+        self._is_changed = True
         
     def set_glwidget(self, v):
         self._glwidget = v
@@ -73,16 +73,13 @@ class BaseItem(QObject):
         self._disable_setting = True
 
     def notify_changed(self):
-        self._is_setting_changed = True
-        glwidget = self.glwidget()
-        if glwidget is not None and glwidget.auto_update:
-            glwidget.mark_view_dirty()
+        self._is_changed = True
 
-    def is_setting_changed(self):
-        return self._is_setting_changed
+    def is_changed(self):
+        return self._is_changed
 
-    def clear_setting_changed(self):
-        self._is_setting_changed = False
+    def clear_changed(self):
+        self._is_changed = False
 
 
 

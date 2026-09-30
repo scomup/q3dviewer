@@ -54,6 +54,7 @@ class LineItem(BaseItem):
         try:
             self.rgb = text_to_rgba(color)
             self.color = color
+            self.notify_changed()
         except ValueError:
             print("Invalid color format. Use mathplotlib color format.")
 
@@ -62,6 +63,7 @@ class LineItem(BaseItem):
 
     def set_width(self, width):
         self.width = width
+        self.notify_changed()
 
     def set_data(self, data, append=False):
         self.mutex.acquire()
