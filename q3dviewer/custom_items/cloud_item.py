@@ -166,6 +166,7 @@ class CloudItem(BaseItem):
             except:
                 self.color_mode = self.MODE_TABLE[color_mode]
                 self.need_update_setting = True
+                self.notify_changed()
         else:
             print(f"Invalid color mode: {color_mode}")
 

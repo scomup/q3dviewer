@@ -189,11 +189,10 @@ def matrix_to_euler(R):
     return np.array([roll, pitch, yaw])
 
 
-def calc_view_matrix(self, dist, euler):
-    two = self.center  # the origin(center) in the world frame
+def calc_view_matrix(center, dist, euler):
     tco = np.array([0, 0, dist])  # the origin(center) in camera frame
     Rwc = euler_to_matrix(euler)
-    twc = two + Rwc @ tco
+    twc = center + Rwc @ tco
     Rcw = Rwc.T
     tcw = -Rcw @ twc
     Tcw = makeT(Rcw, tcw)

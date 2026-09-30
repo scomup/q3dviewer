@@ -27,7 +27,7 @@ class BaseGLWidget(QOpenGLWidget):
         self.enable_show_center = True
         self.need_recalc_view = True # dist, euler or center has changed
         self.view_changed = False
-        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
+        self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
         self.projection_matrix = self.get_projection_matrix()
 
         # Pre-calculate candidate offsets for depth picking, sorted by distance
@@ -109,7 +109,7 @@ class BaseGLWidget(QOpenGLWidget):
         # initialize the projection matrix and model view matrix
         self.projection_matrix = self.get_projection_matrix()
         self.update_model_projection()
-        self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
+        self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
         self.update_model_view()
 
     def set_view_matrix(self, view_matrix):
@@ -297,7 +297,7 @@ class BaseGLWidget(QOpenGLWidget):
         self.update_cam_pose_by_key()
 
         if self.need_recalc_view:
-            self.view_matrix = calc_view_matrix(self, self.dist, self.euler)
+            self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
             self.view_changed = True
             self.need_recalc_view = False
 
