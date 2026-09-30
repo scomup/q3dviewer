@@ -74,6 +74,11 @@ class CloudSortItem(CloudIOItem):
         self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
         self.notify_changed()
 
+    def set_depth_sorting(self, enabled):
+        self.use_depth_sorting = bool(enabled)
+        self.last_depth_coeffs = np.array([np.inf, np.inf, np.inf])
+        self.notify_changed()
+
     def __del__(self):
         try:
             self.sorter.unregister()

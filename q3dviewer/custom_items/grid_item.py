@@ -96,9 +96,14 @@ class GridItem(BaseItem):
 
     def _on_spacing(self, spacing):
         if spacing > 0:
-            self.spacing = spacing
-            self.need_update_grid = True
-            self.notify_changed()
+            self.set_spacing(spacing)
+
+    def set_spacing(self, spacing):
+        if spacing <= 0:
+            raise ValueError("Spacing must be greater than zero")
+        self.spacing = spacing
+        self.need_update_grid = True
+        self.notify_changed()
 
     def _on_offset_x(self, value):
         self.offset[0] = value

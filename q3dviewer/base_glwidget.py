@@ -26,7 +26,7 @@ class BaseGLWidget(QOpenGLWidget):
         self.show_center = False
         self.enable_show_center = True
         self.need_recalc_view = True # dist, euler or center has changed
-        self.view_changed = False
+        self.need_force_update = False
         self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
         self.projection_matrix = self.get_projection_matrix()
 
@@ -115,7 +115,7 @@ class BaseGLWidget(QOpenGLWidget):
     def set_view_matrix(self, view_matrix):
         self.view_matrix = view_matrix
         self.need_recalc_view = False
-        self.view_changed = True
+        self.need_force_update = True
 
     def mouseReleaseEvent(self, ev):
         if hasattr(self, 'mousePos'):
@@ -298,13 +298,13 @@ class BaseGLWidget(QOpenGLWidget):
 
         if self.need_recalc_view:
             self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
-            self.view_changed = True
+            self.need_force_update = True
             self.need_recalc_view = False
 
         have_dirty_item = any(item.is_changed() for item in self.items)
-        if have_dirty_item or self.view_changed:
+        if have_dirty_item or self.need_force_update:
             QOpenGLWidget.update(self) # will call paintGL()
-            self.view_changed = False
+            self.need_force_update = False
             for item in self.items:
                 item.clear_changed()
 

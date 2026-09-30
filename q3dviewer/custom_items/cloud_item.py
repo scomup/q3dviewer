@@ -170,6 +170,13 @@ class CloudItem(BaseItem):
         else:
             print(f"Invalid color mode: {color_mode}")
 
+    def set_color_mode_index(self, index):
+        if index not in self.MODE_TABLE.values():
+            raise ValueError(f"Invalid color mode index: {index}")
+        self.color_mode = int(index)
+        self.need_update_setting = True
+        self.notify_changed()
+
     def _on_point_type_selection(self, index):
         self.point_type = list(self.POINT_TYPE_TABLE.keys())[index]
         if self.point_type == 'PIXEL':
@@ -178,6 +185,13 @@ class CloudItem(BaseItem):
             self.box_size.setPrefix("Set size (cm): ")
         # self.size = 1
         # self.box_size.setValue(self.size)
+        self.need_update_setting = True
+        self.notify_changed()
+
+    def set_point_type(self, point_type):
+        if point_type not in self.POINT_TYPE_TABLE:
+            raise ValueError(f"Invalid point type: {point_type}")
+        self.point_type = point_type
         self.need_update_setting = True
         self.notify_changed()
 
@@ -192,6 +206,11 @@ class CloudItem(BaseItem):
         except ValueError:
             pass
 
+    def set_flat_rgb_value(self, flat_rgb):
+        self.flat_rgb = int(flat_rgb)
+        self.need_update_setting = True
+        self.notify_changed()
+
     def _on_color(self, color):
         try:
             self.flat_rgb = text_to_rgba(color, flat=True)
@@ -203,6 +222,12 @@ class CloudItem(BaseItem):
 
     def set_size(self, size):
         self.size = size
+        self.need_update_setting = True
+        self.notify_changed()
+
+    def set_value_range(self, vmin, vmax):
+        self.vmin = vmin
+        self.vmax = vmax
         self.need_update_setting = True
         self.notify_changed()
 

@@ -151,6 +151,8 @@ class GLWidget(BaseGLWidget):
             self.color_str = color
             red, green, blue, alpha = text_to_rgba(color)
             self.set_color([red, green, blue, alpha])
+            self.need_force_update = True
+            print(f"Background color set to {color}")
         except ValueError:
             print("Invalid color format. Use mathplotlib color format.")
 
