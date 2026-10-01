@@ -11,7 +11,7 @@ layout(triangle_strip, max_vertices = 6) out;
 // Input from vertex shader
 in VS_OUT {
     vec3 v0, v1, v2, v3;
-    float good;
+    uint good;
 } gs_in[];
 
 // Uniforms
@@ -44,7 +44,7 @@ void emitVertex(vec3 pos, vec3 normal, vec3 color) {
 void main()
 {
     // Discard if face is not good
-    if (gs_in[0].good != 1.0) {
+    if (gs_in[0].good != 1u) {
         return;
     }
     

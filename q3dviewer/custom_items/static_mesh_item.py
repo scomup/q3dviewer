@@ -148,40 +148,49 @@ class StaticMeshItem(BaseItem):
             self.color = color
             self.flat_rgb = text_to_rgba(color, flat=True)
             self.need_update_setting = True
+            self.notify_changed()
         except ValueError:
             pass
 
     def update_wireframe(self, value):
         self.wireframe = value
+        self.notify_changed()
         
     def update_enable_lighting(self, value):
         self.enable_lighting = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_line_width(self, value):
         self.line_width = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_ambient_strength(self, value):
         self.ambient_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_diffuse_strength(self, value):
         self.diffuse_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_specular_strength(self, value):
         self.specular_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_shininess(self, value):
         self.shininess = value
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
         self.need_update_setting = True
+        self.notify_changed()
 
     def update_alpha(self, value):
         self.set_alpha(value)
@@ -209,12 +218,14 @@ class StaticMeshItem(BaseItem):
         self.vertices = data.astype(np.float32)
         self.num_triangles = len(self.vertices)
         self.need_update_buffer = True
+        self.notify_changed()
 
     def clear_mesh(self):
         """Clear all mesh data"""
         self.vertices = None
         self.num_triangles = 0
         self.need_update_buffer = True
+        self.notify_changed()
 
     def initialize_gl(self):
         """OpenGL initialization - load triangle shader"""

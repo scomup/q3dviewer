@@ -200,6 +200,7 @@ class SatelliteMapItem(BaseItem):
 
         self._origin_alt = float(alt)
         self.request_download()
+        self.notify_changed()
 
 
     def _setup_crs(self, crs):
@@ -347,7 +348,7 @@ class SatelliteMapItem(BaseItem):
         self._alpha_slider.setRange(0, 100)
         self._alpha_slider.setValue(int(self._alpha * 100))
         self._alpha_slider.valueChanged.connect(
-            lambda v: setattr(self, '_alpha', v / 100.0))
+            lambda v: (setattr(self, '_alpha', v / 100.0), self.notify_changed()))
         h3.addWidget(self._alpha_slider)
         layout.addLayout(h3)
 
@@ -359,7 +360,7 @@ class SatelliteMapItem(BaseItem):
         self._height_spin.setDecimals(1)
         self._height_spin.setValue(self._height)
         self._height_spin.valueChanged.connect(
-            lambda v: setattr(self, '_height', v))
+            lambda v: (setattr(self, '_height', v), self.notify_changed()))
         layout.addWidget(self._height_spin)
         
         # Copyright notice for OpenStreetMap
@@ -510,6 +511,7 @@ class SatelliteMapItem(BaseItem):
                 if img is not None and self._build_epoch == epoch:
                     with self._lock:
                         self._pending_img[key] = img
+                    self.notify_changed()
 
         t = threading.Thread(target=_worker, daemon=True)
         t.start()

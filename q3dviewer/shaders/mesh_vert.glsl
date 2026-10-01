@@ -10,7 +10,7 @@ layout(location = 1) in vec3 v0;
 layout(location = 2) in vec3 v1;
 layout(location = 3) in vec3 v2;
 layout(location = 4) in vec3 v3;
-layout(location = 5) in float good;
+layout(location = 5) in uint good;
 
 // Uniforms
 uniform mat4 view;
@@ -19,7 +19,7 @@ uniform mat4 projection;
 // Outputs to fragment shader (via geometry shader)
 out VS_OUT {
     vec3 v0, v1, v2, v3;
-    float good;
+    uint good;
 } vs_out;
 
 void main()

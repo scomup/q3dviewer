@@ -22,7 +22,7 @@ import time
 class MeshItem(BaseItem):
     """
     A dynamic OpenGL mesh item for rendering 3D triangular meshes.
-    This item only supports keyed incremental updates (QUAD_DTYPE).
+    This item only supports keyed incremental updates (KEY_FACE_DTYPE).
     Attributes:
         color (str or tuple): Accepts any valid matplotlib color (e.g., 'red', '#FF4500', (1.0, 0.5, 0.0)).
         wireframe (bool): If True, renders the mesh in wireframe mode.
@@ -30,10 +30,14 @@ class MeshItem(BaseItem):
     # Class-level constants
     FACE_CAPACITY = 1000000    # Initial capacity for faces
     BIG_INT = 2**31 - 1         # Sentinel value for dirty region tracking
-    QUAD_DTYPE = np.dtype([
+    KEY_FACE_DTYPE = np.dtype([
         ('key', np.int64),
         ('vertices', np.float32, (12,)),
-        ('good', np.uint8)
+        ('good', np.uint32)
+    ])
+    FACE_DTYPE = np.dtype([
+        ('vertices', np.float32, (12,)),
+        ('good', np.uint32)
     ])
     
     def __init__(self, color='lightblue', wireframe=False):
@@ -42,9 +46,9 @@ class MeshItem(BaseItem):
         self.color = color
         self.flat_rgb = text_to_rgba(color, flat=True)
         
-        # Faces buffer: N x 13 numpy array
-        # Each row: [v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, good]
-        self.faces = np.zeros((self.FACE_CAPACITY, 13), dtype=np.float32)
+        # Faces buffer: structured array of FACE_DTYPE
+        # Each face: vertices (12*float32, 48B) + good (uint32, 4B) = 52 bytes
+        self.faces = np.zeros(self.FACE_CAPACITY, dtype=self.FACE_DTYPE)
         
         # valid_f_top: pointer to end of valid faces
         self.valid_f_top = 0
@@ -193,11 +197,11 @@ class MeshItem(BaseItem):
             return np.empty((0, 3), dtype=np.float32)
 
         valid = self.faces[:self.valid_f_top]
-        good = valid[:, 12] > 0.5
+        good = valid['good'] > 0
         if not np.any(good):
             return np.empty((0, 3), dtype=np.float32)
 
-        quads = valid[good, :12].reshape(-1, 4, 3)
+        quads = valid['vertices'][good].reshape(-1, 4, 3)
         tri1 = quads[:, [0, 1, 2], :]
         tri2 = quads[:, [0, 1, 3], :]
         triangles = np.concatenate([tri1, tri2], axis=0)
@@ -244,94 +248,93 @@ class MeshItem(BaseItem):
             self.color = color
             self.flat_rgb = text_to_rgba(color, flat=True)
             self.need_update_setting = True
+            self.notify_changed()
         except ValueError:
             pass
 
     def update_wireframe(self, value):
         self.wireframe = value
+        self.notify_changed()
         
     def update_enable_lighting(self, value):
         self.enable_lighting = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_line_width(self, value):
         self.line_width = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_ambient_strength(self, value):
         self.ambient_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_diffuse_strength(self, value):
         self.diffuse_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_specular_strength(self, value):
         self.specular_strength = value
         self.need_update_setting = True
+        self.notify_changed()
         
     def update_shininess(self, value):
         self.shininess = value
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_alpha(self, value):
         """Update mesh alpha (opacity)"""
         self.alpha = float(value)
         self.need_update_setting = True
+        self.notify_changed()
 
     def set_data(self, data):
-        """
-        Set dynamic mesh data.
-
-        Args:
-            data: Structured numpy array with fields:
-                  [('key', int64), ('vertices', float32, (12,)), ('good', uint8)]
-        """
-        if not isinstance(data, np.ndarray):
-            raise ValueError("Data must be a numpy array")
-        if data.dtype != self.QUAD_DTYPE:
-            raise ValueError(
-                "MeshItem only supports dynamic QUAD_DTYPE data: "
-                "[('key', int64), ('vertices', float32, (12,)), ('good', uint8)]"
-            )
-
+        """Forward to set_incremental_data."""
         self.set_incremental_data(data)
 
-
-    def set_incremental_data(self, fs):
+    def set_incremental_data(self, data):
         """
-        Incrementally update mesh with new face data.
+        Set dynamic mesh data with incremental updates.
+
         Args:
-            fs: Structured numpy array with dtype:
-                [('key', np.int64), ('vertices', np.float32, (12,)), ('good', np.uint8)]
-                - key: unique identifier for the face
-                - vertices: 12 floats representing 4 vertices (v0, v1, v2, v3)
-                - good: 0 or 1, whether to render this face
-        Updates:
-            - faces: updates existing faces or appends new ones
-            - key2index: tracks face_key -> face_index mapping
+            data: Structured numpy array with dtype KEY_FACE_DTYPE:
+                  [('key', int64), ('vertices', float32, (12,)), ('good', uint32)]
+                  - key: unique identifier for the face
+                  - vertices: 12 floats representing 4 vertices (v0, v1, v2, v3)
+                  - good: 0 or 1, whether to render this face
         """
-        if fs is None or len(fs) == 0:
+        if data is None or len(data) == 0:
             return
-        
-        if not isinstance(fs, np.ndarray) or fs.dtype.names is None:
-            raise ValueError("fs must be a structured numpy array with fields: key, vertices, good")
 
-        # Prepare face data: convert structured array to Nx13 format
-        n_faces = len(fs)
-        face_data = np.zeros((n_faces, 13), dtype=np.float32)
+        if not isinstance(data, np.ndarray):
+            raise ValueError("Data must be a numpy array")
+        if data.dtype != self.KEY_FACE_DTYPE:
+            raise ValueError(
+                "MeshItem only supports dynamic KEY_FACE_DTYPE data: "
+                "[('key', int64), ('vertices', float32, (12,)), ('good', uint32)]"
+            )
+
+        keys = data['key']
+        if not data.flags.c_contiguous:
+            data = np.ascontiguousarray(data)
+            keys = data['key']
+
+        # The payload starts after key (8 bytes) and keeps the 60-byte input stride.
+        face_data = np.ndarray(
+            data.shape,
+            dtype=self.FACE_DTYPE,
+            buffer=data,
+            offset=8,
+            strides=data.strides,
+        )
         
-        # Copy vertices (12 floats -> positions 0:12)
-        face_data[:, :12] = fs['vertices']
-        
-        # Copy good flag (position 12)
-        face_data[:, 12] = fs['good'].astype(np.float32)
-        
-        # Extract keys
-        keys = fs['key']
-        
-        # Optimization: Separate updates from new insertions
-        update_mask = np.array([key in self.key2index for key in keys], dtype=bool)
+        get_idx = self.key2index.get
+        mapped_indices = np.array([get_idx(k, -1) for k in keys.tolist()], dtype=np.int32)
+        update_mask = mapped_indices >= 0
         new_mask = ~update_mask
 
         # Ensure enough capacity only for truly new faces.
@@ -344,10 +347,9 @@ class MeshItem(BaseItem):
             # VBO will be reallocated on next frame; old contents must be re-uploaded.
             self._force_full_upload = True
         
-        # Batch update existing faces
+        # Batch update existing faces with one structured assignment.
         if np.any(update_mask):
-            update_keys = keys[update_mask]
-            update_indices = np.array([self.key2index[key] for key in update_keys], dtype=np.int32)
+            update_indices = mapped_indices[update_mask]
             self.faces[update_indices] = face_data[update_mask]
             
             # Update dirty region for modified faces
@@ -355,29 +357,26 @@ class MeshItem(BaseItem):
             self.dirty_max = max(self.dirty_max, int(np.max(update_indices) + 1))
             self.need_update_buffer = True
         
-        # Batch insert new faces
-        if np.any(new_mask):
+        # Batch insert new faces with one structured assignment.
+        if n_new > 0:
             new_keys = keys[new_mask]
-            new_face_data = face_data[new_mask]
-            n_new = len(new_keys)
-            
-            # Update dirty region for new faces
             start_index = self.valid_f_top            
-            # Insert data
-            self.faces[start_index: start_index + n_new] = new_face_data
+            end_index = start_index + n_new
+            self.faces[start_index:end_index] = face_data[new_mask]
             
             # Update key2index mapping for new faces
-            for i, face_key in enumerate(new_keys):
-                self.key2index[face_key] = start_index + i
-            self.valid_f_top += n_new
+            self.key2index.update(zip(new_keys.tolist(), range(start_index, end_index)))
+            self.valid_f_top = end_index
             self.dirty_min = min(self.dirty_min, start_index)
-            self.dirty_max = max(self.dirty_max, start_index + n_new)
+            self.dirty_max = max(self.dirty_max, end_index)
             self.need_update_buffer = True
+
+        self.notify_changed()
     
     def _expand_face_buffer(self):
         """Expand the faces buffer when capacity is reached"""
         new_capacity = len(self.faces) + self.FACE_CAPACITY
-        new_buffer = np.zeros((new_capacity, 13), dtype=np.float32)
+        new_buffer = np.zeros(new_capacity, dtype=self.FACE_DTYPE)
         new_buffer[:len(self.faces)] = self.faces
         self.faces = new_buffer
     
@@ -389,6 +388,7 @@ class MeshItem(BaseItem):
         self.key2index.clear()
         if hasattr(self, 'indices_array'):
             self.indices_array = np.array([], dtype=np.uint32)
+        self.notify_changed()
 
     def initialize_gl(self):
         """OpenGL initialization"""
@@ -456,9 +456,9 @@ class MeshItem(BaseItem):
             glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(36))
             glVertexAttribDivisor(4, 1)
             
-            # good flag (location 5) - float
+            # good flag (location 5) - uint32
             glEnableVertexAttribArray(5)
-            glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, 52, ctypes.c_void_p(48))
+            glVertexAttribIPointer(5, 1, GL_UNSIGNED_INT, 52, ctypes.c_void_p(48))
             glVertexAttribDivisor(5, 1)
             
             glBindVertexArray(0)
