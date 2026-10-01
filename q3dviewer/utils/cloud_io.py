@@ -6,6 +6,49 @@ Distributed under MIT license. See LICENSE for more information.
 import numpy as np
 
 
+def convert_to_numpy(xyz, rgb, intensity):
+    """Convert separate point-cloud fields to the q3dviewer cloud dtype.
+
+    ``xyz`` must have shape ``(N, 3)``. ``rgb`` and ``intensity`` may be
+    ``None``; when present they must have shape ``(N,)``.
+    """
+    xyz = np.asarray(xyz)
+    if xyz.ndim != 2 or xyz.shape[1] != 3:
+        raise ValueError('xyz must have shape (N, 3)')
+    xyz = xyz.astype(np.float32)
+    N = xyz.shape[0]
+    irgb = np.zeros(N, dtype=np.uint32)
+
+    if intensity is not None:
+        intensity_values = np.asarray(intensity)
+        if intensity_values.ndim != 1 or len(intensity_values) != N:
+            raise ValueError('intensity must have one value per point')
+        if intensity_values.size:
+            max_intensity = np.max(intensity_values)
+            if max_intensity > 255:
+                print(f"Max intensity {max_intensity} exceeds 255, scaling down.")
+                intensity_values = intensity_values / max_intensity * 255
+        irgb |= intensity_values.astype(np.uint32) << 24
+
+    if rgb is not None:
+        rgb_values = np.asarray(rgb)
+        if rgb_values.ndim == 2 and rgb_values.shape == (N, 3):
+            channels = rgb_values.astype(np.uint32)
+            # if rgb is 16-bit or higher, scale down to 8-bit per channel
+            while channels.size and np.max(channels) > 255:
+                print(f"Max RGB channel value {np.max(channels)} exceeds 255, scaling down.")
+                channels >>= 8
+            rgb_values = ((channels[:, 0] << 16)
+                          | (channels[:, 1] << 8)
+                          | channels[:, 2])
+        elif rgb_values.ndim != 1 or len(rgb_values) != N:
+            raise ValueError('rgb must have shape (N,) or (N, 3)')
+        irgb |= rgb_values.astype(np.uint32) & 0x00FFFFFF
+
+    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
+    return np.rec.fromarrays([xyz, irgb], dtype=dtype)
+
+
 def load_stl(file_path):
     import meshio
     mesh = meshio.read(file_path)
@@ -105,16 +148,10 @@ def load_ply(file):
     import meshio
     mesh = meshio.read(file)
     xyz = mesh.points
-    rgb = np.zeros([xyz.shape[0]], dtype=np.uint32)
-    intensity = np.zeros([xyz.shape[0]], dtype=np.uint32)
-    if "intensity" in mesh.point_data:
-        intensity = mesh.point_data["intensity"].astype(np.uint32)
-    if "rgb" in mesh.point_data:
-        rgb = mesh.point_data["rgb"].astype(np.uint32)
-    irgb = (intensity << 24) | rgb
-    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
-    cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
-    return cloud
+    return convert_to_numpy(
+        xyz,
+        mesh.point_data.get('rgb'),
+        mesh.point_data.get('intensity'))
 
 
 def save_pcd(cloud, save_path):
@@ -167,22 +204,11 @@ def save_pcd(cloud, save_path):
 
 def load_pcd(file):
     from pypcd4 import PointCloud
-    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     pc = PointCloud.from_path(file).pc_data
-    rgb = np.zeros([pc.shape[0]], dtype=np.uint32)
-    intensity = np.zeros([pc.shape[0]], dtype=np.uint32)
-    if 'intensity' in pc.dtype.names:
-        intensity = pc['intensity'].astype(np.uint32)
-        max_initensity = np.max(intensity)
-        # normalize the intensity to 0-255
-        if max_initensity > 255:
-            intensity = (intensity / max_initensity * 255).astype(np.uint32)
-    if 'rgb' in pc.dtype.names:
-        rgb = pc['rgb'].astype(np.uint32)
-    irgb = (intensity << 24) | rgb
-    xyz = np.stack([pc['x'], pc['y'], pc['z']], axis=1)
-    cloud = np.rec.fromarrays([xyz, irgb], dtype=dtype)
-    return cloud
+    return convert_to_numpy(
+        np.column_stack((pc['x'], pc['y'], pc['z'])),
+        pc['rgb'] if 'rgb' in pc.dtype.names else None,
+        pc['intensity'] if 'intensity' in pc.dtype.names else None)
 
 
 def save_e57(cloud, save_path):
@@ -210,20 +236,16 @@ def load_e57(file_path):
     x = scans["cartesianX"]
     y = scans["cartesianY"]
     z = scans["cartesianZ"]
-    rgb = np.zeros([x.shape[0]], dtype=np.uint32)
-    intensity = np.zeros([x.shape[0]], dtype=np.uint32)
-    if "intensity" in scans:
-        intensity = scans["intensity"].astype(np.uint32)
+    rgb = None
+    intensity = scans.get("intensity")
     if all([x in scans for x in ["colorRed", "colorGreen", "colorBlue"]]):
-        r = scans["colorRed"].astype(np.uint32)
-        g = scans["colorGreen"].astype(np.uint32)
-        b = scans["colorBlue"].astype(np.uint32)
-        rgb = (r << 16) | (g << 8) | b
-    irgb = (intensity << 24) | rgb
-    dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
-    cloud = np.rec.fromarrays(
-        [np.stack([x, y, z], axis=1), irgb],
-        dtype=dtype)
+        rgb = np.column_stack((
+            scans["colorRed"],
+            scans["colorGreen"],
+            scans["colorBlue"],
+        ))
+    cloud = convert_to_numpy(
+        np.column_stack((x, y, z)), rgb, intensity)
     e57.close()
     return cloud
 
@@ -232,27 +254,13 @@ def load_las(file):
     import laspy
     with laspy.open(file) as f:
         las = f.read()
-        xyz = np.vstack((las.x, las.y, las.z)).transpose()
         dimensions = list(las.point_format.dimension_names)
-        rgb = np.zeros([las.x.shape[0]], dtype=np.uint32)
-        intensity = np.zeros([las.x.shape[0]], dtype=np.uint32)
-        if 'intensity' in dimensions:
-            intensity = las.intensity.astype(np.uint32)
+        rgb = None
+        intensity = las.intensity if 'intensity' in dimensions else None
         if 'red' in dimensions and 'green' in dimensions and 'blue' in dimensions:
-            red = las.red.astype(np.uint32)
-            green = las.green.astype(np.uint32)
-            blue = las.blue.astype(np.uint32)
-            if np.max([red, green, blue]) > 255:
-                red = (red / 255).astype(np.uint32)
-                green = (green / 255).astype(np.uint32)
-                blue = (blue / 255).astype(np.uint32)
-            rgb = (red << 16) | (green << 8) | blue
-        if np.max(intensity) > 255:
-            intensity = (intensity / 255).astype(np.uint32)
-            intensity = np.clip(intensity, 0, 255)
-        color = (intensity << 24) | rgb
-        dtype = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
-        cloud = np.rec.fromarrays([xyz, color], dtype=dtype)
+            rgb = np.column_stack((las.red, las.green, las.blue))
+        cloud = convert_to_numpy(
+            np.column_stack((las.x, las.y, las.z)), rgb, intensity)
     return cloud
 
 
