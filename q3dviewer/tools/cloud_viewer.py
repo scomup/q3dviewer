@@ -171,6 +171,10 @@ class CloudViewer(q3d.Viewer):
     def file_loading_finished(self):
         self.progress_window.close()
 
+    def show(self):
+        self.glwidget.load_setting()
+        super().show()
+
     def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
         if cloud_item is None:
@@ -204,8 +208,8 @@ def print_help():
 
     # Measurement section
     table.add_row("📏 Measure Distance", "Interactive point measurement")
-    table.add_row("", "[dim]• Ctrl + Left Click: Add measurement point[/dim]")
-    table.add_row("", "[dim]• Ctrl + Right Click: Remove last point[/dim]")
+    table.add_row("", "[dim]• [bold green]Ctrl[/bold green] + Left Click: Add measurement point[/dim]")
+    table.add_row("", "[dim]• [bold green]Ctrl[/bold green] + Right Click: Remove last point[/dim]")
     table.add_row("", "[dim]• Total distance displayed automatically[/dim]")
     table.add_row("", "")
 
@@ -218,15 +222,14 @@ def print_help():
     table.add_row("", "")
 
     # Sorting section
-    table.add_row("🔄 Depth Sorting",
-                  "Press [bold green]'R'[/bold green] to force sort once")
-    table.add_row("", "[dim]Manual depth sorting for transparency[/dim]")
+    table.add_row("🔄 Depth Sorting", "Manual depth sorting for transparency")
+    table.add_row("", "• [dim]Press [bold green]'R'[/bold green] to force sort once[/dim]")
     table.add_row("", "")
 
     # Settings section
-    table.add_row("⚙️  Settings",
-                  "Press [bold green]'M'[/bold green] to open settings window")
-    table.add_row("", "[dim]Adjust visualization properties[/dim]")
+    table.add_row("⚙️  Settings", "Modify various display settings")
+    table.add_row("", "• [dim]Press [bold green]'M'[/bold green] to open settings window[/dim]")
+    table.add_row("", "• [dim][bold green]Ctrl[/bold green] + [bold green]S[/bold green] / [bold green]Ctrl[/bold green] + [bold green]L[/bold green]: Save / Load all settings[/dim]")
 
     # Print title and table without border
     console.print()

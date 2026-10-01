@@ -4,15 +4,17 @@ Distributed under MIT license. See LICENSE for more information.
 """
 
 from q3dviewer.Qt import QtCore
-from q3dviewer.Qt.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox, QPushButton
+from q3dviewer.Qt.QtWidgets import QWidget, QComboBox, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QGroupBox
 from q3dviewer.Qt.QtGui import QKeyEvent
 from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils import text_to_rgba
+import numpy as np
 import json
+import numpy as np
 from pathlib import Path
 
 
-CAMERA_POSE_PATH = Path.home() / ".config" / "q3dviewer" / "camera_pose.json"
+SETTING_PATH = Path.home() / ".config" / "q3dviewer" / "cloud_viewer" / "setting.json"
 
 
 class SettingWindow(QWidget):
@@ -64,6 +66,16 @@ class GLWidget(BaseGLWidget):
         super(GLWidget, self).__init__()
 
     def keyPressEvent(self, ev: QKeyEvent):
+        if ev.modifiers() & QtCore.Qt.ControlModifier:
+            if ev.key() == QtCore.Qt.Key_S:
+                self.save_setting()
+                ev.accept()
+                return
+            if ev.key() == QtCore.Qt.Key_L:
+                self.load_setting()
+                ev.accept()
+                return
+
         if ev.key() == QtCore.Qt.Key_M:  # setting menu
             print("Open setting windows")
             self.open_setting_window()            
@@ -132,14 +144,6 @@ class GLWidget(BaseGLWidget):
         checkbox_show_center.stateChanged.connect(self.change_show_center)
         layout.addWidget(checkbox_show_center)
 
-        save_camera_pose = QPushButton("Save Camera Pose")
-        save_camera_pose.clicked.connect(self.save_camera_pose)
-        layout.addWidget(save_camera_pose)
-
-        load_camera_pose = QPushButton("Load Camera Pose")
-        load_camera_pose.clicked.connect(self.load_camera_pose)
-        layout.addWidget(load_camera_pose)
-
     def initial_followable(self):
         self.followable_item_name = ['none']
         for name, item in self.named_items.items():
@@ -172,20 +176,40 @@ class GLWidget(BaseGLWidget):
     def change_show_center(self, state):
         self.enable_show_center = state
 
-    def save_camera_pose(self):
-        CAMERA_POSE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with CAMERA_POSE_PATH.open('w', encoding='utf-8') as file:
-            json.dump(self.get_camera_pose(), file, indent=2)
+    def save_setting(self):
+        print("Saving settings...")
+        SETTING_PATH.parent.mkdir(parents=True, exist_ok=True)
+        setting = {
+            'main_win': self.get_camera_pose(),
+            'items': {
+                name: item.save_setting()
+                for name, item in self.named_items.items()
+            },
+        }
+        with SETTING_PATH.open('w', encoding='utf-8') as file:
+            json.dump(setting, file, indent=2)
 
-    def load_camera_pose(self):
-        with CAMERA_POSE_PATH.open('r', encoding='utf-8') as file:
-            self.set_camera_pose(json.load(file))
+    def load_setting(self):
+        if not SETTING_PATH.exists():
+            return
+        print("Loading settings...")
+        with SETTING_PATH.open('r', encoding='utf-8') as file:
+            setting = json.load(file)
+
+        main_win = setting.get('main_win')
+        if main_win is not None:
+            self.set_camera_pose(main_win)
+
+        for name, item_setting in setting.get('items', {}).items():
+            item = self.named_items.get(name)
+            if item is not None:
+                item.load_setting(item_setting)
 
     def get_camera_pose(self):
         """Get current camera pose parameters"""
         camera_pose = {
-            'center': self.center.tolist() if hasattr(self.center, 'tolist') else list(self.center),
-            'euler': self.euler.tolist() if hasattr(self.euler, 'tolist') else list(self.euler),
+            'center': self.center.tolist(),
+            'euler': self.euler.tolist(),
             'distance': float(self.dist),
         }
         return camera_pose
@@ -193,8 +217,8 @@ class GLWidget(BaseGLWidget):
     def set_camera_pose(self, config):
         """Set camera pose from parameters"""
         if 'center' in config and 'euler' in config and 'distance' in config:
-            self.set_center(config['center'])
-            self.set_euler(config['euler'])
+            self.set_center(np.asarray(config['center'], dtype=float))
+            self.set_euler(np.asarray(config['euler'], dtype=float))
             self.set_dist(config['distance'])
         else:
             print("Invalid camera pose config")

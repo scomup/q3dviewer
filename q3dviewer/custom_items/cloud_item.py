@@ -228,6 +228,36 @@ class CloudItem(BaseItem):
         self.need_update_setting = True
         self.notify_changed()
 
+    def save_setting(self):
+        return {
+            'flat_rgb': int(self.flat_rgb),
+            'color_mode': int(self.color_mode),
+            'vmax': float(self.vmax),
+            'vmin': float(self.vmin),
+            'alpha': float(self.alpha),
+            'size': float(self.size),
+            'point_type': self.point_type,
+        }
+
+    def load_setting(self, setting):
+        if not setting:
+            return
+
+        if 'flat_rgb' in setting:
+            self.set_flat_rgb(setting['flat_rgb'])
+        if 'color_mode' in setting:
+            self.set_color_mode(setting['color_mode'])
+        if 'vmin' in setting or 'vmax' in setting:
+            self.set_value_range(
+                setting.get('vmin', self.vmin),
+                setting.get('vmax', self.vmax))
+        if 'alpha' in setting:
+            self.set_alpha(setting['alpha'])
+        if 'size' in setting:
+            self.set_size(setting['size'])
+        if 'point_type' in setting:
+            self.set_point_type(setting['point_type'])
+
     def set_value_range(self, vmin, vmax):
         self.vmin = vmin
         self.vmax = vmax

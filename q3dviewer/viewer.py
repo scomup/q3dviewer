@@ -79,5 +79,5 @@ class Viewer(QMainWindow):
 
     def show(self):
         self.glwidget.setting_window.add_setting(
-            "main win", self.glwidget)
+            "main_win", self.glwidget)
         super().show()

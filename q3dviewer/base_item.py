@@ -54,6 +54,12 @@ class BaseItem(QObject):
         This method should be overridden by subclasses to add any necessary setting widgets to the layout.
         """
         pass
+
+    def save_setting(self):
+        return {}
+
+    def load_setting(self, setting):
+        pass
     
     def initialize_gl(self):
         """
