@@ -47,7 +47,7 @@ void main()
     if (gs_in[0].good != 1u) {
         return;
     }
-    
+    // assume v0-v3 are ordered clockwise
     vec3 v0 = gs_in[0].v0;
     vec3 v1 = gs_in[0].v1;
     vec3 v2 = gs_in[0].v2;
@@ -71,12 +71,12 @@ void main()
         EndPrimitive();
     }
     
-    // Triangle 2: (v0, v1, v3)
-    vec3 normal2 = calculateNormal(v0, v1, v3);
+    // Triangle 2: (v0, v2, v3)
+    vec3 normal2 = calculateNormal(v0, v2, v3);
     // Skip degenerate triangles
     if (length(normal2) > eps) {
         emitVertex(v0, normal2, color);
-        emitVertex(v1, normal2, color);
+        emitVertex(v2, normal2, color);
         emitVertex(v3, normal2, color);
         EndPrimitive();
     }
