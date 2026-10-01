@@ -79,7 +79,13 @@ python3 -m q3dviewer.tools.cloud_viewer
 * `Mouse Wheel`: Zoom in/out
 
 ⚙️ **Settings** - Press `M` to open settings window
-* Adjust visualization properties
+* Manual adjustment of visualization properties
+* `Ctrl + S`: Save all settings
+* `Ctrl + L`: Load all settings
+
+🔄 **Depth Sorting** - Press `R` to force one depth sort
+
+🎯 **Center Point** - Shown while the camera view is changing
 
 For example, you can download and view point clouds of Tokyo in LAS format from the following link:
 
@@ -109,11 +115,12 @@ film_maker
 ```
 
 **Basic Operations**
-* File loading & viewpoint movement: Same as Cloud_Viewer
-* Space key to add a keyframe.
-* Delete key to remove a keyframe.
-* Play button: Automatically play the video (pressing again will stop playback)
-* Record checkbox: When checked, actions will be automatically recorded during playback
+* File loading, camera controls, and settings: Same as Cloud Viewer
+* `Space`: Add a keyframe
+* `Delete`: Remove the selected keyframe
+* `Play`: Play or stop the camera motion
+* `Record`: Record the camera motion during playback
+* `Save Camera Motion` / `Load Camera Motion`: Save or restore keyframes
 
 Film Maker GUI: 
 
@@ -190,14 +197,20 @@ if __name__ == '__main__':
 `q3dviewer` provides the following 3D items:
 
 - **AxisItem**: Displays coordinate axes or the origin position.
+- **CenterItem**: Displays a shaded center marker while the camera is moving.
 - **CloudItem**: Displays point clouds.
 - **CloudIOItem**: Displays point clouds with input/output capabilities.
+- **CloudSortItem**: Displays point clouds with depth sorting support.
+- **FrameItem**: Displays camera or coordinate frames.
 - **GaussianItem**: Displays 3D Gaussians.
 - **GridItem**: Displays grids.
 - **ImageItem**: Displays 2D images.
-- **Text2DItem**: Displays 2D text.
-- **Text3DItem**: Displays 3D test and mark.
 - **LineItem**: Displays lines or trajectories.
+- **MeshItem**: Displays dynamic quadrilateral meshes.
+- **SatelliteMapItem**: Displays satellite map tiles.
+- **StaticMeshItem**: Displays static triangular meshes.
+- **Text2DItem**: Displays 2D text.
+- **Text3DItem**: Displays 3D text and markers.
 
 ### Developing Custom Items
 
@@ -223,7 +236,15 @@ class YourItem(q3d.BaseItem):
 
     def set_data(self, data):
         # Obtain the data you want to visualize
+        # Update the item state, then notify the viewer to repaint.
+        self.data = data
+        self.notify_changed()
         pass
+
+    def set_color(self, color):
+        # Any visual setting change must also notify the viewer.
+        self.color = color
+        self.notify_changed()
 
     def initialize_gl(self):
         # OpenGL initialization settings (if needed)
