@@ -83,13 +83,13 @@ class CloudItem(BaseItem):
     def add_setting(self, layout):
         label_ptype = QLabel("Point Type:")
         layout.addWidget(label_ptype)
-        combo_ptype = QComboBox()
-        combo_ptype.addItem("pixels")
-        combo_ptype.addItem("flat squares")
-        combo_ptype.addItem("spheres")
-        combo_ptype.setCurrentIndex(self.POINT_TYPE_TABLE[self.point_type])
-        combo_ptype.currentIndexChanged.connect(self._on_point_type_selection)
-        layout.addWidget(combo_ptype)
+        self.combo_ptype = QComboBox()
+        self.combo_ptype.addItem("pixels")
+        self.combo_ptype.addItem("flat squares")
+        self.combo_ptype.addItem("spheres")
+        self.combo_ptype.setCurrentIndex(self.POINT_TYPE_TABLE[self.point_type])
+        self.combo_ptype.currentIndexChanged.connect(self.set_point_type)
+        layout.addWidget(self.combo_ptype)
 
         self.box_size = QSpinBox()
         self.box_size.setPrefix("Size: ")
@@ -97,7 +97,7 @@ class CloudItem(BaseItem):
         self.box_size.setValue(int(self.size))
         self.box_size.setRange(0, 100)
         self.box_size.valueChanged.connect(self.set_size)
-        self._on_point_type_selection(self.POINT_TYPE_TABLE[self.point_type])
+        self.set_point_type(self.POINT_TYPE_TABLE[self.point_type])
         layout.addWidget(self.box_size)
 
         alpha_layout = QHBoxLayout()
@@ -131,7 +131,7 @@ class CloudItem(BaseItem):
         self.edit_rgb.setToolTip(
             "Use hex color, i.e. #FF4500, or named color, i.e. 'red'")
         self.edit_rgb.setText(self.color)
-        self.edit_rgb.textChanged.connect(self._on_color)
+        self.edit_rgb.textChanged.connect(self.set_flat_rgb)
         layout.addWidget(self.edit_rgb)
 
         self.slider_v = RangeSlider()
@@ -160,40 +160,46 @@ class CloudItem(BaseItem):
         self.notify_changed()
 
     def set_color_mode(self, color_mode):
-        if color_mode in {'FLAT', 'RGB', 'I', 'GRAY'}:
-            try:
-                self.combo_color.setCurrentIndex(self.MODE_TABLE[color_mode])
-            except:
-                self.color_mode = self.MODE_TABLE[color_mode]
-                self.need_update_setting = True
-                self.notify_changed()
+        if isinstance(color_mode, str):
+            if color_mode not in self.MODE_TABLE:
+                raise ValueError(f"Invalid color mode: {color_mode}")
+            index = self.MODE_TABLE[color_mode]
+        elif isinstance(color_mode, (int, np.integer)):
+            index = int(color_mode)
+            if index not in self.MODE_TABLE.values():
+                raise ValueError(f"Invalid color mode index: {index}")
         else:
-            print(f"Invalid color mode: {color_mode}")
+            raise TypeError("Color mode must be a string or integer index")
 
-    def set_color_mode_index(self, index):
-        if index not in self.MODE_TABLE.values():
-            raise ValueError(f"Invalid color mode index: {index}")
-        self.color_mode = int(index)
+        self.color_mode = index
         self.need_update_setting = True
         self.notify_changed()
-
-    def _on_point_type_selection(self, index):
-        self.point_type = list(self.POINT_TYPE_TABLE.keys())[index]
-        if self.point_type == 'PIXEL':
-            self.box_size.setPrefix("Set size (pixel): ")
-        else:
-            self.box_size.setPrefix("Set size (cm): ")
-        # self.size = 1
-        # self.box_size.setValue(self.size)
-        self.need_update_setting = True
-        self.notify_changed()
+        if (hasattr(self, 'combo_color')
+                and self.combo_color.currentIndex() != index):
+            self.combo_color.setCurrentIndex(index)
 
     def set_point_type(self, point_type):
-        if point_type not in self.POINT_TYPE_TABLE:
-            raise ValueError(f"Invalid point type: {point_type}")
-        self.point_type = point_type
+        if isinstance(point_type, str):
+            if point_type not in self.POINT_TYPE_TABLE:
+                raise ValueError(f"Invalid point type: {point_type}")
+            index = self.POINT_TYPE_TABLE[point_type]
+        elif isinstance(point_type, (int, np.integer)):
+            index = int(point_type)
+            if index not in self.POINT_TYPE_TABLE.values():
+                raise ValueError(f"Invalid point type index: {index}")
+        else:
+            raise TypeError("Point type must be a string or integer index")
+
+        self.point_type = list(self.POINT_TYPE_TABLE)[index]
+        if hasattr(self, 'box_size'):
+            prefix = "Set size (pixel): " if self.point_type == 'PIXEL' \
+                else "Set size (cm): "
+            self.box_size.setPrefix(prefix)
         self.need_update_setting = True
         self.notify_changed()
+        if (hasattr(self, 'combo_ptype')
+                and self.combo_ptype.currentIndex() != index):
+            self.combo_ptype.setCurrentIndex(index)
 
     def set_alpha(self, alpha):
         self.alpha = alpha
@@ -201,24 +207,21 @@ class CloudItem(BaseItem):
         self.notify_changed()
 
     def set_flat_rgb(self, color):
-        try:
-            self.edit_rgb.setText(color)
-        except ValueError:
-            pass
+        if isinstance(color, str):
+            try:
+                flat_rgb = text_to_rgba(color, flat=True)
+            except ValueError:
+                print(
+                    f"Invalid color: {color}, please use matplotlib color format")
+                return
+        elif isinstance(color, (int, np.integer)):
+            flat_rgb = int(color)
+        else:
+            raise TypeError("Color must be a string or packed integer")
 
-    def set_flat_rgb_value(self, flat_rgb):
-        self.flat_rgb = int(flat_rgb)
+        self.flat_rgb = flat_rgb
         self.need_update_setting = True
         self.notify_changed()
-
-    def _on_color(self, color):
-        try:
-            self.flat_rgb = text_to_rgba(color, flat=True)
-            self.need_update_setting = True
-            self.notify_changed()
-        except ValueError:
-            print(
-                f"Invalid color: {color}, please use matplotlib color format")
 
     def set_size(self, size):
         self.size = size
