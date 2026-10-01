@@ -7,8 +7,8 @@ Distributed under MIT license. See LICENSE for more information.
 
 """Compare two point clouds in vertically stacked OpenGL views."""
 
-import os
 import signal
+from pathlib import Path
 
 import numpy as np
 
@@ -56,9 +56,9 @@ class FileLoaderThread(QThread):
     def run(self):
         total = len(self.files)
         for index, url in enumerate(self.files):
-            file_path = url.toLocalFile()
-            self.progress.emit(index + 1, total, os.path.basename(file_path))
-            self.cloud_item.load(file_path, append=index > 0)
+            file_path = Path(url.toLocalFile())
+            self.progress.emit(index + 1, total, file_path.name)
+            self.cloud_item.load(str(file_path), append=index > 0)
 
 class GLWidgetPair(GLWidget):
     """A GLWidget that copies view and display settings to its pair."""
@@ -188,6 +188,8 @@ class CompareViewer(QMainWindow):
         self.setting_window = SettingWindow()
         self.top_gl = GLWidgetPair(self.setting_window)
         self.bottom_gl = GLWidgetPair(self.setting_window)
+        setting_path = Path.home() / '.config' / 'q3dviewer' / 'compare_viewer' / 'setting.json'
+        self.top_gl.set_setting_path(setting_path)
         self.top_gl.set_other(self.bottom_gl, 'master')
         self.bottom_gl.set_other(self.top_gl, 'slave')
 
@@ -256,7 +258,7 @@ def main():
     viewer = CompareViewer()
 
     def load_pane(glwidget, path):
-        if not path or not os.path.isfile(path):
+        if not path or not Path(path).is_file():
             return
         glwidget.cloud_item.load(path, append=False)
 

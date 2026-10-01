@@ -12,6 +12,14 @@ from q3dviewer.Qt.QtCore import QThread, Signal, Qt
 from q3dviewer import GLWidget
 from q3dviewer.utils.helpers import get_version
 from q3dviewer.utils.cloud_io import read_crs_from_file
+from pathlib import Path
+
+
+def get_cloud_center(cloud, max_n=1000):
+    xyz = cloud['xyz']
+    sample_size = min(max_n, len(xyz))
+    sample = xyz[np.random.choice(len(xyz), sample_size, replace=False)]
+    return np.nanmean(sample.astype(np.float64), axis=0)
 
 
 class ProgressWindow(QDialog):
@@ -47,28 +55,27 @@ class FileLoaderThread(QThread):
         total = len(self.files)
         for i, url in enumerate(self.files):
             # if the file is a mesh file, use mesh_item to load
-            file_path = url.toLocalFile()
-            import os
-            file_name = os.path.basename(file_path)
+            file_path = Path(url.toLocalFile())
+            file_name = file_path.name
             self.progress.emit(i + 1, total, file_name)
 
-            if file_path.lower().endswith('.stl'):
+            if file_path.suffix.lower() == '.stl':
                 from q3dviewer.utils.cloud_io import load_stl
                 mesh = load_stl(file_path)
                 mesh_item.set_data(mesh)
                 continue
 
-            if file_path.lower().endswith('.ply'):
+            if file_path.suffix.lower() == '.ply':
                 from q3dviewer.utils.cloud_io import is_ply_mesh, load_ply_mesh
                 if is_ply_mesh(file_path):
                     mesh = load_ply_mesh(file_path)
                     mesh_item.set_data(mesh)
                     continue
 
-            cloud = cloud_item.load(file_path, append=(i > 0))
+            cloud = cloud_item.load(str(file_path), append=(i > 0))
             if cloud is None:
                 continue
-            center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+            center = get_cloud_center(cloud)
             self.viewer.glwidget.set_cam_position(center=center)
 
             # Auto-configure satellite map origin from LAS/LAZ CRS
@@ -171,17 +178,13 @@ class CloudViewer(q3d.Viewer):
     def file_loading_finished(self):
         self.progress_window.close()
 
-    def show(self):
-        self.glwidget.load_setting()
-        super().show()
-
     def open_cloud_file(self, file, append=False):
         cloud_item = self['cloud']
         if cloud_item is None:
             print("Can't find clouditem.")
             return
-        cloud = cloud_item.load(file, append=append)
-        center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
+        cloud = cloud_item.load(str(file), append=append)
+        center = get_cloud_center(cloud)
         self.glwidget.set_cam_position(center=center)
 
 # print a quick help message using rich
@@ -251,6 +254,7 @@ def main():
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()
     grid_item = q3d.GridItem(size=1000, spacing=20)
+    center_item = q3d.CenterItem()
     marker_item = q3d.Text3DItem()  # Changed from CloudItem to Text3DItem
     text_item = q3d.Text2DItem(pos=(20, 40), text="", color='lime', size=16)
     text_item.disable_setting()
@@ -264,6 +268,7 @@ def main():
          'grid': grid_item,
          'axis': axis_item,
          'text': text_item,
+         'center': center_item,
          'satellite_map': satellite_map_item})
     if args.path:
         pcd_fn = args.path

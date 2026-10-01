@@ -1,4 +1,5 @@
 from q3dviewer.custom_items.axis_item import AxisItem
+from q3dviewer.custom_items.center_item import CenterItem
 from q3dviewer.custom_items.cloud_item import CloudItem
 from q3dviewer.custom_items.cloud_io_item import CloudIOItem
 from q3dviewer.custom_items.cloud_sort_item import CloudSortItem

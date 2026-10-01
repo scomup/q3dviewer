@@ -23,8 +23,6 @@ class BaseGLWidget(QOpenGLWidget):
         self.euler = np.array([np.pi/3, 0, np.pi/4])
         self.center = np.array([0, 0, 0.])
         self.active_keys = set()
-        self.show_center = False
-        self.enable_show_center = True
         self.need_recalc_view = True # dist, euler or center has changed
         self.need_force_update = False
         self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
@@ -137,7 +135,6 @@ class BaseGLWidget(QOpenGLWidget):
             delta = ev.angleDelta().y()
         self.update_dist(-delta * self.dist * 0.001)
         self.need_recalc_view = True
-        self.show_center = True
 
     def rotate_keep_cam_pos(self, rx=0, ry=0, rz=0):
         """
@@ -176,7 +173,6 @@ class BaseGLWidget(QOpenGLWidget):
             dist = max(self.dist, 0.5)
             self.translate(
                 Rwc @ Kinv @ np.array([-diff.x(), diff.y(), 0]) * dist)
-        self.show_center = True
 
     def set_center(self, center):
         self.center = center
@@ -207,16 +203,6 @@ class BaseGLWidget(QOpenGLWidget):
                 glPopAttrib()
                 glMatrixMode(GL_MODELVIEW)
                 glPopMatrix()
-
-        # Show center as a point if updated by mouse move event
-        if self.enable_show_center and self.show_center:
-            point_size = np.clip((self.get_K()[0, 0] / self.dist), 10, 100)
-            glPointSize(point_size)
-            glBegin(GL_POINTS)
-            glColor3f(1.0, 0.0, 0.0)  # Red color for the center point
-            glVertex3f(*self.center)
-            glEnd()
-            self.show_center = False
 
     def update_cam_pose_by_key(self):
         """
@@ -299,11 +285,12 @@ class BaseGLWidget(QOpenGLWidget):
         if self.need_recalc_view:
             self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
             self.need_force_update = True
-            self.need_recalc_view = False
+            # self.need_recalc_view = False
 
         have_dirty_item = any(item.is_changed() for item in self.items)
         if have_dirty_item or self.need_force_update:
             QOpenGLWidget.update(self) # will call paintGL()
+            self.need_recalc_view = False
             self.need_force_update = False
             for item in self.items:
                 item.clear_changed()
@@ -348,9 +335,6 @@ class BaseGLWidget(QOpenGLWidget):
     def translate(self, trans):
         self.center += trans
         self.need_recalc_view = True
-
-    def change_show_center(self, state):
-        self.enable_show_center = state
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

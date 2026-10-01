@@ -44,8 +44,8 @@ class GuassianViewer(q3d.Viewer):
 
 
 def main():
-    app = q3d.QApplication(['Guassian Viewer'])
-    viewer = GuassianViewer(name='Guassian Viewer')
+    app = q3d.QApplication(['Gaussian Viewer'])
+    viewer = GuassianViewer(name='Gaussian Viewer')
 
     grid_item = q3d.GridItem(size=1000, spacing=20)
     gau_item = q3d.GaussianItem()

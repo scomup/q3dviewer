@@ -6,6 +6,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.glwidget import *
 import signal
+from pathlib import Path
 from q3dviewer.Qt.QtWidgets import QMainWindow, QApplication, QHBoxLayout
 
 
@@ -14,6 +15,7 @@ class Viewer(QMainWindow):
                  gl_widget_class=GLWidget, update_interval=20):
         self.set_quit_handler()
         super(Viewer, self).__init__()
+        self.viewer_name = name
         self.setGeometry(0, 0, win_size[0], win_size[1])
         self.gl_widget_class = gl_widget_class
         self.init_ui()
@@ -35,8 +37,10 @@ class Viewer(QMainWindow):
         self.add_control_panel(main_layout)
         center_widget.setLayout(main_layout)
         self.glwidget = self.gl_widget_class()
+        setting_name = self.viewer_name.lower().replace(' ', '_')
+        self.glwidget.set_setting_path(
+            Path.home() / '.config' / 'q3dviewer' / setting_name / 'setting.json')
         main_layout.addWidget(self.glwidget, 1)
-        self.default_gl_setting(self.glwidget)
 
     def add_control_panel(self, main_layout):
         """
@@ -46,11 +50,8 @@ class Viewer(QMainWindow):
         """
         pass
 
-    def default_gl_setting(self, glwidget):
-        """
-        Override this function to set the default opengl setting of the viewer.
-        """
-        pass
+    def set_setting_path(self, path):
+        self.glwidget.set_setting_path(path)
 
     def add_update_timer(self):
         timer = QtCore.QTimer(self)
@@ -78,6 +79,7 @@ class Viewer(QMainWindow):
         QApplication.quit()
 
     def show(self):
+        self.glwidget.load_setting()
         self.glwidget.setting_window.add_setting(
             "main_win", self.glwidget)
         super().show()

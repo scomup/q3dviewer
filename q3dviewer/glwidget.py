@@ -10,11 +10,7 @@ from q3dviewer.base_glwidget import BaseGLWidget
 from q3dviewer.utils import text_to_rgba
 import numpy as np
 import json
-import numpy as np
 from pathlib import Path
-
-
-SETTING_PATH = Path.home() / ".config" / "q3dviewer" / "cloud_viewer" / "setting.json"
 
 
 class SettingWindow(QWidget):
@@ -56,14 +52,17 @@ class SettingWindow(QWidget):
 
 class GLWidget(BaseGLWidget):
     def __init__(self):
+        self.setting_path = Path.home() / ".config" / "q3dviewer" / "setting.json"
         self.followed_name = 'none'
         self.named_items = {}
         self.color_str = 'black'
         self.followable_item_name = None
         self.setting_window = SettingWindow()
-        self.enable_show_center = True
         self.old_center = None
         super(GLWidget, self).__init__()
+
+    def set_setting_path(self, path):
+        self.setting_path = Path(path)
 
     def keyPressEvent(self, ev: QKeyEvent):
         if ev.modifiers() & QtCore.Qt.ControlModifier:
@@ -104,6 +103,12 @@ class GLWidget(BaseGLWidget):
             self.set_center(p)
         super().mouseDoubleClickEvent(event)
 
+    def show_center_item(self):
+        state = self.need_recalc_view or bool(self.active_keys)
+        center_item = self.named_items.get('center')
+        if center_item is not None:
+            center_item.switch(state)
+    
     def follow_odom(self):
         if self.followed_name != 'none':
             new_center = self.named_items[self.followed_name].T[:3, 3]
@@ -116,6 +121,7 @@ class GLWidget(BaseGLWidget):
 
     def update(self):
         self.follow_odom()
+        self.show_center_item()
         super().update()
 
     def add_setting(self, layout):
@@ -139,11 +145,6 @@ class GLWidget(BaseGLWidget):
         layout.addWidget(label_focus)
         layout.addWidget(combo_focus)
 
-        checkbox_show_center = QCheckBox("Show Center Point")
-        checkbox_show_center.setChecked(self.enable_show_center)
-        checkbox_show_center.stateChanged.connect(self.change_show_center)
-        layout.addWidget(checkbox_show_center)
-
     def initial_followable(self):
         self.followable_item_name = ['none']
         for name, item in self.named_items.items():
@@ -151,6 +152,8 @@ class GLWidget(BaseGLWidget):
                 self.followable_item_name.append(name)
 
     def set_bg_color(self, color):
+        if color == self.color_str:
+            return
         try:
             self.color_str = color
             red, green, blue, alpha = text_to_rgba(color)
@@ -173,52 +176,50 @@ class GLWidget(BaseGLWidget):
         else:
             self.setting_window.show()
 
-    def change_show_center(self, state):
-        self.enable_show_center = state
-
     def save_setting(self):
-        print("Saving settings...")
-        SETTING_PATH.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Saving settings to {self.setting_path}...")
+        self.setting_path.parent.mkdir(parents=True, exist_ok=True)
         setting = {
-            'main_win': self.get_camera_pose(),
+            'main_win': self.get_glwidget_setting(),
             'items': {
                 name: item.save_setting()
                 for name, item in self.named_items.items()
             },
         }
-        with SETTING_PATH.open('w', encoding='utf-8') as file:
+        with self.setting_path.open('w', encoding='utf-8') as file:
             json.dump(setting, file, indent=2)
 
     def load_setting(self):
-        if not SETTING_PATH.exists():
+        if not self.setting_path.exists():
             return
-        print("Loading settings...")
-        with SETTING_PATH.open('r', encoding='utf-8') as file:
+        print(f"Loading settings from {self.setting_path}...")
+        with self.setting_path.open('r', encoding='utf-8') as file:
             setting = json.load(file)
 
         main_win = setting.get('main_win')
         if main_win is not None:
-            self.set_camera_pose(main_win)
+            self.set_glwidget_setting(main_win)
 
         for name, item_setting in setting.get('items', {}).items():
             item = self.named_items.get(name)
             if item is not None:
                 item.load_setting(item_setting)
 
-    def get_camera_pose(self):
-        """Get current camera pose parameters"""
-        camera_pose = {
+    def get_glwidget_setting(self):
+        """Get GLWidget settings."""
+        return {
             'center': self.center.tolist(),
             'euler': self.euler.tolist(),
             'distance': float(self.dist),
+            'followed_name': self.followed_name,
         }
-        return camera_pose
 
-    def set_camera_pose(self, config):
-        """Set camera pose from parameters"""
+    def set_glwidget_setting(self, config):
+        """Set GLWidget settings."""
         if 'center' in config and 'euler' in config and 'distance' in config:
             self.set_center(np.asarray(config['center'], dtype=float))
             self.set_euler(np.asarray(config['euler'], dtype=float))
             self.set_dist(config['distance'])
+            self.followed_name = config.get('followed_name', self.followed_name)
         else:
-            print("Invalid camera pose config")
+            print("Invalid GLWidget setting")

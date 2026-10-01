@@ -5,6 +5,7 @@ Copyright 2024 Panasonic Advanced Technology Development Co.,Ltd. (Liu Yang)
 Distributed under MIT license. See LICENSE for more information.
 """
 
+
 import numpy as np
 import q3dviewer as q3d
 from q3dviewer.Qt.QtWidgets import QVBoxLayout, QListWidget, QListWidgetItem, QPushButton, QDoubleSpinBox, QCheckBox, QLineEdit, QMessageBox, QLabel, QHBoxLayout, QDockWidget, QWidget, QComboBox
@@ -16,7 +17,7 @@ from q3dviewer.tools.cloud_viewer import FileLoaderThread, ProgressWindow
 
 import imageio.v2 as imageio
 import json
-import os
+from pathlib import Path
 from q3dviewer.utils.maths import matrix_to_euler, interpolate_pose
 
 def recover_center_euler(Twc, dist):
@@ -58,10 +59,9 @@ class CMMViewer(q3d.Viewer):
     def __init__(self, **kwargs):
         self.key_frames = []
         self.data_file = None
-        self.video_path = os.path.join(os.path.expanduser("~"), "output.mp4")
-        self.project_path = os.path.join(os.path.expanduser("~"),
-                         "film_project.json")
+        self.video_path = Path.home() / "output.mp4"
         super().__init__(**kwargs, gl_widget_class=lambda: CustomGLWidget(self))
+        self.project_path = self.glwidget.setting_path.parent / "cam_motion.json"
         # for drop cloud file
         self.setAcceptDrops(True)
 
@@ -102,7 +102,7 @@ class CMMViewer(q3d.Viewer):
         label_video_path = QLabel("Video Path:")
         video_path_layout.addWidget(label_video_path)
         self.video_path_edit = QLineEdit()
-        self.video_path_edit.setText(self.video_path)
+        self.video_path_edit.setText(str(self.video_path))
         self.video_path_edit.textChanged.connect(self.update_video_path)
         video_path_layout.addWidget(self.video_path_edit)
         setting_layout.addLayout(video_path_layout)
@@ -143,11 +143,11 @@ class CMMViewer(q3d.Viewer):
         setting_layout.addWidget(self.stop_time_spinbox)
 
         save_load_layout = QHBoxLayout()
-        save_button = QPushButton("Save Project")
-        save_button.clicked.connect(self.save_project)
+        save_button = QPushButton("Save Camera Motion")
+        save_button.clicked.connect(self.save_cam_motion)
         save_load_layout.addWidget(save_button)
-        load_button = QPushButton("Load Project")
-        load_button.clicked.connect(self.load_project)
+        load_button = QPushButton("Load Camera Motion")
+        load_button.clicked.connect(self.load_cam_motion)
         save_load_layout.addWidget(load_button)
         setting_layout.addLayout(save_load_layout)
 
@@ -169,9 +169,8 @@ class CMMViewer(q3d.Viewer):
         self.video_path = path
 
     def _record_data_file(self, path):
-        path = os.fspath(path)
         if path:
-            self.data_file = os.path.abspath(os.path.expanduser(path))
+            self.data_file = Path(path).expanduser().resolve()
 
     def _clear_loaded_data(self):
         cloud_item = self['cloud']
@@ -189,7 +188,7 @@ class CMMViewer(q3d.Viewer):
         self.frame_list.clear()
         self.frame_list.blockSignals(False)
 
-    def save_project(self):
+    def save_cam_motion(self):
         project = [
             {
                 'pose': frame.Twc.tolist(),
@@ -200,14 +199,16 @@ class CMMViewer(q3d.Viewer):
             for frame in self.key_frames
         ]
 
-        with open(self.project_path, 'w', encoding='utf-8') as file:
+        self.project_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.project_path.open('w', encoding='utf-8') as file:
             json.dump(project, file, indent=2)
+        print(f"Camera motion saved to {self.project_path}.")
 
-    def load_project(self):
+    def load_cam_motion(self):
         if self.is_playing or self.is_recording:
             return
 
-        with open(self.project_path, 'r', encoding='utf-8') as file:
+        with self.project_path.open('r', encoding='utf-8') as file:
             project = json.load(file)
 
         self._clear_key_frames()
@@ -217,6 +218,7 @@ class CMMViewer(q3d.Viewer):
                 frame['lin_vel'],
                 frame['ang_vel'],
                 frame['stop_time'])
+        print(f"Camera motion loaded from {self.project_path}.")
 
 
     def _add_key_frame_pose(self, Twc, lin_vel=None, ang_vel=None,
@@ -478,22 +480,22 @@ class CMMViewer(q3d.Viewer):
             print("Can't find clouditem.")
             return
 
-        file = os.path.abspath(os.path.expanduser(os.fspath(file)))
+        file = Path(file).expanduser().resolve()
         self._record_data_file(file)
 
         mesh_item = self['mesh']
-        if file.lower().endswith('.stl'):
+        if file.suffix.lower() == '.stl':
             from q3dviewer.utils.cloud_io import load_stl
             mesh_item.set_data(load_stl(file))
             return
 
-        if file.lower().endswith('.ply'):
+        if file.suffix.lower() == '.ply':
             from q3dviewer.utils.cloud_io import is_ply_mesh, load_ply_mesh
             if is_ply_mesh(file):
                 mesh_item.set_data(load_ply_mesh(file))
                 return
 
-        cloud = cloud_item.load(file, append=append)
+        cloud = cloud_item.load(str(file), append=append)
         center = np.nanmean(cloud['xyz'].astype(np.float64), axis=0)
         self.glwidget.set_cam_position(center=center)
 
