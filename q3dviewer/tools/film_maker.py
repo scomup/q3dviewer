@@ -44,6 +44,12 @@ class CustomGLWidget(GLWidget):
         self.viewer = viewer  # Add a viewer handle
 
     def keyPressEvent(self, ev: QKeyEvent):
+        if ev.text().lower() == 'r':
+            cloud_item = self.viewer['cloud']
+            if cloud_item is not None:
+                cloud_item.force_sort()
+            ev.accept()
+            return
         if ev.key() == QtCore.Qt.Key_Space:
             self.viewer.add_key_frame()
         elif ev.key() == QtCore.Qt.Key_Delete:

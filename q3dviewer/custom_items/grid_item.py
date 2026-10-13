@@ -5,7 +5,7 @@ Distributed under MIT license. See LICENSE for more information.
 
 from q3dviewer.base_item import BaseItem
 from OpenGL.GL import *
-from q3dviewer.Qt.QtWidgets import QDoubleSpinBox
+from q3dviewer.Qt.QtWidgets import QCheckBox, QDoubleSpinBox
 import numpy as np
 from q3dviewer.utils import text_to_rgba
 
@@ -49,6 +49,11 @@ class GridItem(BaseItem):
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def add_setting(self, layout):
+        self.checkbox_show = QCheckBox("Show Grid")
+        self.checkbox_show.setChecked(self.visible())
+        self.checkbox_show.stateChanged.connect(self.set_visible)
+        layout.addWidget(self.checkbox_show)
+
         spinbox_size = QDoubleSpinBox()
         spinbox_size.setPrefix("Size: ")
         spinbox_size.setSingleStep(1.0)
@@ -88,6 +93,13 @@ class GridItem(BaseItem):
         spinbox_offset_z.setRange(-1000, 1000)
         spinbox_offset_z.valueChanged.connect(self._on_offset_z)
         layout.addWidget(spinbox_offset_z)
+
+    def set_visible(self, visible):
+        super().set_visible(visible)
+        if hasattr(self, 'checkbox_show'):
+            self.checkbox_show.blockSignals(True)
+            self.checkbox_show.setChecked(visible)
+            self.checkbox_show.blockSignals(False)
 
     def set_size(self, size):
         self.size = size

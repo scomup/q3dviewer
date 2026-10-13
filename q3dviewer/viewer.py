@@ -7,7 +7,9 @@ Distributed under MIT license. See LICENSE for more information.
 from q3dviewer.glwidget import *
 import signal
 from pathlib import Path
-from q3dviewer.Qt.QtWidgets import QMainWindow, QApplication, QHBoxLayout
+from q3dviewer.Qt.QtCore import Qt
+from q3dviewer.Qt.QtWidgets import (
+    QMainWindow, QApplication, QHBoxLayout, QMdiArea, QVBoxLayout)
 
 
 class Viewer(QMainWindow):
@@ -41,6 +43,14 @@ class Viewer(QMainWindow):
         self.glwidget.set_setting_path(
             Path.home() / '.config' / 'q3dviewer' / setting_name / 'setting.json')
         main_layout.addWidget(self.glwidget, 1)
+        self.mdi = QMdiArea(self.glwidget)
+        self.mdi.setBackground(Qt.transparent)
+        self.mdi.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.mdi.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        mdi_layout = QVBoxLayout(self.glwidget)
+        mdi_layout.setContentsMargins(0, 0, 0, 0)
+        mdi_layout.addWidget(self.mdi)
+        self.mdi.show()
 
     def add_control_panel(self, main_layout):
         """
