@@ -3,8 +3,8 @@
 import numpy as np
 from q3dviewer.Qt.QtCore import QObject, Signal
 from q3dviewer.tools.cloud_viewer import get_cloud_center
-from q3dviewer.tools.cloud_editor.rect_selector import RectSelector
-from q3dviewer.tools.cloud_editor.radius_selector import RadiusSelector
+from q3dviewer.tools.cloud_editor.points_selector import PointsSelector
+from q3dviewer.tools.cloud_editor.measurement import MeasurementTool
 
 
 # An operation is a dict with a mandatory 'type' key; all other keys are
@@ -32,9 +32,9 @@ class CloudEditorOperations(QObject):
     cloud_display_changed = Signal(object)
     marked_display_changed = Signal(object)
     cloud_loaded = Signal(object)
-    info_changed = Signal(int, int, int)
     camera_center_changed = Signal(object)
     save_requested = Signal(object, str)
+    measurement_changed = Signal(object, str)
 
     def __init__(self, view_handler, io_handler):
         super().__init__()
@@ -47,23 +47,15 @@ class CloudEditorOperations(QObject):
         self.keep = None
         self.mode = None
         self.radius = 0.5
-        self.rect_selector = RectSelector(view_handler)
-        self.radius_selector = RadiusSelector()
+        self.selector = PointsSelector(view_handler)
+        self.measurement = MeasurementTool(view_handler)
+        self.measurement.changed.connect(self.measurement_changed)
 
         view_handler.point_clicked.connect(self._radius_point_clicked)
         view_handler.rectangle_selected.connect(self.rectangle_selected)
         view_handler.undo_requested.connect(self.undo)
         io_handler.cloud_loaded.connect(self._merge_loaded_cloud)
         self.save_requested.connect(io_handler.save)
-
-    def info(self):
-        if self.cloud is None:
-            return 0, 0, len(self.operations)
-        return (
-            self.cloud.shape[0],
-            int(np.count_nonzero(self.applied_keep & ~self.keep)),
-            len(self.operations),
-        )
 
     def _publish_cloud_display(self):
         cloud = None if self.cloud is None else self.cloud[self.applied_keep]
@@ -74,15 +66,12 @@ class CloudEditorOperations(QObject):
                   else self.cloud[self.applied_keep & ~self.keep])
         self.marked_display_changed.emit(marked)
 
-    def _publish_info(self):
-        self.info_changed.emit(*self.info())
-
     def _publish_preview(self):
         self._publish_marked_display()
-        self._publish_info()
 
     def set_mode(self, mode):
         self.mode = mode
+        self.measurement.set_active(mode == 'measurement')
 
     def set_radius(self, radius):
         self.radius = float(radius)
@@ -97,7 +86,7 @@ class CloudEditorOperations(QObject):
     def rectangle_selected(self, rect):
         if self.mode != 'rectangle' or self.view_handler is None:
             return
-        selected = self.rect_selector.select(rect)
+        selected = self.selector.select_rectangle(rect)
         self.mark_deleted_indices(selected[self.keep[selected]])
 
     def _merge_loaded_cloud(self, cloud, append):
@@ -114,13 +103,12 @@ class CloudEditorOperations(QObject):
         self.operations = []
         self.applied_keep = np.ones(self.cloud.shape[0], dtype=bool)
         self.keep = np.ones(self.cloud.shape[0], dtype=bool)
-        self.radius_selector.set_points(self.cloud['xyz'])
-        self.rect_selector.set_points(self.cloud['xyz'])
+        self.selector.set_points(self.cloud['xyz'])
         self._publish_cloud_display()
         self._publish_preview()
 
     def mark_deleted_by_radius(self, center, radius):
-        indices = self.radius_selector.select(center, radius)
+        indices = self.selector.select_radius(center, radius)
         self.mark_deleted_indices(indices)
 
     def mark_deleted_indices(self, indices):
@@ -139,6 +127,9 @@ class CloudEditorOperations(QObject):
         self.operations.pop()
         self.keep = self._replay_operations(self.operations)
         self._publish_preview()
+
+    def undo_measurement(self):
+        self.measurement.undo()
 
     def _replay_operations(self, operations):
         keep = self.applied_keep.copy()

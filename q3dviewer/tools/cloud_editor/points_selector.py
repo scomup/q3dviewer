@@ -1,4 +1,4 @@
-"""GPU rectangle selection for point clouds."""
+"""GPU point selection for rectangle and radius modes."""
 
 from pathlib import Path
 
@@ -7,10 +7,12 @@ from OpenGL.GL import *
 from OpenGL.GL import shaders
 
 
-class RectSelector:
-    """Select point indices inside a screen-space rectangle on the GPU."""
+class PointsSelector:
+    """Select point indices using one GPU compute shader."""
 
     LOCAL_SIZE = 256
+    RECTANGLE_MODE = 0
+    RADIUS_MODE = 1
 
     def __init__(self, view_handler):
         self.view_handler = view_handler
@@ -33,21 +35,32 @@ class RectSelector:
         self._points = np.ascontiguousarray(points)
         self._points_buffer_dirty = True
 
-    def select(self, selection_rect):
+    def select_rectangle(self, selection_rect):
+        return self._select(
+            mode=self.RECTANGLE_MODE,
+            selection_rect=selection_rect)
+
+    def select_radius(self, center, radius):
+        return self._select(
+            mode=self.RADIUS_MODE,
+            center=np.asarray(center, dtype=np.float32),
+            radius=float(radius))
+
+    def _select(self, mode, selection_rect=None, center=None, radius=0.0):
         if self._points is None or self._points.shape[0] == 0:
             return np.empty(0, dtype=np.int64)
 
         self.view_handler.makeCurrent()
         try:
             self._ensure_resources()
-            return self._dispatch(selection_rect)
+            return self._dispatch(mode, selection_rect, center, radius)
         finally:
             self.view_handler.doneCurrent()
 
     def _ensure_resources(self):
         if self._program is None:
             shader_path = (Path(__file__).resolve().parent.parent
-                           .parent / 'shaders' / 'rectangle_select_comp.glsl')
+                           .parent / 'shaders' / 'points_select_comp.glsl')
             source = shader_path.read_text(encoding='utf-8')
             compute_shader = shaders.compileShader(source, GL_COMPUTE_SHADER)
             self._program = shaders.compileProgram(compute_shader)
@@ -85,19 +98,16 @@ class RectSelector:
             None,
             GL_DYNAMIC_READ)
 
-    def _dispatch(self, selection_rect):
-        view_matrix = self.view_handler.view_matrix
-        if self.view_handler.need_recalc_view:
-            from q3dviewer.utils.maths import calc_view_matrix
-            view_matrix = calc_view_matrix(
-                self.view_handler.center,
-                self.view_handler.dist,
-                self.view_handler.euler)
+    def _dispatch(self, mode, selection_rect, center, radius):
         projection_view = (
-            self.view_handler.get_projection_matrix() @ view_matrix)
-
-        rectangle_ndc = self._rectangle_ndc(selection_rect)
+            self.view_handler.projection_matrix @ self.view_handler.view_matrix)
+        if mode == self.RECTANGLE_MODE:
+            rectangle_ndc = self._rectangle_ndc(selection_rect)
+        else:
+            rectangle_ndc = np.zeros(4, dtype=np.float32)
         glUseProgram(self._program)
+        glUniform1ui(
+            glGetUniformLocation(self._program, 'selection_mode'), mode)
         glUniformMatrix4fv(
             glGetUniformLocation(self._program, 'projection_view'),
             1,
@@ -106,6 +116,11 @@ class RectSelector:
         glUniform4f(
             glGetUniformLocation(self._program, 'rectangle_ndc'),
             *rectangle_ndc)
+        glUniform3f(
+            glGetUniformLocation(self._program, 'selection_center'),
+            *(center if center is not None else np.zeros(3, dtype=np.float32)))
+        glUniform1f(
+            glGetUniformLocation(self._program, 'selection_radius'), radius)
         glUniform1ui(
             glGetUniformLocation(self._program, 'point_count'),
             self._points.shape[0])
@@ -147,6 +162,8 @@ class RectSelector:
         return selected
 
     def _rectangle_ndc(self, selection_rect):
+        if selection_rect is None:
+            return np.zeros(4, dtype=np.float32)
         pixel_ratio = self.view_handler.devicePixelRatioF()
         width = self.view_handler.current_width()
         height = self.view_handler.current_height()
