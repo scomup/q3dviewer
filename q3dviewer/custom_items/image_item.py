@@ -191,8 +191,7 @@ class ImageItem(BaseItem):
         self.subwindow.resize(width, height)
         if self.corner is not None:
             self.move_to_corner(self.corner)
-        if not self.subwindow.isVisible():
-            self.subwindow.show()
+        self.subwindow.show()
 
     def set_data(self, data):
         if not isinstance(data, np.ndarray):
@@ -201,7 +200,6 @@ class ImageItem(BaseItem):
         self.image = data
         if hasattr(self, 'image_label'):
             self.image_label.set_image(data)
-        self.notify_changed()
 
     def move_to_corner(self, corner):
         corners = {'TL', 'TR', 'BR', 'BL'}
@@ -224,11 +222,8 @@ class ImageItem(BaseItem):
         self.pos = np.array([max(0, x), max(0, y)])
         self.corner = corner
 
-    def paint(self):
-        pass
-
     def set_visible(self, visible):
-        super().set_visible(visible)
+        self._visible = visible
         if hasattr(self, 'subwindow'):
             self.subwindow.setVisible(visible)
         if hasattr(self, 'checkbox_show'):

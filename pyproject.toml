@@ -58,4 +58,8 @@ matching_cloud = "q3dviewer.tools.matching_cloud:main"
 packages = {find = {}}
 
 [tool.setuptools.package-data]
-q3dviewer = ["shaders/*.glsl"]
+q3dviewer = [
+    "shaders/*.glsl",
+    "tools/cloud_editor/icons/*.svg",
+    "tools/cloud_editor/icons/README.md",
+]
