@@ -47,11 +47,14 @@ class CloudEditorOperations(QObject):
         self.keep = None
         self.mode = None
         self.radius = 0.5
+        self._last_point = None
         self.selector = PointsSelector(view_handler)
         self.measurement = MeasurementTool(view_handler)
         self.measurement.changed.connect(self.measurement_changed)
 
-        view_handler.point_clicked.connect(self._radius_point_clicked)
+        view_handler.brush_drag_started.connect(self._brush_drag_started)
+        view_handler.brush_point_dragged.connect(self._brush_point_dragged)
+        view_handler.brush_drag_finished.connect(self._brush_drag_finished)
         view_handler.rectangle_selected.connect(self.rectangle_selected)
         view_handler.undo_requested.connect(self.undo)
         io_handler.cloud_loaded.connect(self._merge_loaded_cloud)
@@ -71,17 +74,31 @@ class CloudEditorOperations(QObject):
 
     def set_mode(self, mode):
         self.mode = mode
+        self._last_point = None
         self.measurement.set_active(mode == 'measurement')
 
     def set_radius(self, radius):
         self.radius = float(radius)
 
-    def _radius_point_clicked(self, x, y):
-        if self.mode != 'radius' or self.view_handler is None:
+    def _brush_drag_started(self):
+        self._last_point = None
+
+    def _brush_point_dragged(self, x, y):
+        if self.mode != 'brush' or self.view_handler is None:
             return
         point = self.view_handler.get_point(x, y)
-        if point is not None:
-            self.mark_deleted_by_radius(point, self.radius)
+        if point is None:
+            return
+        point = np.asarray(point, dtype=np.float32)
+        if (self._last_point is not None
+                and np.linalg.norm(
+                point - self._last_point) <= self.radius * 0.5):
+            return
+        self.mark_deleted_by_radius(point, self.radius)
+        self._last_point = point
+
+    def _brush_drag_finished(self):
+        self._last_point = None
 
     def rectangle_selected(self, rect):
         if self.mode != 'rectangle' or self.view_handler is None:

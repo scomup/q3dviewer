@@ -27,8 +27,8 @@ ICON_DIR = Path(__file__).resolve().parent / 'icons'
 def make_icon_button(parent, icon_name, tooltip):
     button = QToolButton(parent)
     button.setIcon(QIcon(str(ICON_DIR / f'{icon_name}.svg')))
-    button.setIconSize(QSize(20, 20))
-    button.setFixedSize(34, 34)
+    button.setIconSize(QSize(28, 28))
+    button.setFixedSize(38, 38)
     button.setAutoRaise(True)
     button.setToolTip(tooltip)
     return button
@@ -93,13 +93,13 @@ class ToolWindow(QMdiSubWindow):
         self.closed.emit()
 
 
-class RadiusDeleteWindow(ToolWindow):
+class BrushDeleteWindow(ToolWindow):
     radius_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Delete by Radius')
-        self.content_layout.addWidget(QLabel('Radius (m)'))
+        self.setWindowTitle('Brush Delete')
+        self.content_layout.addWidget(QLabel('Brush size (m)'))
 
         self.radius_box = QDoubleSpinBox()
         self.radius_box.setDecimals(2)
@@ -146,7 +146,9 @@ class MeasurementWindow(ToolWindow):
 class EditorGLWidget(GLWidget):
     """Translate mouse and key events into signals for the operations class."""
 
-    point_clicked = Signal(int, int)
+    brush_drag_started = Signal()
+    brush_point_dragged = Signal(int, int)
+    brush_drag_finished = Signal()
     measurement_point_clicked = Signal(int, int)
     measurement_undo_requested = Signal()
     rectangle_selected = Signal(object)
@@ -192,16 +194,29 @@ class EditorGLWidget(GLWidget):
             return
         if (event.button() == Qt.LeftButton
                 and self._ctrl_select
-                and self._mode in ('radius', 'rectangle')):
+                and self._mode == 'brush'):
             self._press_pos = event.pos()
-            if self._mode == 'rectangle':
-                self._rubber_band.setGeometry(
-                    QRect(self._press_pos, self._press_pos))
-                self._rubber_band.show()
-                self._rubber_band.raise_()
+            self.brush_drag_started.emit()
+            event.accept()
+            return
+        if (event.button() == Qt.LeftButton
+                and self._ctrl_select
+                and self._mode == 'rectangle'):
+            self._press_pos = event.pos()
+            self._rubber_band.setGeometry(
+                QRect(self._press_pos, self._press_pos))
+            self._rubber_band.show()
+            self._rubber_band.raise_()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if (self._mode == 'brush'
+                and self._ctrl_select
+                and self._press_pos is not None
+                and event.buttons() & Qt.LeftButton):
+            self.brush_point_dragged.emit(event.x(), event.y())
+            event.accept()
+            return
         if (self._mode == 'rectangle'
                 and self._ctrl_select
                 and self._press_pos is not None
@@ -223,6 +238,18 @@ class EditorGLWidget(GLWidget):
                 self.measurement_point_clicked.emit(event.x(), event.y())
             event.accept()
             return
+        if (self._mode == 'brush'
+                and self._press_pos is not None
+                and self._ctrl_select
+                and event.button() == Qt.LeftButton):
+            moved = (event.pos() - self._press_pos).manhattanLength()
+            if moved >= 4:
+                self.brush_point_dragged.emit(event.x(), event.y())
+            self._press_pos = None
+            self._ctrl_select = False
+            self.brush_drag_finished.emit()
+            event.accept()
+            return
         if (self._press_pos is not None
                 and self._ctrl_select
                 and event.button() == Qt.LeftButton):
@@ -233,8 +260,6 @@ class EditorGLWidget(GLWidget):
             self._rubber_band.hide()
             if self._mode == 'rectangle' and moved >= 4:
                 self.rectangle_selected.emit(selection_rect)
-            elif self._mode == 'radius' and moved < 4:
-                self.point_clicked.emit(event.x(), event.y())
         self._ctrl_select = False
         super().mouseReleaseEvent(event)
 
@@ -263,6 +288,7 @@ class CloudEditor(q3d.Viewer):
         self.setCentralWidget(center_widget)
         main_layout = QVBoxLayout(center_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         self.add_control_panel(main_layout)
 
         self.glwidget = self.gl_widget_class()
@@ -279,15 +305,15 @@ class CloudEditor(q3d.Viewer):
         mdi_layout.setContentsMargins(0, 0, 0, 0)
         mdi_layout.addWidget(self.mdi)
         self.mdi.show()
-        self.mdi.addSubWindow(self.radius_window)
+        self.mdi.addSubWindow(self.brush_window)
         self.mdi.addSubWindow(self.rectangle_window)
         self.mdi.addSubWindow(self.measurement_window)
         for window in (
-                self.radius_window, self.rectangle_window, self.measurement_window):
+                self.brush_window, self.rectangle_window, self.measurement_window):
             window.setWindowFlag(Qt.WindowSystemMenuHint, False)
             window.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
             window.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
-        self.radius_window.hide()
+        self.brush_window.hide()
         self.rectangle_window.hide()
         self.measurement_window.hide()
 
@@ -345,12 +371,12 @@ class CloudEditor(q3d.Viewer):
         self.btn_measurement.toggled.connect(self.set_measurement_mode)
         toolbar_layout.addWidget(self.btn_measurement)
 
-        self.btn_radius_delete = make_icon_button(
-            toolbar, 'adjust',
-            'Ctrl+click to delete points within the radius')
-        self.btn_radius_delete.setCheckable(True)
-        self.btn_radius_delete.toggled.connect(self.set_radius_mode)
-        toolbar_layout.addWidget(self.btn_radius_delete)
+        self.btn_brush_delete = make_icon_button(
+            toolbar, 'brush',
+            'Ctrl+drag to delete points')
+        self.btn_brush_delete.setCheckable(True)
+        self.btn_brush_delete.toggled.connect(self.set_brush_mode)
+        toolbar_layout.addWidget(self.btn_brush_delete)
 
         self.btn_rectangle_delete = make_icon_button(
             toolbar, 'select',
@@ -362,12 +388,12 @@ class CloudEditor(q3d.Viewer):
         toolbar_layout.addStretch()
         main_layout.addWidget(toolbar)
 
-        self.radius_window = RadiusDeleteWindow(self)
-        self.radius_window.radius_changed.connect(self.set_radius)
-        self.radius_window.apply_requested.connect(self.apply_requested)
-        self.radius_window.undo_requested.connect(self.undo_requested)
-        self.radius_window.cancel_requested.connect(self.cancel_requested)
-        self.radius_window.closed.connect(self.close_delete_tool)
+        self.brush_window = BrushDeleteWindow(self)
+        self.brush_window.radius_changed.connect(self.set_radius)
+        self.brush_window.apply_requested.connect(self.apply_requested)
+        self.brush_window.undo_requested.connect(self.undo_requested)
+        self.brush_window.cancel_requested.connect(self.cancel_requested)
+        self.brush_window.closed.connect(self.close_delete_tool)
 
         self.rectangle_window = RectangleDeleteWindow(self)
         self.rectangle_window.apply_requested.connect(self.apply_requested)
@@ -379,7 +405,7 @@ class CloudEditor(q3d.Viewer):
 
     def _clear_tool_buttons(self):
         for button in (
-                self.btn_radius_delete,
+                self.btn_brush_delete,
                 self.btn_rectangle_delete,
                 self.btn_measurement):
             button.blockSignals(True)
@@ -389,7 +415,7 @@ class CloudEditor(q3d.Viewer):
     def _activate_tool(self, mode):
         self._clear_tool_buttons()
         buttons = {
-            'radius': self.btn_radius_delete,
+            'brush': self.btn_brush_delete,
             'rectangle': self.btn_rectangle_delete,
             'measurement': self.btn_measurement,
         }
@@ -404,18 +430,18 @@ class CloudEditor(q3d.Viewer):
 
     def _hide_tool_dialogs(self):
         for window in (
-            self.radius_window, self.rectangle_window,
+            self.brush_window, self.rectangle_window,
             self.measurement_window):
             window.hide()
 
     def _show_delete_tool(self, mode):
         self._activate_tool(mode)
         self._hide_tool_dialogs()
-        window = (self.radius_window
-                  if mode == 'radius' else self.rectangle_window)
+        window = (self.brush_window
+                  if mode == 'brush' else self.rectangle_window)
         window.set_hint(
-            'Ctrl+click to mark points within the radius'
-            if mode == 'radius' else
+            'Ctrl+drag to mark points'
+            if mode == 'brush' else
             'Ctrl+drag to mark points')
         window.show()
         window.raise_()
@@ -428,10 +454,10 @@ class CloudEditor(q3d.Viewer):
         self.mode_requested.emit(None)
         self.glwidget.set_mode(None)
 
-    def set_radius_mode(self, enabled):
+    def set_brush_mode(self, enabled):
         if enabled:
-            self._show_delete_tool('radius')
-        elif self.active_mode == 'radius':
+            self._show_delete_tool('brush')
+        elif self.active_mode == 'brush':
             self.close_delete_tool()
 
     def set_rectangle_mode(self, enabled):
@@ -570,17 +596,15 @@ def main():
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()
     grid_item = q3d.GridItem(size=1000, spacing=20)
-    center_item = q3d.CenterItem()
     measurement_item = q3d.Text3DItem()
     measurement_item.disable_setting()
 
     viewer.add_items({
-        'marked': marked_item,
         'cloud': cloud_item,
+        'marked': marked_item,
         'grid': grid_item,
         'axis': axis_item,
         'measurement': measurement_item,
-        'center': center_item,
     })
     if args.path:
         viewer.open_cloud_file(args.path)
