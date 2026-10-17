@@ -78,6 +78,7 @@ class BrushDeleteWindow(ToolWindow):
             lambda value: self.radius_changed.emit(float(value)))
         self.content_layout.addWidget(self.radius_box)
         self.set_hint('Ctrl+drag to mark points')
+        self.resize(self.width(), self.sizeHint().height())
 
     def set_radius(self, radius):
         self.radius_box.blockSignals(True)

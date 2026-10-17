@@ -34,3 +34,4 @@ class RectangleDeleteWindow(ToolWindow):
         super().__init__(parent)
         self.setWindowTitle('Rectangle delete')
         self.set_hint('Ctrl+drag to mark points')
+        self.resize(self.width(), self.sizeHint().height())

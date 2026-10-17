@@ -81,6 +81,7 @@ class MeasurementWindow(ToolWindow):
         self.content_layout.addWidget(self.total_distance)
         self.btn_apply.hide()
         self.set_hint('Ctrl+click to add points')
+        self.resize(self.width(), self.sizeHint().height())
 
     def set_measurement(self, point_count, distance):
         self.point_count.setText(f'Points: {point_count}')
