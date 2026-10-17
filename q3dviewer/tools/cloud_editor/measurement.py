@@ -1,13 +1,15 @@
 """Interactive point-to-point measurement for the cloud editor."""
 
 import numpy as np
-from q3dviewer.Qt.QtCore import QObject, Signal
+from q3dviewer.Qt.QtCore import QObject, Qt, Signal
+from q3dviewer.Qt.QtWidgets import QLabel
+from q3dviewer.tools.cloud_editor.tool_window import ToolWindow
 
 
 class MeasurementTool(QObject):
     """Own measurement points and publish marker data plus total distance."""
 
-    changed = Signal(object, str)
+    changed = Signal(object, int, float)
 
     def __init__(self, view_handler):
         super().__init__()
@@ -45,7 +47,7 @@ class MeasurementTool(QObject):
             self.points = []
             self._publish()
         else:
-            self.changed.emit([], '')
+            self.changed.emit([], 0, 0.0)
 
     def _publish(self):
         markers = [
@@ -62,5 +64,25 @@ class MeasurementTool(QObject):
         distance = sum(
             np.linalg.norm(self.points[index] - self.points[index - 1])
             for index in range(1, len(self.points)))
-        label = f'Total distance: {distance:.2f} m' if self.points else ''
-        self.changed.emit(markers, label)
+        self.changed.emit(markers, len(self.points), float(distance))
+
+
+class MeasurementWindow(ToolWindow):
+    """Controls and readout for the measurement tool."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Measurement')
+        self.setMinimumWidth(360)
+        self.point_count = QLabel('Points: 0')
+        self.total_distance = QLabel('Total distance: <b>0.00</b> m')
+        self.total_distance.setTextFormat(Qt.TextFormat.RichText)
+        self.content_layout.addWidget(self.point_count)
+        self.content_layout.addWidget(self.total_distance)
+        self.btn_apply.hide()
+        self.set_hint('Ctrl+click to add points')
+
+    def set_measurement(self, point_count, distance):
+        self.point_count.setText(f'Points: {point_count}')
+        self.total_distance.setText(
+            f'Total distance: <b>{distance:.2f}</b> m')

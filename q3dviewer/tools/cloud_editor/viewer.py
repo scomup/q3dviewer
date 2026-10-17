@@ -9,142 +9,27 @@ from pathlib import Path
 
 import q3dviewer as q3d
 from q3dviewer import GLWidget
-from q3dviewer.Qt.QtCore import QRect, QSize, Qt, Signal
-from q3dviewer.Qt.QtGui import QIcon
+from q3dviewer.Qt.QtCore import QRect, Qt, Signal
 from q3dviewer.Qt.QtWidgets import (
-    QFileDialog, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QMessageBox,
-    QMdiArea, QMdiSubWindow, QRubberBand, QToolButton, QVBoxLayout, QWidget)
+    QFileDialog, QFrame, QHBoxLayout, QMessageBox, QMdiArea, QRubberBand,
+    QVBoxLayout, QWidget)
 from q3dviewer.custom_items.cloud_item import CloudItem
-from q3dviewer.tools.cloud_viewer import ProgressWindow
+from q3dviewer.tools.cloud_viewer import ProgressWindow, get_cloud_center
+from q3dviewer.tools.cloud_editor.brush_tool import (
+    BrushDeleteTool, BrushDeleteWindow)
 from q3dviewer.tools.cloud_editor.io import CloudEditorIO
+from q3dviewer.tools.cloud_editor.measurement import (
+    MeasurementTool, MeasurementWindow)
 from q3dviewer.tools.cloud_editor.operations import CloudEditorOperations
+from q3dviewer.tools.cloud_editor.points_selector import PointsSelector
+from q3dviewer.tools.cloud_editor.rectangle_tool import (
+    RectangleDeleteTool, RectangleDeleteWindow)
+from q3dviewer.tools.cloud_editor.tool_window import make_icon_button
 from q3dviewer.utils.helpers import get_version
 
 
-ICON_DIR = Path(__file__).resolve().parent / 'icons'
-
-
-def make_icon_button(parent, icon_name, tooltip):
-    button = QToolButton(parent)
-    button.setIcon(QIcon(str(ICON_DIR / f'{icon_name}.svg')))
-    button.setIconSize(QSize(28, 28))
-    button.setFixedSize(38, 38)
-    button.setAutoRaise(True)
-    button.setToolTip(tooltip)
-    return button
-
-
-class ToolWindow(QMdiSubWindow):
-    apply_requested = Signal()
-    undo_requested = Signal()
-    cancel_requested = Signal()
-    closed = Signal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._placed_initially = False
-
-        content = QWidget(self)
-        self.setWidget(content)
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(8, 6, 8, 6)
-        tool_layout = QHBoxLayout()
-        self.content_layout = QHBoxLayout()
-        tool_layout.addLayout(self.content_layout)
-
-        self.btn_undo = make_icon_button(
-            self, 'undo', 'Undo last pending operation')
-        self.btn_undo.clicked.connect(self.undo_requested)
-        tool_layout.addWidget(self.btn_undo)
-
-        self.btn_apply = make_icon_button(
-            self, 'check', 'Apply pending operations')
-        self.btn_apply.clicked.connect(self.apply_requested)
-        tool_layout.addWidget(self.btn_apply)
-
-        self.btn_cancel = make_icon_button(
-            self, 'close', 'Cancel pending operations')
-        self.btn_cancel.clicked.connect(self.cancel_requested)
-        self.cancel_requested.connect(self.close)
-        tool_layout.addWidget(self.btn_cancel)
-
-        layout.addLayout(tool_layout)
-        self.hint_label = QLabel()
-        self.hint_label.setStyleSheet('color: gray;')
-        layout.addWidget(self.hint_label)
-
-    def set_hint(self, text):
-        self.hint_label.setText(text)
-        self.widget().layout().activate()
-        required_width = self.sizeHint().width()
-        if required_width > self.width():
-            self.resize(required_width, self.height())
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not self._placed_initially:
-            parent = self.parentWidget()
-            right = max(0, parent.width() - self.width())
-            self.move(right, 0)
-            self._placed_initially = True
-
-    def closeEvent(self, event):
-        event.accept()
-        self.closed.emit()
-
-
-class BrushDeleteWindow(ToolWindow):
-    radius_changed = Signal(float)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Brush Delete')
-        self.content_layout.addWidget(QLabel('Brush size (m)'))
-
-        self.radius_box = QDoubleSpinBox()
-        self.radius_box.setDecimals(2)
-        self.radius_box.setSingleStep(0.1)
-        self.radius_box.setRange(0.01, 1000.0)
-        self.radius_box.setValue(0.5)
-        self.radius_box.valueChanged.connect(
-            lambda value: self.radius_changed.emit(float(value)))
-        self.content_layout.addWidget(self.radius_box)
-
-    def set_radius(self, radius):
-        self.radius_box.blockSignals(True)
-        self.radius_box.setValue(radius)
-        self.radius_box.blockSignals(False)
-
-
-class RectangleDeleteWindow(ToolWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Rectangle delete')
-
-
-class MeasurementWindow(ToolWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Measurement')
-        self.setMinimumWidth(360)
-        self.point_count = QLabel('Points: 0')
-        self.total_distance = QLabel('Total distance: <b>0.00</b> m')
-        self.total_distance.setTextFormat(Qt.TextFormat.RichText)
-        self.content_layout.addWidget(self.point_count)
-        self.content_layout.addWidget(self.total_distance)
-        self.btn_apply.hide()
-
-    def set_measurement(self, point_count, distance_label):
-        self.point_count.setText(f'Points: {point_count}')
-        distance_text = distance_label or 'Total distance: 0.00 m'
-        label, value_with_unit = distance_text.split(': ', 1)
-        value, unit = value_with_unit.split(' ', 1)
-        self.total_distance.setText(
-            f'{label}: <b>{value}</b> {unit}')
-
-
 class EditorGLWidget(GLWidget):
-    """Translate mouse and key events into signals for the operations class."""
+    """Translate mouse and key events into signals for the tool classes."""
 
     brush_drag_started = Signal()
     brush_point_dragged = Signal(int, int)
@@ -270,8 +155,6 @@ class CloudEditor(q3d.Viewer):
     load_requested = Signal(object)
     load_file_requested = Signal(str, bool)
     save_requested = Signal(str)
-    mode_requested = Signal(object)
-    radius_requested = Signal(float)
     apply_requested = Signal()
     undo_requested = Signal()
     cancel_requested = Signal()
@@ -317,26 +200,32 @@ class CloudEditor(q3d.Viewer):
         self.rectangle_window.hide()
         self.measurement_window.hide()
 
-        self.operations = CloudEditorOperations(self.glwidget, self.io)
+        self.operations = CloudEditorOperations()
+        self.selector = PointsSelector(self.glwidget)
+        self.brush_tool = BrushDeleteTool(self.glwidget, self.selector)
+        self.rectangle_tool = RectangleDeleteTool(
+            self.glwidget, self.selector)
+        self.measurement_tool = MeasurementTool(self.glwidget)
+
+        self.brush_tool.delete_requested.connect(
+            self.operations.mark_deleted_indices)
+        self.rectangle_tool.delete_requested.connect(
+            self.operations.mark_deleted_indices)
+        self.measurement_tool.changed.connect(self.display_measurement)
+
+        self.io.cloud_loaded.connect(self._merge_cloud)
         self.load_requested.connect(self.io.load_files)
         self.load_file_requested.connect(self.io.load_file)
-        self.save_requested.connect(self.operations.request_save)
-        self.mode_requested.connect(self.operations.set_mode)
-        self.radius_requested.connect(self.operations.set_radius)
+        self.save_requested.connect(self._save_cloud)
         self.apply_requested.connect(self.operations.apply_operations)
         self.undo_requested.connect(self.operations.undo)
         self.cancel_requested.connect(self.operations.cancel_pending)
         self.measurement_window.undo_requested.connect(
-            self.operations.undo_measurement)
-        self.measurement_window.cancel_requested.connect(self.cancel_requested)
+            self.measurement_tool.undo)
         self.measurement_window.closed.connect(self.close_delete_tool)
 
         self.operations.cloud_display_changed.connect(self.display_cloud)
         self.operations.marked_display_changed.connect(self.display_marked)
-        self.operations.measurement_changed.connect(self.display_measurement)
-        self.operations.cloud_loaded.connect(self.set_cloud_color_mode)
-        self.operations.camera_center_changed.connect(
-            self.set_camera_center)
         self.io.progress.connect(self.file_loading_progress)
         self.io.loading_finished.connect(self.file_loading_finished)
         self.io.operation_error.connect(self.show_operation_error)
@@ -425,7 +314,9 @@ class CloudEditor(q3d.Viewer):
             button.setChecked(True)
             button.blockSignals(False)
         self.active_mode = mode
-        self.mode_requested.emit(mode)
+        self.brush_tool.set_active(mode == 'brush')
+        self.rectangle_tool.set_active(mode == 'rectangle')
+        self.measurement_tool.set_active(mode == 'measurement')
         self.glwidget.set_mode(mode)
 
     def _hide_tool_dialogs(self):
@@ -439,10 +330,6 @@ class CloudEditor(q3d.Viewer):
         self._hide_tool_dialogs()
         window = (self.brush_window
                   if mode == 'brush' else self.rectangle_window)
-        window.set_hint(
-            'Ctrl+drag to mark points'
-            if mode == 'brush' else
-            'Ctrl+drag to mark points')
         window.show()
         window.raise_()
         window.activateWindow()
@@ -450,8 +337,10 @@ class CloudEditor(q3d.Viewer):
     def close_delete_tool(self, _result=None):
         self._hide_tool_dialogs()
         self._clear_tool_buttons()
+        self.brush_tool.set_active(False)
+        self.rectangle_tool.set_active(False)
+        self.measurement_tool.set_active(False)
         self.active_mode = None
-        self.mode_requested.emit(None)
         self.glwidget.set_mode(None)
 
     def set_brush_mode(self, enabled):
@@ -469,8 +358,6 @@ class CloudEditor(q3d.Viewer):
     def _show_measurement_tool(self):
         self._activate_tool('measurement')
         self._hide_tool_dialogs()
-        self.measurement_window.set_hint(
-            'Ctrl+click to add points')
         self.measurement_window.show()
         self.measurement_window.raise_()
         self.measurement_window.activateWindow()
@@ -482,7 +369,16 @@ class CloudEditor(q3d.Viewer):
             self.close_delete_tool()
 
     def set_radius(self, value):
-        self.radius_requested.emit(float(value))
+        self.brush_tool.set_radius(value)
+
+    def _merge_cloud(self, cloud, append):
+        merged_cloud = self.operations.set_cloud(cloud, append=append)
+        self.selector.set_points(merged_cloud['xyz'])
+        self.set_cloud_color_mode(merged_cloud)
+        self.set_camera_center(get_cloud_center(cloud))
+
+    def _save_cloud(self, file):
+        self.io.save(self.operations.edited_cloud(), file)
 
     def set_camera_center(self, center):
         self.glwidget.set_cam_position(center=center)
@@ -505,11 +401,11 @@ class CloudEditor(q3d.Viewer):
         else:
             marked_item.set_data(marked)
 
-    def display_measurement(self, markers, label):
+    def display_measurement(self, markers, point_count, distance):
         measurement_item = self['measurement']
         if measurement_item is not None:
             measurement_item.set_data(data=markers, append=False)
-        self.measurement_window.set_measurement(len(markers), label)
+        self.measurement_window.set_measurement(point_count, distance)
 
     def set_cloud_color_mode(self, cloud):
         cloud_item = self['cloud']

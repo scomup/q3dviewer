@@ -13,6 +13,7 @@ class PointsSelector:
     LOCAL_SIZE = 256
     RECTANGLE_MODE = 0
     RADIUS_MODE = 1
+    UINT32_BYTES = np.dtype(np.uint32).itemsize
 
     def __init__(self, view_handler):
         self.view_handler = view_handler
@@ -34,30 +35,26 @@ class PointsSelector:
             raise ValueError('points must have shape (N, 3)')
         self._points = np.ascontiguousarray(points)
         self._points_buffer_dirty = True
+        self._ensure_resources()
 
-    def select_rectangle(self, selection_rect):
-        return self._select(
-            mode=self.RECTANGLE_MODE,
-            selection_rect=selection_rect)
-
-    def select_radius(self, center, radius):
-        return self._select(
-            mode=self.RADIUS_MODE,
-            center=np.asarray(center, dtype=np.float32),
-            radius=float(radius))
-
-    def _select(self, mode, selection_rect=None, center=None, radius=0.0):
+    def select(self, mode, data):
         if self._points is None or self._points.shape[0] == 0:
             return np.empty(0, dtype=np.int64)
 
         self.view_handler.makeCurrent()
         try:
             self._ensure_resources()
-            return self._dispatch(mode, selection_rect, center, radius)
+            return self._dispatch(mode, data)
         finally:
             self.view_handler.doneCurrent()
 
     def _ensure_resources(self):
+        self._ensure_program()
+        self._ensure_buffers()
+        self._upload_points_if_needed()
+        self._ensure_index_buffer()
+
+    def _ensure_program(self):
         if self._program is None:
             shader_path = (Path(__file__).resolve().parent.parent
                            .parent / 'shaders' / 'points_select_comp.glsl')
@@ -65,13 +62,21 @@ class PointsSelector:
             compute_shader = shaders.compileShader(source, GL_COMPUTE_SHADER)
             self._program = shaders.compileProgram(compute_shader)
 
+    def _ensure_buffers(self):
         if self._points_buffer is None:
             self._points_buffer = glGenBuffers(1)
         if self._indices_buffer is None:
             self._indices_buffer = glGenBuffers(1)
         if self._count_buffer is None:
             self._count_buffer = glGenBuffers(1)
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._count_buffer)
+            glBufferData(
+                GL_SHADER_STORAGE_BUFFER,
+                self.UINT32_BYTES,
+                None,
+                GL_DYNAMIC_READ)
 
+    def _upload_points_if_needed(self):
         if self._points_buffer_dirty:
             points = np.empty((self._points.shape[0], 4), dtype=np.float32)
             points[:, :3] = self._points
@@ -81,50 +86,66 @@ class PointsSelector:
                 GL_SHADER_STORAGE_BUFFER, points.nbytes, points, GL_STATIC_DRAW)
             self._points_buffer_dirty = False
 
+    def _ensure_index_buffer(self):
         point_count = self._points.shape[0]
-        if self._index_capacity < point_count:
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._indices_buffer)
-            glBufferData(
-                GL_SHADER_STORAGE_BUFFER,
-                point_count * np.dtype(np.uint32).itemsize,
-                None,
-                GL_DYNAMIC_READ)
-            self._index_capacity = point_count
-
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._count_buffer)
+        if self._index_capacity >= point_count:
+            return
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._indices_buffer)
         glBufferData(
             GL_SHADER_STORAGE_BUFFER,
-            np.dtype(np.uint32).itemsize,
+            point_count * self.UINT32_BYTES,
             None,
             GL_DYNAMIC_READ)
+        self._index_capacity = point_count
 
-    def _dispatch(self, mode, selection_rect, center, radius):
+    def _dispatch(self, mode, data):
+        rectangle_ndc, center, radius = self._selection_parameters(mode, data)
+        glUseProgram(self._program)
+        try:
+            self._set_uniforms(
+                mode, rectangle_ndc, center, radius)
+            self._bind_selection_buffers()
+            self._run_compute()
+            return self._read_selected_indices()
+        finally:
+            self._unbind_selection_buffers()
+
+    def _selection_parameters(self, mode, data):
+        if mode == self.RECTANGLE_MODE:
+            return (
+                self._rectangle_ndc(data),
+                np.zeros(3, dtype=np.float32),
+                0.0,
+            )
+        if mode == self.RADIUS_MODE:
+            center, radius = data
+            return (
+                np.zeros(4, dtype=np.float32),
+                center,
+                radius,
+            )
+        raise ValueError(f'Unsupported selection mode: {mode}')
+
+    def _set_uniforms(self, mode, rectangle_ndc, center, radius):
         projection_view = (
             self.view_handler.projection_matrix @ self.view_handler.view_matrix)
-        if mode == self.RECTANGLE_MODE:
-            rectangle_ndc = self._rectangle_ndc(selection_rect)
-        else:
-            rectangle_ndc = np.zeros(4, dtype=np.float32)
-        glUseProgram(self._program)
-        glUniform1ui(
-            glGetUniformLocation(self._program, 'selection_mode'), mode)
+        glUniform1ui(self._uniform_location('selection_mode'), mode)
         glUniformMatrix4fv(
-            glGetUniformLocation(self._program, 'projection_view'),
-            1,
-            GL_FALSE,
+            self._uniform_location('projection_view'), 1, GL_FALSE,
             projection_view.T.astype(np.float32))
         glUniform4f(
-            glGetUniformLocation(self._program, 'rectangle_ndc'),
-            *rectangle_ndc)
+            self._uniform_location('rectangle_ndc'), *rectangle_ndc)
         glUniform3f(
-            glGetUniformLocation(self._program, 'selection_center'),
-            *(center if center is not None else np.zeros(3, dtype=np.float32)))
+            self._uniform_location('selection_center'), *center)
         glUniform1f(
-            glGetUniformLocation(self._program, 'selection_radius'), radius)
+            self._uniform_location('selection_radius'), radius)
         glUniform1ui(
-            glGetUniformLocation(self._program, 'point_count'),
-            self._points.shape[0])
+            self._uniform_location('point_count'), self._points.shape[0])
 
+    def _uniform_location(self, name):
+        return glGetUniformLocation(self._program, name)
+
+    def _bind_selection_buffers(self):
         zero = np.zeros(1, dtype=np.uint32)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._count_buffer)
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, zero.nbytes, zero)
@@ -132,34 +153,36 @@ class PointsSelector:
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, self._indices_buffer)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self._count_buffer)
 
-        groups = (self._points.shape[0] + self.LOCAL_SIZE - 1) // self.LOCAL_SIZE
+    def _run_compute(self):
+        groups = (self._points.shape[0] +
+                  self.LOCAL_SIZE - 1) // self.LOCAL_SIZE
         glDispatchCompute(groups, 1, 1)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
 
+    def _read_selected_indices(self):
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._count_buffer)
         count_data = glGetBufferSubData(
-            GL_SHADER_STORAGE_BUFFER, 0, np.dtype(np.uint32).itemsize)
+            GL_SHADER_STORAGE_BUFFER, 0, self.UINT32_BYTES)
         selected_count = int(np.frombuffer(
             count_data, dtype=np.uint32, count=1)[0])
         if selected_count == 0:
-            selected = np.empty(0, dtype=np.int64)
-        else:
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._indices_buffer)
-            selected_data = glGetBufferSubData(
-                GL_SHADER_STORAGE_BUFFER,
-                0,
-                selected_count * np.dtype(np.uint32).itemsize)
-            selected = np.frombuffer(
-                selected_data,
-                dtype=np.uint32,
-                count=selected_count).astype(np.int64, copy=True)
+            return np.empty(0, dtype=np.int64)
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0)
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, self._indices_buffer)
+        selected_data = glGetBufferSubData(
+            GL_SHADER_STORAGE_BUFFER,
+            0,
+            selected_count * self.UINT32_BYTES)
+        return np.frombuffer(
+            selected_data,
+            dtype=np.uint32,
+            count=selected_count).astype(np.int64, copy=True)
+
+    def _unbind_selection_buffers(self):
+        for binding in range(3):
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, 0)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)
         glUseProgram(0)
-        return selected
 
     def _rectangle_ndc(self, selection_rect):
         if selection_rect is None:
