@@ -12,12 +12,12 @@ To show how to use `q3dviewer` as a library, we also provide some [very useful t
 
 ## Installation
 
-**For library usage only:**
+**For library usage:**
 ```bash
 pip install q3dviewer
 ```
 
-**For GUI tools (cloud_viewer, film_maker, etc.):**
+**For additional GUI tools (`q3d.film_maker`, etc.):**
 ```bash
 pip install "q3dviewer[tools]"
 ```
@@ -39,7 +39,7 @@ Once installed, you can directly use the following tools:
 A tool for visualizing point cloud files (LAS, PCD, PLY, E57). Launch it by executing the following command in your terminal:
 
 ```sh
-cloud_viewer
+q3d.cloud_viewer
 ```
 
 *Alternatively*, if the path is not set (though it's not recommended):
@@ -89,7 +89,7 @@ For example, you can download and view point clouds of Tokyo in LAS format from 
 A simple tool for editing point clouds. It supports PCD, PLY, LAS, and E57 files, point deletion, measurement, undo, and saving.
 
 ```sh
-cloud_editor
+q3d.cloud_editor
 ```
 
 ![Cloud Editor](imgs/editor.gif)
@@ -100,7 +100,7 @@ A high-performance SLAM viewer compatible with ROS, serving as an alternative to
 
 ```sh
 roscore &
-ros_viewer
+q3d.ros_viewer
 ```
 
 ### 4. Film Maker
@@ -108,7 +108,7 @@ ros_viewer
 Would you like to create a video from point cloud data? With Film Maker, you can easily create videos with simple operations. Just edit keyframes using the user-friendly GUI, and the software will automatically interpolate the keyframes to generate the video.
 
 ```sh
-film_maker
+q3d.film_maker
 ```
 
 **Basic Operations**
@@ -130,7 +130,7 @@ The demo video demonstrating how to use Film Maker utilizes the [cloud data of K
 A simple viewer for 3D Gaussians. See [EasyGaussianSplatting](https://github.com/scomup/EasyGaussianSplatting) for more information.
 
 ```sh
-gaussian_viewer  # Drag and drop your Gaussian file onto the window
+q3d.gaussian_viewer  # Drag and drop your Gaussian file onto the window
 ```
 
 ![Gaussian Viewer GIF](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/441e6f5a-214d-f7c1-11bf-5fa79e63b38e.gif)
