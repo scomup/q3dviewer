@@ -185,8 +185,6 @@ class PointsSelector:
         glUseProgram(0)
 
     def _rectangle_ndc(self, selection_rect):
-        if selection_rect is None:
-            return np.zeros(4, dtype=np.float32)
         pixel_ratio = self.view_handler.devicePixelRatioF()
         width = self.view_handler.current_width()
         height = self.view_handler.current_height()

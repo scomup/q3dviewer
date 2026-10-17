@@ -50,7 +50,8 @@ class CloudItem(BaseItem):
     def __init__(self, size, alpha,
                  color_mode='I',
                  color='white',
-                 point_type='PIXEL'):
+                 point_type='PIXEL',
+                 depth_test=True):
         super().__init__()
         self.valid_buff_top = 0  # the loc in buffer of the top of valid data
         self.add_buff_loc = 0    # the loc in buffer to add new data
@@ -58,6 +59,7 @@ class CloudItem(BaseItem):
         self.alpha = alpha
         self.size = size
         self.point_type = point_type
+        self.depth_test = depth_test
         self.mutex = threading.Lock()
         self.color = color
         try:
@@ -433,12 +435,14 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        glEnable(GL_DEPTH_TEST)
-
-        if self.alpha < 0.9:
-            glDepthFunc(GL_ALWAYS)
+        if self.depth_test:
+            glEnable(GL_DEPTH_TEST)
+            if self.alpha < 0.9:
+                glDepthFunc(GL_ALWAYS)
+            else:
+                glDepthFunc(GL_LESS)
         else:
-            glDepthFunc(GL_LESS)
+            glDisable(GL_DEPTH_TEST)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)

@@ -13,7 +13,12 @@ from q3dviewer.Qt.QtWidgets import QLabel, QLineEdit, QDoubleSpinBox, \
     QSpinBox, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox
 from q3dviewer.Qt import QtCore
 import rospy
-import cv2
+try:
+    import cv2
+except ImportError:
+    print("opencv-python is required for lidar_cam_calib.")
+    print("Install it with: pip install opencv-python")
+    raise SystemExit(1)
 import argparse
 from q3dviewer.utils.convert_ros_msg import convert_pointcloud2_msg, convert_image_msg
 from q3dviewer.utils.maths import euler_to_matrix, matrix_to_quaternion, matrix_to_euler

@@ -73,7 +73,7 @@ class EditorGLWidget(GLWidget):
         self._ctrl_select = bool(event.modifiers() & Qt.ControlModifier)
         if (self._mode == 'measurement'
             and self._ctrl_select
-            and event.button() == Qt.LeftButton):
+                and event.button() == Qt.LeftButton):
             self._press_pos = event.pos()
             event.accept()
             return
@@ -230,6 +230,7 @@ class CloudEditor(q3d.Viewer):
         self.io.loading_finished.connect(self.file_loading_finished)
         self.io.operation_error.connect(self.show_operation_error)
         self.io.save_finished.connect(self.show_save_finished)
+        self.glwidget.undo_requested.connect(self.undo_requested)
         self.glwidget.sort_requested.connect(self.force_sort)
 
     def add_control_panel(self, main_layout):
@@ -308,11 +309,10 @@ class CloudEditor(q3d.Viewer):
             'rectangle': self.btn_rectangle_delete,
             'measurement': self.btn_measurement,
         }
-        button = buttons.get(mode)
-        if button is not None:
-            button.blockSignals(True)
-            button.setChecked(True)
-            button.blockSignals(False)
+        button = buttons[mode]
+        button.blockSignals(True)
+        button.setChecked(True)
+        button.blockSignals(False)
         self.active_mode = mode
         self.brush_tool.set_active(mode == 'brush')
         self.rectangle_tool.set_active(mode == 'rectangle')
@@ -321,8 +321,8 @@ class CloudEditor(q3d.Viewer):
 
     def _hide_tool_dialogs(self):
         for window in (
-            self.brush_window, self.rectangle_window,
-            self.measurement_window):
+                self.brush_window, self.rectangle_window,
+                self.measurement_window):
             window.hide()
 
     def _show_delete_tool(self, mode):
@@ -334,7 +334,7 @@ class CloudEditor(q3d.Viewer):
         window.raise_()
         window.activateWindow()
 
-    def close_delete_tool(self, _result=None):
+    def close_delete_tool(self):
         self._hide_tool_dialogs()
         self._clear_tool_buttons()
         self.brush_tool.set_active(False)
@@ -385,8 +385,6 @@ class CloudEditor(q3d.Viewer):
 
     def display_cloud(self, cloud):
         cloud_item = self['cloud']
-        if cloud_item is None:
-            return
         if cloud is None:
             cloud_item.clear()
             return
@@ -394,8 +392,10 @@ class CloudEditor(q3d.Viewer):
 
     def display_marked(self, marked):
         marked_item = self['marked']
-        if marked_item is None:
-            return
+        cloud_item = self['cloud']
+        marked_item.set_size(cloud_item.size)
+        marked_item.set_point_type(cloud_item.point_type)
+
         if marked is None or marked.size == 0:
             marked_item.clear()
         else:
@@ -403,13 +403,12 @@ class CloudEditor(q3d.Viewer):
 
     def display_measurement(self, markers, point_count, distance):
         measurement_item = self['measurement']
-        if measurement_item is not None:
-            measurement_item.set_data(data=markers, append=False)
+        measurement_item.set_data(data=markers, append=False)
         self.measurement_window.set_measurement(point_count, distance)
 
     def set_cloud_color_mode(self, cloud):
         cloud_item = self['cloud']
-        if cloud_item is None or cloud is None or cloud.size == 0:
+        if cloud.size == 0:
             return
         has_intensity = cloud['irgb'][0] & 0xff000000 > 0
         has_rgb = cloud['irgb'][0] & 0x00ffffff > 0
@@ -453,12 +452,10 @@ class CloudEditor(q3d.Viewer):
             url.toLocalFile() for url in event.mimeData().urls()])
 
     def file_loading_progress(self, current, total, file_name):
-        if hasattr(self, 'progress_window'):
-            self.progress_window.update_progress(current, total, file_name)
+        self.progress_window.update_progress(current, total, file_name)
 
     def file_loading_finished(self):
-        if hasattr(self, 'progress_window'):
-            self.progress_window.close()
+        self.progress_window.close()
 
     def show_operation_error(self, message):
         QMessageBox.warning(self, 'Cloud Editor', message)
@@ -468,8 +465,7 @@ class CloudEditor(q3d.Viewer):
 
     def force_sort(self):
         cloud_item = self['cloud']
-        if cloud_item is not None:
-            cloud_item.force_sort()
+        cloud_item.force_sort()
 
 
 def print_version():
@@ -487,7 +483,12 @@ def main():
 
     cloud_item = q3d.CloudSortItem(size=1, alpha=1, point_type='SPHERE')
     marked_item = CloudItem(
-        size=5, alpha=1.0, color_mode='FLAT', color='#ff1493', point_type='SPHERE')
+        size=1,
+        alpha=1.0,
+        color_mode='FLAT',
+        color='#ff1493',
+        point_type='SPHERE',
+        depth_test=False)
     marked_item.disable_setting()
     axis_item = q3d.AxisItem(size=0.5, width=5)
     axis_item.disable_setting()

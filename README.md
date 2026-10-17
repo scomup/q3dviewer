@@ -22,19 +22,6 @@ pip install q3dviewer
 pip install "q3dviewer[tools]"
 ```
 
-**For Python 3.12+ (GUI tools):**
-```bash
-pipx install "q3dviewer[tools]"
-pipx ensurepath
-source ~/.bashrc
-```
-
-### Note for Windows Users
-
-- Ensure that you have a Python 3 environment set up:
-  - Download and install Python 3 from the [official Python website](https://www.python.org/downloads/).
-  - During installation, make sure to check the "Add Python to PATH" option.
-
 ### Note for Linux Users
 
 If you encounter an error related to loading the shared library `libxcb-cursor.so.0` on Ubuntu 20.04 or 22.04, please install `libxcb-cursor0`:
@@ -97,7 +84,17 @@ For example, you can download and view point clouds of Tokyo in LAS format from 
 
 ![Screenshot from 2026-02-04 18-32-04.png](imgs/mesh.png)
 
-### 2. ROS Viewer
+### 2. Cloud Editor
+
+A simple tool for editing point clouds. It supports PCD, PLY, LAS, and E57 files, point deletion, measurement, undo, and saving.
+
+```sh
+cloud_editor
+```
+
+![Cloud Editor](imgs/editor.gif)
+
+### 3. ROS Viewer
 
 A high-performance SLAM viewer compatible with ROS, serving as an alternative to RVIZ.
 
@@ -106,7 +103,7 @@ roscore &
 ros_viewer
 ```
 
-### 3. Film Maker
+### 4. Film Maker
 
 Would you like to create a video from point cloud data? With Film Maker, you can easily create videos with simple operations. Just edit keyframes using the user-friendly GUI, and the software will automatically interpolate the keyframes to generate the video.
 
@@ -128,7 +125,7 @@ Film Maker GUI:
 
 The demo video demonstrating how to use Film Maker utilizes the [cloud data of Kyobashi Station Area](https://www.geospatial.jp/ckan/dataset/kyoubasiekisyuuhen_las) located in Osaka, Japan.
 
-### 4. Gaussian Viewer
+### 5. Gaussian Viewer
 
 A simple viewer for 3D Gaussians. See [EasyGaussianSplatting](https://github.com/scomup/EasyGaussianSplatting) for more information.
 
@@ -137,26 +134,6 @@ gaussian_viewer  # Drag and drop your Gaussian file onto the window
 ```
 
 ![Gaussian Viewer GIF](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/441e6f5a-214d-f7c1-11bf-5fa79e63b38e.gif)
-
-### 5. LiDAR-LiDAR Calibration Tools
-
-A tool to compute the relative pose between two LiDARs. It allows for both manual adjustment in the settings screen and automatic calibration.
-
-```sh
-lidar_calib --lidar0=/YOUR_LIDAR0_TOPIC --lidar1=/YOUR_LIDAR1_TOPIC
-```
-
-![LiDAR Calibration](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/5a8a9903-a42a-8322-1d23-0cbecd3fa99a.png)
-
-### 6. LiDAR-Camera Calibration Tools
-
-A tool for calculating the relative pose between a LiDAR and a camera. It allows for manual adjustment in the settings screen and real-time verification of LiDAR point projection onto images.
-
-```sh
-lidar_cam_calib --lidar=/YOUR_LIDAR_TOPIC --camera=/YOUR_CAMERA_TOPIC --camera_info=/YOUR_CAMERA_INFO_TOPIC
-```
-
-![LiDAR-Camera Calibration](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/149168/f8359820-2ae7-aa37-6577-0fa035f4dd95.png)
 
 ## Using as a Library
 
