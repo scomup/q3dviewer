@@ -125,6 +125,24 @@ def is_cuda_available():
     return find_cuda_path() is not None
 
 
+def get_cuda_arch_flags(nvcc):
+    """Select GPU targets supported by the installed CUDA compiler."""
+    import subprocess
+
+    supported = set(subprocess.check_output(
+        [nvcc, '--list-gpu-code'], text=True).split())
+    architectures = [arch for arch in ('60', '61', '70', '75', '80', '86', '89')
+                     if f'sm_{arch}' in supported]
+    if not architectures:
+        raise RuntimeError("nvcc does not support any of the configured GPU targets")
+
+    flags = [f'-gencode=arch=compute_{arch},code=sm_{arch}'
+             for arch in architectures]
+    flags.append(
+        f'-gencode=arch=compute_{architectures[-1]},code=compute_{architectures[-1]}')
+    return flags
+
+
 class BuildExtWithCUDA(build_ext):
     """Custom build_ext command that handles CUDA compilation"""
 
@@ -222,19 +240,7 @@ class BuildExtWithCUDA(build_ext):
                 '--compiler-options', '-fPIC',
             ])
 
-        # Add GPU architectures (compute capabilities)
-        # Cover common GPUs from Pascal to Ada Lovelace
-        cuda_flags.extend([
-            '-gencode=arch=compute_60,code=sm_60',  # Pascal (GTX 10 series)
-            '-gencode=arch=compute_61,code=sm_61',  # Pascal
-            '-gencode=arch=compute_70,code=sm_70',  # Volta (V100)
-            '-gencode=arch=compute_75,code=sm_75',  # Turing (RTX 20 series)
-            # Ampere (RTX 30 series, A100)
-            '-gencode=arch=compute_80,code=sm_80',
-            '-gencode=arch=compute_86,code=sm_86',  # Ampere (RTX 30 series)
-            # Ada Lovelace (RTX 40 series)
-            '-gencode=arch=compute_89,code=sm_89',
-        ])
+        cuda_flags.extend(get_cuda_arch_flags(nvcc))
 
         # Include paths
         include_flags = [
