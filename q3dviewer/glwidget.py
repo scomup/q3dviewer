@@ -38,6 +38,12 @@ class SettingWindow(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
+    def refresh_current_setting(self):
+        """Rebuild the visible controls from the selected item's current state."""
+        index = self.combo_items.currentIndex()
+        if 0 <= index < len(self.items):
+            self.on_combo_selection(index)
+
     def on_combo_selection(self, index):
         # remove all setting of previous widget
         self.clear_setting()
@@ -77,7 +83,7 @@ class GLWidget(BaseGLWidget):
 
         if ev.key() == QtCore.Qt.Key_M:  # setting menu
             print("Open setting windows")
-            self.open_setting_window()            
+            self.open_setting_window()
         else:
             super().keyPressEvent(ev)
         if ev.key() == QtCore.Qt.Key_F:  # reset follow
@@ -91,7 +97,7 @@ class GLWidget(BaseGLWidget):
                 self.followed_name = self.followable_item_name[1]
                 print("Set follow to ", self.followed_name)
             else:
-                pass # do nothing
+                pass  # do nothing
 
     def on_followable_selection(self, index):
         self.followed_name = self.followable_item_name[index]
@@ -108,7 +114,7 @@ class GLWidget(BaseGLWidget):
         center_item = self.named_items.get('center')
         if center_item is not None:
             center_item.switch(state)
-    
+
     def follow_odom(self):
         if self.followed_name != 'none':
             new_center = self.named_items[self.followed_name].T[:3, 3]
@@ -132,10 +138,10 @@ class GLWidget(BaseGLWidget):
         color_edit.setText(self.color_str)
         color_edit.textChanged.connect(self.set_bg_color)
         layout.addWidget(color_edit)
-        
+
         label_focus = QLabel("Set Focus:")
         combo_focus = QComboBox()
-    
+
         if self.followable_item_name is None:
             self.initial_followable()
 
@@ -205,6 +211,8 @@ class GLWidget(BaseGLWidget):
             if item is not None:
                 item.load_setting(item_setting)
 
+        self.setting_window.refresh_current_setting()
+
     def get_glwidget_setting(self):
         """Get GLWidget settings."""
         return {
@@ -220,6 +228,7 @@ class GLWidget(BaseGLWidget):
             self.set_center(np.asarray(config['center'], dtype=float))
             self.set_euler(np.asarray(config['euler'], dtype=float))
             self.set_dist(config['distance'])
-            self.followed_name = config.get('followed_name', self.followed_name)
+            self.followed_name = config.get(
+                'followed_name', self.followed_name)
         else:
             print("Invalid GLWidget setting")
