@@ -226,7 +226,7 @@ class BuildExtWithCUDA(build_ext):
         # CUDA compilation flags
         cuda_flags = [
             '-O3',
-            '-std=c++14',
+            '-std=c++17',
             '--expt-relaxed-constexpr',
             '-DNDEBUG',
         ]
