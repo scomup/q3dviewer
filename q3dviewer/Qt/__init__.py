@@ -30,10 +30,10 @@ if Q3D_QT_IMPL not in ['PyQt5', 'PySide2', 'PySide6']:
     Q3D_QT_IMPL = None
 
 if Q3D_QT_IMPL is None:
-    if importlib.util.find_spec('PyQt5') is not None:
-        Q3D_QT_IMPL = 'PyQt5'
-    elif importlib.util.find_spec('PySide6') is not None:
+    if importlib.util.find_spec('PySide6') is not None:
         Q3D_QT_IMPL = 'PySide6'
+    elif importlib.util.find_spec('PyQt5') is not None:
+        Q3D_QT_IMPL = 'PyQt5'
     else:
         raise ImportError('No Qt binding found. Please install PySide6.')
 
@@ -56,6 +56,11 @@ def load_qt():
     if Q3D_QT_IMPL == 'PySide6':
         import_module('QtOpenGLWidgets')
         sys.modules[f'{__name__}.QtWidgets'].QOpenGLWidget = sys.modules[f'{__name__}.QtOpenGLWidgets'].QOpenGLWidget
+        qt_gui = sys.modules[f'{__name__}.QtGui']
+        surface_format = qt_gui.QSurfaceFormat()
+        surface_format.setRenderableType(
+            qt_gui.QSurfaceFormat.RenderableType.OpenGL)
+        qt_gui.QSurfaceFormat.setDefaultFormat(surface_format)
     # make PyQt5 and PySide6 modules compatible
     if Q3D_QT_IMPL == 'PyQt5':
         sys.modules[f'{__name__}.QtCore'].Signal = sys.modules[f'{__name__}.QtCore'].pyqtSignal
