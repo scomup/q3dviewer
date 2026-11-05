@@ -176,11 +176,10 @@ class GLWidget(BaseGLWidget):
         super().add_item(item)
 
     def open_setting_window(self):
-        if self.setting_window.isVisible():
-            self.setting_window.raise_()
-
-        else:
-            self.setting_window.show()
+        self.setting_window.showNormal()
+        self.setting_window.show()
+        self.setting_window.raise_()
+        self.setting_window.activateWindow()
 
     def save_setting(self):
         print(f"Saving settings to {self.setting_path}...")
