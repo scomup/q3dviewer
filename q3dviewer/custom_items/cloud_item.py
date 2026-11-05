@@ -19,6 +19,16 @@ from q3dviewer.utils import text_to_rgba
 from q3dviewer.Qt import Q3D_DEBUG
 
 
+def get_max_points(stride):
+    try:
+        NVX_TOTAL_AVAILABLE = 0x9048
+        # Reserve half of the currently available VRAM for this point cloud.
+        memory_budget = int(glGetIntegerv(NVX_TOTAL_AVAILABLE)) * 1024 // 2 # only use 50%
+    except Exception:
+        memory_budget = int(glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE))
+    return max(1, memory_budget // stride)
+
+
 # draw points with color (x, y, z, color)
 class CloudItem(BaseItem):
     """
@@ -408,9 +418,7 @@ class CloudItem(BaseItem):
             shaders.compileShader(fragment_shader, GL_FRAGMENT_SHADER),
         )
 
-        # Cap max_cloud_size to the GL driver's SSBO size limit.
-        self.max_cloud_size = glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE) // self.STRIDE
-
+        self.max_cloud_size = get_max_points(self.STRIDE)
         # ── Main GPU buffer ──────────────────────────────────────────────────────
         # Start small; grows on demand (Phase 1) up to max_cloud_size,
         # then GPU-downsamples in-place (Phase 2). Multiple items are safe
