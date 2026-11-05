@@ -25,6 +25,7 @@ class BaseGLWidget(QOpenGLWidget):
         self.active_keys = set()
         self.need_recalc_view = True # dist, euler or center has changed
         self.need_force_update = False
+        self._depth_capture = False
         self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
         self.projection_matrix = self.get_projection_matrix()
 
@@ -285,7 +286,6 @@ class BaseGLWidget(QOpenGLWidget):
         if self.need_recalc_view:
             self.view_matrix = calc_view_matrix(self.center, self.dist, self.euler)
             self.need_force_update = True
-            # self.need_recalc_view = False
 
         have_dirty_item = any(item.is_changed() for item in self.items)
         if have_dirty_item or self.need_force_update:
@@ -351,13 +351,47 @@ class BaseGLWidget(QOpenGLWidget):
         frame = np.flip(frame, 0)
         return frame
 
-    def depth_buffer_to_image(self, depth_buffer):
-        near = self.dist * 0.001
-        far = self.dist * 10000.
+    def save_depth_image(self, path='/home/liu/depth_debug.png'):
+        import cv2
+
+        self.makeCurrent()
+        width = self.current_width()
+        height = self.current_height()
+        glPushAttrib(GL_ALL_ATTRIB_BITS)
+        self._depth_capture = True
+        try:
+            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)
+            glDepthMask(GL_TRUE)
+            self.paintGL()
+            glFinish()
+            depth_buffer = glReadPixels(
+                0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+            depth_buffer = np.frombuffer(
+                depth_buffer, dtype=np.float32).reshape((height, width))
+            depth_buffer = np.flip(depth_buffer, 0)
+        finally:
+            self._depth_capture = False
+            glPopAttrib()
+
         z_ndc = depth_buffer * 2.0 - 1.0
-        depth_in_meters = (2.0 * near * far) / \
-            (far + near - z_ndc * (far - near))
-        return depth_in_meters
+        projection = np.asarray(self.projection_matrix, dtype=np.float64)
+        depth_image = projection[2, 3] / (z_ndc + projection[2, 2])
+        valid = ((depth_buffer > 0) & (depth_buffer < 1.0 - 1e-6)
+                 & np.isfinite(depth_image))
+        if not np.any(valid):
+            return False
+
+        max_depth = np.max(depth_image[valid])
+        if max_depth <= 0:
+            return False
+
+        depth_image_uint8 = np.zeros_like(depth_image, dtype=np.uint8)
+        depth_image_uint8[valid] = np.clip(
+            depth_image[valid] / max_depth * 255, 0, 255).astype(np.uint8)
+        depth_image_color = cv2.applyColorMap(
+            depth_image_uint8, cv2.COLORMAP_VIRIDIS)
+        depth_image_color[~valid] = 0
+        return cv2.imwrite(path, depth_image_color)
 
     def opengl_to_world(self, p):
         width = self.current_width()
@@ -394,22 +428,40 @@ class BaseGLWidget(QOpenGLWidget):
         x = int(x0 * pixel_ratio)
         y = int(y0 * pixel_ratio)
 
-        # Read entire depth buffer (raw values [0,1])
-        depth_buffer = glReadPixels(
-            0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
-        depth_buffer = np.frombuffer(
-            depth_buffer, dtype=np.float32).reshape((height, width))
-        depth_buffer = np.flip(depth_buffer, 0)
+        radius = int(np.max(np.abs(self.offset)))
+        x_min = max(x - radius, 0)
+        x_max = min(x + radius + 1, width)
+        y_min = max(y - radius, 0)
+        y_max = min(y + radius + 1, height)
+        glPushAttrib(GL_ALL_ATTRIB_BITS)
+        self._depth_capture = True
+        try:
+            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)
+            glDepthMask(GL_TRUE)
+            self.paintGL()
+            glFinish()
+            depth_buffer = glReadPixels(
+                x_min, height - y_max, x_max - x_min, y_max - y_min,
+                GL_DEPTH_COMPONENT, GL_FLOAT)
+            depth_buffer = np.frombuffer(
+                depth_buffer, dtype=np.float32).reshape(
+                    (y_max - y_min, x_max - x_min))
+            depth_buffer = np.flip(depth_buffer, 0)
+        finally:
+            self._depth_capture = False
+            glPopAttrib()
 
-        # debug: print depth value at the clicked pixel
-        # import imageio
-        # depth_image = self.depth_buffer_to_image(depth_buffer)
-        # depth_image_uint16 = (depth_image * 1000).astype(np.uint16)
-        # imageio.imwrite('/home/liu/depth_debug.png', depth_image_uint16)
+        # Debug only:
+        # self.save_depth_image()
 
-        depth_values = depth_buffer[y +
-                                    self.offset[:, 1], x + self.offset[:, 0]]
-        depth_valid_mask = (depth_values > 0) & (depth_values < 1)
+        candidate_x = x + self.offset[:, 0]
+        candidate_y = y + self.offset[:, 1]
+        in_bounds = ((candidate_x >= x_min) & (candidate_x < x_max) &
+                     (candidate_y >= y_min) & (candidate_y < y_max))
+        depth_values = depth_buffer[
+            candidate_y[in_bounds] - y_min,
+            candidate_x[in_bounds] - x_min]
+        depth_valid_mask = (depth_values > 0) & (depth_values < 1.0 - 1e-6)
         if not np.any(depth_valid_mask):
             return None
 

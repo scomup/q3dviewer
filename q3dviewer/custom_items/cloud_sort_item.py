@@ -193,12 +193,14 @@ class CloudSortItem(CloudIOItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        glEnable(GL_DEPTH_TEST)
-
-        if self.alpha < 0.9:
-            glDepthFunc(GL_ALWAYS)
-        else:
+        use_depth_test = (self.depth_test
+                          and (self.glwidget()._depth_capture
+                               or self.alpha >= self._OPAQUE_ALPHA_THRESHOLD))
+        if use_depth_test:
+            glEnable(GL_DEPTH_TEST)
             glDepthFunc(GL_LESS)
+        else:
+            glDisable(GL_DEPTH_TEST)
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glUseProgram(self.program)

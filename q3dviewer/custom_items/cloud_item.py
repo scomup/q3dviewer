@@ -56,6 +56,7 @@ class CloudItem(BaseItem):
     DATA_TYPE = [('xyz', '<f4', (3,)), ('irgb', '<u4')]
     MODE_TABLE = {'FLAT': 0, 'I': 1, 'RGB': 2, 'GRAY': 3}
     POINT_TYPE_TABLE = {'PIXEL': 0, 'SQUARE': 1, 'SPHERE': 2}
+    _OPAQUE_ALPHA_THRESHOLD = 0.95
 
     def __init__(self, size, alpha,
                  color_mode='I',
@@ -443,12 +444,12 @@ class CloudItem(BaseItem):
         glEnable(GL_BLEND)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
-        if self.depth_test:
+        use_depth_test = (self.depth_test
+                          and (self.glwidget()._depth_capture
+                               or self.alpha >= self._OPAQUE_ALPHA_THRESHOLD))
+        if use_depth_test:
             glEnable(GL_DEPTH_TEST)
-            if self.alpha < 0.9:
-                glDepthFunc(GL_ALWAYS)
-            else:
-                glDepthFunc(GL_LESS)
+            glDepthFunc(GL_LESS)
         else:
             glDisable(GL_DEPTH_TEST)
 
